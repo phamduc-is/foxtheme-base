@@ -1,0 +1,426 @@
+@use "../mixins" as *;
+
+// ─── Filters (toolbar, sidebar, drawer, sorting, density control) ─────────────
+// Inlined ONCE per page by snippets/filters.liquid (rendered by main-collection
+// and search-results), right where the toolbar starts. Split out of
+// template-collection.scss so neither inlined file nears inline_asset_content's
+// 15,360-byte ceiling — over it Shopify emits an HTML comment instead of the CSS
+// and the page silently loses its styles. Cascade order is unchanged: these
+// rules already came after the layout rules in the old single file, and both
+// load after theme.css.
+
+// ─── Grid Density Control ─────────────────────────────────────────────────────
+
+.column-options {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.column-options__legend {
+  padding: 0;
+}
+
+.column-options .column-options__option-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.column-options .column-options__option-input::after {
+  display: none;
+}
+
+.column-picker:has(input:checked) {
+  background-color: rgb(var(--color-primary-button-background));
+  color: rgb(var(--color-primary-button-text));
+}
+
+// ─── Filter Remove Buttons ────────────────────────────────────────────────────
+
+facet-remove-component.btn {
+  --button-padding-inline: 1.2rem;
+}
+
+facet-remove-component.btn .swatch {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+}
+
+.facets-remove:not(:has(.facets-remove__count)) {
+  display: none;
+}
+
+.facets__clear-all-link {
+  padding-inline-start: 1.6rem;
+}
+
+// ─── List Filter ──────────────────────────────────────────────────────────────
+
+.facets__swatch {
+  padding: 0;
+  border: 0;
+}
+
+.facets__swatch .swatch {
+  position: relative;
+  border-radius: min(var(--input-border-radius), 0.2rem);
+  width: 2rem;
+  height: 2rem;
+}
+
+.facets__swatch .swatch::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  border: 0.2rem solid rgb(var(--color-background));
+  border-inline-start: 0;
+  border-block-start: 0;
+  width: calc(var(--choice-input-size, 2rem) * 0.3);
+  height: calc(var(--choice-input-size, 2rem) * 0.6);
+  transform: translate(-50%, -65%) rotate(43deg);
+  filter: drop-shadow(0 0 1px rgb(var(--color-foreground) / 50%));
+  opacity: 0;
+  visibility: hidden;
+}
+
+.facets__swatch input:checked + .swatch::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+.facets__form-wrapper .show-more__button {
+  margin-top: 1.6rem;
+  cursor: pointer;
+}
+
+.facets__form-wrapper .show-more__button:hover {
+  color: rgb(var(--color-foreground));
+}
+
+.facets__inputs-list--images {
+  fieldset {
+    border: 0.1rem solid rgb(var(--color-foreground) / var(--color-foreground-alpha, 10%));
+    padding: 1.1rem;
+    border-radius: 1rem;
+    transition: border-color var(--motion-ui) var(--motion-ease);
+  }
+
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+  }
+
+  .facets__inputs-list-item {
+    &:hover,
+    &:has(input:checked) {
+      --color-foreground-alpha: 100%;
+    }
+  }
+}
+
+.facets__image-wrapper img {
+  max-width: 5rem;
+  border-radius: 1rem;
+}
+
+.facets__inputs-accordion:has(.facets__inputs-list--images) .accordion__details[open] {
+  border: 0;
+}
+
+.facets__inputs-accordion:has(.facets__inputs-list--images) .accordion__details[open] .accordion__inner {
+  padding-bottom: 0;
+}
+
+// ─── Filter Toolbar ───────────────────────────────────────────────────────────
+
+.toggle-filter-btn {
+  --button-padding-inline: 1.6rem;
+
+  border-color: rgb(var(--color-foreground) / 20%);
+}
+
+.facet-toolbar {
+  padding-bottom: var(--padding-bottom, 2rem);
+}
+
+.facet-remove-buttons:has(.facets-remove__count) {
+  padding-bottom: var(--padding-bottom, 2rem);
+}
+
+.facets__form .accordion__summary {
+  padding-block: var(--facets-summary-padding, 2.4rem);
+}
+
+.facets__form .accordion__inner {
+  padding-block: 0 var(--facets-summary-padding, 2.4rem);
+}
+
+.facets__form .accordion__details.is-open .accordion__summary {
+  padding-bottom: 1.2rem;
+}
+
+.facets__form .accordion:first-child .accordion__summary {
+  padding-top: 0;
+}
+
+.facets__form .accordion:last-child .accordion__details {
+  border-bottom: 0;
+}
+
+.facets__form .accordion--underline .accordion__details.is-open {
+  border-color: rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+// ─── Filters Drawer ───────────────────────────────────────────────────────────
+
+.filters-drawer__header {
+  padding: 1.6rem;
+  border-bottom: 0.1rem solid rgb(var(--color-foreground) / 10%);
+  position: relative;
+}
+
+.filters-drawer__header .dialog__close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 0.1rem solid rgb(var(--color-foreground) / 10%);
+}
+
+.filters-drawer__content-inner,
+.filters-drawer__content-footer {
+  padding: 2rem 1.6rem 2.4rem;
+}
+
+.filters-drawer__content-footer {
+  padding-top: 2.4rem;
+  border-top: 0.1rem solid rgb(var(--color-foreground) / 10%);
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  background-color: rgb(var(--color-background));
+}
+
+.filters-drawer__content {
+  --facets-summary-padding: 2rem;
+}
+
+@include media-breakpoint-up(xl) {
+  .facet-toolbar,
+  .facet-remove-buttons:has(.facets-remove__count) {
+    --padding-bottom: 2.4rem;
+  }
+}
+
+// ─── Price Filter ─────────────────────────────────────────────────────────────
+
+.price-facet__range-inputs {
+  --range-min: 0%;
+  --range-max: 100%;
+
+  background: linear-gradient(
+    to right,
+    rgb(var(--color-foreground) / 10%) var(--range-min),
+    rgb(var(--color-foreground)) var(--range-min),
+    rgb(var(--color-foreground)) var(--range-max),
+    rgb(var(--color-foreground) / 10%) var(--range-max)
+  );
+  border-radius: 0;
+  height: 0.4rem;
+}
+
+.price-facet__range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  height: 0.4rem;
+  vertical-align: top;
+  margin: 0;
+  width: 100%;
+
+  &::-webkit-slider-thumb {
+    -webkit-margin-before: -6px;
+    -webkit-appearance: none;
+    border: 1px solid rgb(var(--color-foreground));
+    background-color: rgb(var(--color-background));
+    border-radius: 100%;
+    box-shadow: none;
+    cursor: pointer;
+    height: 16px;
+    margin-block-start: -6px;
+    position: relative;
+    width: 16px;
+  }
+
+  &::-webkit-slider-runnable-track {
+    background-color: rgb(var(--color-foreground) / 20%);
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    height: 4px;
+    width: 100%;
+  }
+
+  &::-moz-range-thumb {
+    background-color: rgb(var(--color-background));
+    border: 2px solid rgb(var(--color-foreground));
+    border-radius: 100%;
+    cursor: pointer;
+    height: 12px;
+    width: 12px;
+  }
+
+  &::-moz-range-progress,
+  &::-moz-range-track {
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    height: 4px;
+    width: 100%;
+  }
+
+  &::-webkit-slider-runnable-track {
+    background: none;
+  }
+
+  &::-moz-range-progress {
+    background-color: rgb(var(--color-foreground));
+  }
+
+  &::-moz-range-track {
+    background-color: rgb(var(--color-foreground) / 10%);
+  }
+
+  &::-webkit-slider-thumb {
+    pointer-events: auto;
+  }
+
+  &::-moz-range-thumb {
+    pointer-events: auto;
+  }
+
+  &::-moz-range-progress,
+  &::-moz-range-track {
+    background: none;
+  }
+
+  &--min {
+    position: relative;
+    z-index: var(--range-min-z-index, 0);
+  }
+}
+
+// ─── Sorting ──────────────────────────────────────────────────────────────────
+
+.sorting-filter__select {
+  --input-border-color: rgb(var(--color-foreground) / 20%);
+
+  background-color: transparent;
+}
+
+// Drawer mode
+.sorting-filter--drawer .sorting-filter__drawer-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.sorting-filter--drawer .sorting-filter__label {
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+
+.sorting-filter--drawer .sorting-filter__options {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.sorting-filter--drawer .sorting-filter__option {
+  display: flex;
+  align-items: center;
+}
+
+.sorting-filter--drawer .sorting-filter__radio-label {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  cursor: pointer;
+  width: 100%;
+}
+
+.sorting-filter--drawer .sorting-filter__radio-label:hover {
+  color: rgb(var(--color-foreground));
+}
+
+.sorting-filter--drawer .facets__checkbox-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sorting-filter--drawer .facets__checkbox {
+  width: var(--choice-input-size, 2rem);
+  height: var(--choice-input-size, 2rem);
+  border: 0.1rem solid rgb(var(--color-foreground));
+  border-radius: min(var(--input-border-radius), 0.2rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition-property: border-color, background-color, box-shadow;
+  transition-duration: var(--motion-ui-fast);
+  transition-timing-function: var(--motion-ease);
+  background-color: rgb(var(--color-background));
+  position: relative;
+}
+
+.sorting-filter--drawer .sorting-filter__radio:checked + .sorting-filter__radio-label .facets__checkbox {
+  border-color: rgb(var(--color-foreground));
+  background-color: rgb(var(--color-foreground));
+}
+
+.sorting-filter--drawer .sorting-filter__radio:focus + .sorting-filter__radio-label .facets__checkbox {
+  box-shadow: 0 0 0 3px rgb(var(--color-foreground) / 10%);
+}
+
+.sorting-filter--drawer .facets__checkbox::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  border: 0.2rem solid rgb(var(--color-background));
+  border-inline-start: 0;
+  border-block-start: 0;
+  width: calc(var(--choice-input-size, 2rem) * 0.3);
+  height: calc(var(--choice-input-size, 2rem) * 0.6);
+  transform: translate(-50%, -65%) rotate(43deg);
+  opacity: 0;
+  visibility: hidden;
+  transition-property: opacity, visibility;
+  transition-duration: var(--motion-ui-fast);
+  transition-timing-function: var(--motion-ease-fade), var(--motion-ease);
+}
+
+.sorting-filter--drawer .sorting-filter__radio:checked + .sorting-filter__radio-label .facets__checkbox::after {
+  opacity: 1;
+  visibility: visible;
+}
+
+.sorting-filter--drawer .facets__checkbox-text {
+  flex: 1;
+}

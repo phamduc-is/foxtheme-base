@@ -1,0 +1,593 @@
+{% doc %}
+  One Recommendation quiz question (dynamic, whitelisted by `sections/recommendation-quiz.liquid`).
+
+  A thin wrapper: all markup lives in `snippets/product-quiz-question-markup.liquid`. Its cards are
+  always the `_recommendation-quiz-option` children; the products come from their lists.
+
+  @example
+  {% content_for 'blocks' %}
+{% enddoc %}
+
+{%- capture options_html -%}
+  {% content_for 'blocks' %}
+{%- endcapture -%}
+{%- render 'product-quiz-question-markup',
+  block: block,
+  section: section,
+  options_html: options_html
+-%}
+
+{% schema %}
+{
+  "name": "t:names.recommendation_quiz_question",
+  "tag": null,
+  "blocks": [
+    {
+      "type": "_recommendation-quiz-option"
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.general"
+    },
+    {
+      "type": "text",
+      "id": "question_id",
+      "label": "t:settings.question_id",
+      "info": "t:info.product_quiz_question_id"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "help_text",
+      "label": "t:settings.help_text",
+      "info": "t:info.product_quiz_help_text"
+    },
+    {
+      "type": "select",
+      "id": "help_text_color",
+      "label": "t:settings.help_text_color",
+      "options": [
+        {
+          "value": "text",
+          "label": "t:options.text"
+        },
+        {
+          "value": "subtext",
+          "label": "t:options.subtext"
+        }
+      ],
+      "default": "subtext"
+    },
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "range",
+      "id": "header_gap",
+      "label": "t:settings.gap",
+      "info": "t:info.product_quiz_question_gap",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "header_gap_mobile",
+      "label": "t:settings.mobile_gap",
+      "min": 0,
+      "max": 60,
+      "step": 4,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "t:content.header"
+    },
+    {
+      "type": "text",
+      "id": "stepper_label",
+      "label": "t:settings.stepper_label",
+      "info": "t:info.product_quiz_stepper_label"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "t:settings.heading",
+      "info": "t:info.product_quiz_heading_tokens",
+      "default": "What are you shopping for?"
+    },
+    {
+      "type": "select",
+      "id": "question_heading_size",
+      "label": "t:settings.heading_size",
+      "options": [
+        {
+          "value": "h1",
+          "label": "t:options.h1"
+        },
+        {
+          "value": "h2",
+          "label": "t:options.h2"
+        },
+        {
+          "value": "h3",
+          "label": "t:options.h3"
+        },
+        {
+          "value": "h4",
+          "label": "t:options.h4"
+        }
+      ],
+      "default": "h2"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "subtext",
+      "label": "t:settings.subtext"
+    },
+    {
+      "type": "select",
+      "id": "subtext_color",
+      "label": "t:settings.subtext_color",
+      "options": [
+        {
+          "value": "text",
+          "label": "t:options.text"
+        },
+        {
+          "value": "subtext",
+          "label": "t:options.subtext"
+        }
+      ],
+      "default": "text"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "t:settings.text_alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "right",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment_mobile",
+      "label": "t:settings.text_alignment_mobile",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "right",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "t:content.options"
+    },
+    {
+      "type": "select",
+      "id": "card_style",
+      "label": "t:settings.style",
+      "options": [
+        {
+          "value": "media",
+          "label": "t:options.media_card"
+        },
+        {
+          "value": "text",
+          "label": "t:options.text_only"
+        }
+      ],
+      "default": "text"
+    },
+    {
+      "type": "select",
+      "id": "selected_style",
+      "label": "t:settings.selected_style",
+      "options": [
+        {
+          "value": "border",
+          "label": "t:options.border"
+        },
+        {
+          "value": "border_background",
+          "label": "t:options.border_background"
+        },
+        {
+          "value": "fill",
+          "label": "t:options.fill"
+        }
+      ],
+      "default": "border"
+    },
+    {
+      "type": "select",
+      "id": "title_size",
+      "label": "t:settings.title_size",
+      "options": [
+        {
+          "value": "paragraph",
+          "label": "t:options.paragraph"
+        },
+        {
+          "value": "h6",
+          "label": "t:options.h6"
+        },
+        {
+          "value": "h5",
+          "label": "t:options.h5"
+        },
+        {
+          "value": "h4",
+          "label": "t:options.h4"
+        },
+        {
+          "value": "h3",
+          "label": "t:options.h3"
+        }
+      ],
+      "default": "paragraph"
+    },
+    {
+      "type": "select",
+      "id": "subtitle_color",
+      "label": "t:settings.subtitle_color",
+      "options": [
+        {
+          "value": "text",
+          "label": "t:options.text"
+        },
+        {
+          "value": "subtext",
+          "label": "t:options.subtext"
+        }
+      ],
+      "default": "subtext",
+      "visible_if": "{{ block.settings.card_style == 'media' }}"
+    },
+    {
+      "type": "select",
+      "id": "card_layout",
+      "label": "t:settings.layout",
+      "options": [
+        {
+          "value": "vertical",
+          "label": "t:options.vertical"
+        },
+        {
+          "value": "horizontal",
+          "label": "t:options.horizontal"
+        }
+      ],
+      "default": "vertical",
+      "visible_if": "{{ block.settings.card_style == 'media' }}"
+    },
+    {
+      "type": "select",
+      "id": "image_display",
+      "label": "t:settings.image_size",
+      "options": [
+        {
+          "value": "fill",
+          "label": "t:options.fill"
+        },
+        {
+          "value": "custom",
+          "label": "t:options.custom"
+        }
+      ],
+      "default": "fill",
+      "visible_if": "{{ block.settings.card_style == 'media' and block.settings.card_layout != 'horizontal' }}"
+    },
+    {
+      "type": "range",
+      "id": "image_width",
+      "label": "t:settings.image_width",
+      "min": 20,
+      "max": 400,
+      "step": 5,
+      "unit": "px",
+      "default": 80,
+      "visible_if": "{{ block.settings.card_style == 'media' and block.settings.card_layout == 'horizontal' or block.settings.image_display == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "image_width_mobile",
+      "label": "t:settings.image_width_mobile",
+      "min": 20,
+      "max": 400,
+      "step": 5,
+      "unit": "px",
+      "default": 70,
+      "visible_if": "{{ block.settings.card_style == 'media' and block.settings.card_layout == 'horizontal' or block.settings.image_display == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "image_shape",
+      "label": "t:settings.image_shape",
+      "options": [
+        {
+          "value": "square",
+          "label": "t:options.square_shape"
+        },
+        {
+          "value": "circle",
+          "label": "t:options.circle"
+        }
+      ],
+      "default": "square",
+      "visible_if": "{{ block.settings.card_style == 'media' and block.settings.card_layout == 'horizontal' }}"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "t:settings.image_ratio",
+      "options": [
+        {
+          "value": "adapt",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "1/1",
+          "label": "t:options.square"
+        },
+        {
+          "value": "4/5",
+          "label": "t:options.portrait"
+        },
+        {
+          "value": "3/4",
+          "label": "t:options.portrait_3_4"
+        },
+        {
+          "value": "3/2",
+          "label": "t:options.landscape_3_2"
+        },
+        {
+          "value": "4/3",
+          "label": "t:options.landscape_4_3"
+        },
+        {
+          "value": "16/9",
+          "label": "t:options.landscape"
+        },
+        {
+          "value": "21/9",
+          "label": "t:options.landscape_21_9"
+        }
+      ],
+      "default": "1/1",
+      "visible_if": "{{ block.settings.card_style == 'media' }}"
+    },
+    {
+      "type": "range",
+      "id": "icon_size",
+      "label": "t:settings.icon_size",
+      "min": 16,
+      "max": 96,
+      "step": 4,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.card_style == 'media' }}"
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "t:settings.icon_color",
+      "info": "t:info.leave_blank_to_use_default",
+      "visible_if": "{{ block.settings.card_style == 'media' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "icon_background",
+      "label": "t:settings.icon_background",
+      "default": false,
+      "visible_if": "{{ block.settings.card_style == 'media' }}"
+    },
+    {
+      "type": "color",
+      "id": "icon_background_color",
+      "label": "t:settings.background_color",
+      "info": "t:info.leave_blank_to_use_default",
+      "visible_if": "{{ block.settings.card_style == 'media' and block.settings.icon_background }}"
+    },
+    {
+      "type": "color_scheme",
+      "id": "card_color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "card_border",
+      "label": "t:settings.border",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "solid",
+          "label": "t:options.solid"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "card_border_width",
+      "label": "t:settings.border_width",
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ block.settings.card_border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "card_border_opacity",
+      "label": "t:settings.border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.card_border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "card_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "select",
+      "id": "card_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "right",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "card_alignment_mobile",
+      "label": "t:settings.alignment_mobile",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "right",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "card_padding",
+      "label": "t:settings.padding",
+      "options": [
+        {
+          "value": "compact",
+          "label": "t:options.compact"
+        },
+        {
+          "value": "comfortable",
+          "label": "t:options.comfortable"
+        }
+      ],
+      "default": "compact"
+    },
+    {
+      "type": "header",
+      "content": "t:content.options_layout"
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "t:settings.desktop_columns",
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "columns_mobile",
+      "label": "t:settings.mobile_columns",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 2
+    },
+    {
+      "type": "header",
+      "content": "t:content.behavior"
+    },
+    {
+      "type": "checkbox",
+      "id": "allow_skip",
+      "label": "t:settings.allow_skip",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_in_summary",
+      "label": "t:settings.show_in_summary",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.recommendation_quiz_question",
+      "blocks": {
+        "option_1": {
+          "type": "_recommendation-quiz-option",
+          "settings": {
+            "title": "Option 1"
+          }
+        },
+        "option_2": {
+          "type": "_recommendation-quiz-option",
+          "settings": {
+            "title": "Option 2"
+          }
+        }
+      },
+      "block_order": [
+        "option_1",
+        "option_2"
+      ]
+    }
+  ]
+}
+{% endschema %}

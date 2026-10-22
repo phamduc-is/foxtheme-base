@@ -1,0 +1,26 @@
+{% doc %}
+  Renders a product description in a compare table column.
+  When `show_view_more_button` is on and a line limit is set, the description is
+  clamped with a "view more" toggle (via `collapse-text-markup`); otherwise it is
+  rendered inline with a `text-limit-*` class.
+
+  @param {product} product - The product to read the description from
+  @param {object} block - The compare-table description block (provides settings.show_view_more_button, settings.text_line_limit)
+
+  @example
+  {% render 'compare-table-col-product-description', product: product, block: block %}
+{% enddoc %}
+{%- if product.description != blank -%}
+  {%- if block.settings.show_view_more_button and block.settings.text_line_limit != 'none' -%}
+    {% render 'collapse-text-markup',
+      children: product.description,
+      line_limit: block.settings.text_line_limit,
+      content_class: 'rte',
+      toggle_style: 'link'
+    %}
+  {%- else -%}
+    <div class="rte text-limit-{{ block.settings.text_line_limit }}">
+      {{- product.description -}}
+    </div>
+  {%- endif -%}
+{%- endif -%}

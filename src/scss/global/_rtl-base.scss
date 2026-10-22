@@ -1,0 +1,49 @@
+@use "../mixins" as *;
+
+[dir="rtl"] {
+  --transform-origin-start: right;
+  --transform-origin-end: left;
+  --flip-x-factor: -1;
+
+  input[type="tel"] {
+    text-align: end;
+  }
+
+  .rtl-flip-x {
+    transform: scaleX(-1);
+  }
+
+  shopify-account::part(dialog) {
+    direction: rtl;
+  }
+
+  // marquee
+  .marquee__items.animate {
+    animation-name: scrolling-left-rtl;
+  }
+
+  .marquee[data-direction="reverse"] .marquee__items.animate {
+    animation-name: scrolling-right-rtl;
+  }
+
+  .marquee--has-edge::before {
+    --rotate: 270deg;
+  }
+
+  .marquee--has-edge::after {
+    --rotate: 90deg;
+  }
+
+  // Before / After
+  .image-comparison[data-direction="horizontal"] .image-comparison__image-after {
+    clip-path: inset(0 var(--percent, 50%) 0 0);
+  }
+}
+
+.dir-ltr {
+  direction: rtl;
+}
+
+.dir-rtl {
+  direction: ltr;
+}

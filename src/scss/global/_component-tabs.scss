@@ -1,0 +1,118 @@
+// @capability Tab navigation — pill-highlight tab buttons (animated ::before fill behind the aria-selected tab), horizontal header row, plus a desktop vertical layout with sticky sidebar header and bordered panel column.
+// @when Any tabbed UI (content tabs, product/collection tabs); pairs with the tabs-component custom element in src/js/global/modules.js, with the header row wrapped in swipe-component + .edge__shadows (see sections/tabs.liquid).
+// @contract .tabs (--vertical) > .tabs__header (> .tabs__header-inner) with .tabs__button[aria-selected="true"]; panels in .tabs__panels; the panel entrance is driven by tabs-component from the shared --motion-* entrance tokens (css-variables.liquid), not by anything declared here.
+// @keywords tabs, tab bar, pill tabs, active tab, vertical tabs, sticky tab nav, tab panels, segmented control
+
+@use "../mixins" as *;
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+
+.tabs {
+  &__button {
+    --swipe-item-width: min-content;
+
+    color: rgb(var(--color-foreground));
+    background: transparent;
+    padding: var(--button-padding-block, 0.6rem) var(--button-padding-inline, 1.2rem);
+
+    &::before {
+      content: "";
+      position: absolute;
+      width: 0;
+      inset-block: 0;
+      inset-inline-start: 0;
+      z-index: 0;
+      border-radius: 999px;
+      background: rgb(var(--color-secondary-button-background));
+    }
+
+    &[aria-selected="true"] {
+      color: rgb(var(--color-secondary-button-text));
+
+      &::before {
+        width: 100%;
+      }
+    }
+  }
+
+  // ─── Vertical layout ────────────────────────────────────────────────────────
+
+  @include media-breakpoint-up(md) {
+    &--vertical {
+      --tabs-header-width: clamp(20rem, 30rem, 30%);
+
+      .tabs {
+        &__header {
+          width: var(--tabs-header-width);
+          padding-inline-end: 2rem;
+        }
+
+        &__header-inner {
+          position: sticky;
+          top: 2rem;
+
+          .header-pinned & {
+            top: calc(var(--header-height) + 2rem);
+          }
+        }
+
+        &__panels {
+          width: calc(100% - var(--tabs-header-width));
+          padding-inline-start: var(--tabs-panels-padding, 3rem);
+          border-inline-start: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+        }
+
+        &__button {
+          max-width: 100%;
+        }
+      }
+
+      .section__header {
+        margin: 0;
+      }
+    }
+  }
+
+  @include media-breakpoint-up(lg) {
+    &--vertical {
+      --tabs-panels-padding: 5rem;
+    }
+  }
+}
+
+// ─── Hover states ────────────────────────────────────────────────────────────
+// Hover previews the selected look, using the same sliding fill.
+// The transition lives HERE, not on the button, because it belongs to the
+// preview and not to the state. Declared on the base rule it also animated
+// every `aria-selected` change: the fill slid in on the active tab on every
+// page load — the markup ships no `aria-selected`, so the runtime's first sync
+// IS a state change — and it slid in again on every tap, on a phone that has no
+// hover to preview anything with. Measured before this: 0 → full over ~350ms,
+// starting ~500ms after load.
+// Scoping it to `:not([aria-selected="true"])` is what makes selection instant.
+// A transition starts from the AFTER-change style, and once the attribute is
+// there the rule no longer matches, so nothing runs. Leaving a tab still does
+// animate — that is the preview retracting, and it only happens where there was
+// a preview.
+
+@media (hover: hover) and (pointer: fine) {
+  .tabs__button:not([aria-selected="true"]) {
+    transition-property: color, background-color;
+    transition-duration: var(--motion-ui);
+    transition-timing-function: var(--motion-ease);
+
+    &::before {
+      transition-property: width;
+      transition-duration: var(--motion-ui);
+      transition-timing-function: var(--motion-ease);
+    }
+
+    &:hover {
+      color: rgb(var(--color-secondary-button-text));
+
+      &::before {
+        width: 100%;
+      }
+    }
+  }
+}

@@ -1,0 +1,94 @@
+// @capability Jank-free reveal for async product lists — the <product-recommendations> host transitions from its placeholder height to the fetched height while the list fades in, plus the card-shaped skeleton placeholder (media box at the card's aspect ratio + two text lines) that keeps that distance small in the first place.
+// @when Any element that server-renders a placeholder and swaps in fetched product cards later (product recommendations section/block, cart drawer recommendations, recently viewed products, the predictive-search recommendations panel). Reuse the skeleton snippet instead of a bare ratio box — a bare box is 150–300px shorter than a card with its title and price, and that difference is the layout shift.
+// @contract product-recommendations.is-revealing / recently-viewed-products.is-revealing / [data-recommendations-content].is-revealing (the predictive-search panel) — set by src/js/modules/reveal-swap.js for the duration of the height transition (inline `height` locked by the JS); the wrapper carrying [data-has-recommendations] (or [data-recommendations-section]) is what fades in. Placeholder: {% render 'product-card-placeholder', image_ratio: …, mode: … %} → .product-card-placeholder (> __media at --ratio, > __line, __line--short); `mode: 'horizontal'` adds --horizontal (media beside a __text column, width from --media-width / --media-width-mobile like the real card); --card-placeholder-radius from the host.
+// @keywords product recommendations loading, skeleton placeholder, layout shift, height transition, fetched cards fade in, async product list, CLS
+
+@use "../mixins" as *;
+
+// ─── Reveal ───────────────────────────────────────────────────────────────────
+// Only the vertical axis is clipped: a carousel with `carousel_overflow: visible`
+// lets its slides peek past the box, and `overflow: hidden` would cut them for
+// the length of the transition. Duration mirrors REVEAL_DURATION in the JS.
+product-recommendations.is-revealing,
+recently-viewed-products.is-revealing,
+[data-recommendations-content].is-revealing {
+  overflow: visible clip;
+  transition: height 250ms ease;
+}
+
+// Each host fades a different wrapper, so the pairs are written out: nesting the wrappers inside
+// the host list above would emit every host x wrapper combination, most of which cannot match.
+:is(product-recommendations, recently-viewed-products).is-revealing
+  :is([data-has-recommendations], [data-recommendations-section]),
+[data-recommendations-content].is-revealing .search__recommendation--products {
+  animation: product-recommendations-fade-in 250ms linear;
+}
+
+@keyframes product-recommendations-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+// ─── Skeleton placeholder ─────────────────────────────────────────────────────
+// The shape of a vertical product card: media at the card's ratio, then a title
+// line and a price line at the card's content gap. It cannot match an `auto`
+// ratio (the image decides), so that case falls back to 3/4 in the snippet and
+// the reveal transition above absorbs the remainder.
+.product-card-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-height: 12rem;
+
+  &__media,
+  &__line {
+    background-color: rgb(var(--color-foreground) / 10%);
+  }
+
+  &__media {
+    aspect-ratio: var(--ratio, 3 / 4);
+    border-radius: var(--card-placeholder-radius);
+  }
+
+  &__line {
+    height: 1.6rem;
+    width: 70%;
+    border-radius: 0.4rem;
+
+    &--short {
+      width: 40%;
+    }
+  }
+
+  // The horizontal card: thumbnail beside the text. The thumbnail takes the width the real
+  // card's media takes (`--media-width`, `--media-width-mobile` on mobile — same vars, same
+  // fallbacks as .product-card--horizontal), so the skeleton and the card that replaces it
+  // line up wherever that width is set.
+  &--horizontal {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--product-card-media-gap, 1.2rem);
+    min-height: 0;
+
+    .product-card-placeholder__media {
+      flex: 0 0 auto;
+      width: var(--media-width-mobile, var(--media-width, var(--media-w-auto, 8rem)));
+      border-radius: min(1rem, var(--card-placeholder-radius));
+    }
+
+    .product-card-placeholder__text {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    @include media-breakpoint-up(md) {
+      .product-card-placeholder__media {
+        width: var(--media-width, var(--media-w-auto, 8rem));
+      }
+    }
+  }
+}

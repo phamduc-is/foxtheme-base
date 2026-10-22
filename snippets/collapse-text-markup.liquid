@@ -1,0 +1,72 @@
+{% doc %}
+  Markup for the collapsible-text theme block (no schema). Uses the theme `block` for `text` snippet and editor attributes.
+
+  @param {string} children - Text to render
+  @param {string} line_limit - Number lines to show
+  @param {string} [content_class] - Custom CSS class add to content element
+  @param {string} [toggle_style] - Accepts: button, link
+  @param {string} [button_style] - Style for buttion, used for toggle_style button
+  @param {object} [block] - Theme block
+{% enddoc %}
+{{ 'scoped-collapsible-text-readmore.css' | asset_url | stylesheet_tag }}
+{%- liquid
+  assign toggle_style = toggle_style | default: 'button'
+  assign button_style = button_style | default: 'btn--primary'
+  assign line_limit = line_limit | default: 'none'
+
+  assign is_read_more = false
+  assign wrap_tag = 'div'
+  if block.settings.line_limit != 'none'
+    assign is_read_more = true
+    assign wrap_tag = 'read-more'
+  endif
+-%}
+{%- capture button_class -%}
+  {%- if toggle_style == 'link' %}
+    button-unstyled reversed-link reversed-link--underline
+  {%- else %}
+    btn btn--medium btn--{{ button_style }} 
+  {%- endif -%}
+{%- endcapture -%}
+{%- capture button_text_class -%}
+  {%- if toggle_style == 'link' %}
+    reversed-link__text
+  {%- else %}
+    btn__text
+  {%- endif -%}
+{%- endcapture -%}
+<{{ wrap_tag }}
+  class="read-more flex flex-col items-start gap-3"
+  {% if is_read_more %}
+    data-toggle-class="text-limit-{{ line_limit }}"
+    data-show-text="{{ 'content.view_more' | t }}"
+    data-hide-text="{{ 'content.view_less' | t }}"
+  {% endif %}
+  {% if block %}
+    {{ block.shopify_attributes }}
+  {% endif %}
+>
+  {%- if is_read_more -%}
+    <div
+      class="read-more__content relative {{ content_class }}"
+      ref="readMoreContent"
+    >
+      {{ children }}
+    </div>
+    <button
+      ref="readMoreButton"
+      on:click="/onToggleClick"
+      class="read-more__toggle {{ button_class }}"
+    >
+      <span
+        ref="readMoreButtonText"
+        class="{{ button_text_class }}"
+        data-label="{{ 'content.view_more' | t | escape }}"
+      >
+        {{ 'content.view_more' | t }}
+      </span>
+    </button>
+  {%- else -%}
+    {{ children }}
+  {%- endif -%}
+</{{ wrap_tag }}>

@@ -1,0 +1,287 @@
+@use "../mixins" as *;
+
+// ─── Maps ─────────────────────────────────────────────────────────────────────
+// A deferred Google map (`__map`) plus an information card (`__card`).
+// Mobile default (`layout_mobile: stacked`) = card ABOVE the map, in flow, with no background and
+// no shadow (both Figma frames render it that way). Its padding is no longer hardcoded away: the
+// card has its OWN padding group whose defaults are desktop 24 / mobile 0, so "mobile drops the
+// card chrome" is now a DEFAULT a merchant can undo, not a design decision baked into this file.
+// Desktop — and mobile when the merchant picks `overlay` — the card floats over the map, inset by
+// `card_offset` at the corner chosen by `card_position`.
+// Every colour is a scheme role; the only literals are the 4px dropdown radius, the 24px stacked
+// card→map gap and the desktop card shadow, all of which are documented caveats in the brief.
+
+// The floating-card treatment, shared by desktop and the mobile `overlay` option.
+// It is a SINGLE-CELL GRID, not absolute positioning: map and card both sit in cell `1 / 1`, so the
+// auto row resolves to `max(map floor, card + its offsets)`. With `position: absolute` the card
+// contributed nothing to the parent's height, so a tall card hung past the block and the next
+// section painted over it (`md` is 768px but `--maps-map-height` clamps down to ~250px there, so
+// short-map + tall-card is a real, common state — not an edge case).
+// The map is NOT `align-self: start`: it stretches to fill the row, so it is always at least its
+// configured height AND at least as tall as the card — there is no overhang left to clip.
+// The card still overlaps the map exactly as designed; `card_position` is expressed with
+// `align-self` / `justify-self` ALONE, and `card_offset` as a margin on ALL FOUR sides.
+// The offset is SYMMETRIC on purpose — this was a real bug. Setting only the anchored edge
+// (`margin-block-start` for `top-*`, `margin-block-end` for `bottom-*`, …) meant that when the CARD
+// drove the row height, the row resolved to `card + offset` — clearance above, none below, card
+// flush against the block's bottom edge. With a margin on every side the row is `card + offset * 2`
+// whenever the card drives it, so the clearance holds on both sides at every `card_position`.
+// Equal margins do not disturb `justify-self: center` / `align-self: center`, and they make
+// `max-width: calc(100% - offset * 2)` exactly right rather than merely assumed.
+@mixin maps-overlay {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+
+  .maps__map,
+  .maps__card {
+    grid-area: 1 / 1;
+  }
+
+  .maps__card {
+    // The card is FIRST in the DOM (control before the thing it controls) while the map shares its
+    // cell, so it needs an explicit stacking order to paint above it.
+    z-index: 1;
+    margin: var(--maps-card-offset, 3rem);
+    width: var(--maps-card-width, 35rem);
+    max-width: calc(100% - var(--maps-card-offset, 3rem) * 2);
+    background-color: rgb(var(--color-background));
+
+    // Neutral drop shadow (Figma 392:2756) — not a colour role, mirrors _block-image-comparison.
+    box-shadow: 0 1.4rem 4.4rem rgb(0 0 0 / 15%);
+  }
+
+  &.maps--v-top .maps__card {
+    align-self: start;
+  }
+
+  &.maps--v-middle .maps__card {
+    align-self: center;
+  }
+
+  &.maps--v-bottom .maps__card {
+    align-self: end;
+  }
+
+  &.maps--h-left .maps__card {
+    justify-self: start;
+  }
+
+  &.maps--h-center .maps__card {
+    justify-self: center;
+  }
+
+  &.maps--h-right .maps__card {
+    justify-self: end;
+  }
+}
+
+.maps {
+  // The map's rendered height in ONE place, so the map box and the placeholder that fills it before
+  // the map loads can never drift apart. Overridden once, at `md`.
+  --maps-map-h: var(--maps-map-height-mobile, var(--maps-map-height, 25rem));
+
+  display: flex;
+  flex-direction: column;
+
+  // The corner radius goes on the root too, not only on `__map` / `__card`: with a colour scheme
+  // the root paints its own background, and a square root showed in the corners behind the
+  // rounded map. No `overflow` here — the floating card must never be clipped.
+  border-radius: var(--border-radius, 0);
+
+  // Card → map gap in the STACKED mobile layout — a literal 24 (Figma outer frame 417:11176),
+  // deliberately NOT `card_gap_mobile`: since round 3 that setting is the rhythm BETWEEN the blocks
+  // nested inside a location's panel (default 8), a different number in the same design.
+  // In every overlay layout (desktop, and mobile `overlay`) `maps-overlay` switches this box to a
+  // single-cell grid where card and map SHARE one cell, so there is no gap to apply — the row is
+  // `max(map, card)` and the card overlaps the map on purpose.
+  gap: 2.4rem;
+
+  // ── Map ────────────────────────────────────────────────────────────────────
+  &__map {
+    // `border-style` runs with `use_mask_clip: false` on the root so an overflowing card is never
+    // clipped; the map does its own clipping instead.
+    position: relative;
+    order: 2;
+    overflow: hidden;
+
+    // A min-height FLOOR, never a fixed height (mirrors `_section-hero` / `_section-slideshow`).
+    // The map's own content is absolutely positioned, so it contributes 0 and the box renders at
+    // exactly the configured height — UNLESS the overlay row is taller because the card is, in
+    // which case the map stretches to fill it. That is what makes card containment structural:
+    // the row is `max(floor, card + offsets)`, so the card can never overhang the map or the block.
+    min-height: var(--maps-map-h);
+  }
+
+  // The Embed API iframe, injected by `<maps-component>` on viewport entry.
+  &__frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  // The NO-KEY surface, and nothing else — it is only server-rendered when `api_key` is blank
+  // (`snippets/maps-markup.liquid`). It is deliberately NOT the pre-load surface: lifestyle artwork
+  // flashing while a map loads reads as "this block is an image". The empty box keeps its height from
+  // `__map`'s `min-height`, so dropping the pre-load artwork costs no layout stability.
+  &__placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.4rem;
+    text-align: center;
+  }
+
+  // Shopify's built-in placeholder artwork. `inset: 0` (not a flex child) so it covers WHATEVER
+  // height the map box resolves to — including a box grown by a tall card. The muted colour treatment
+  // is `svg.placeholder`'s own (`_base.scss`: scheme-role background + fill, no hex), which is this
+  // theme's placeholder look everywhere else.
+  &__placeholder-svg {
+    position: absolute;
+    inset: 0;
+  }
+
+  // Loading = a translucent WASH over the map box, from the scheme background role so it inverts with
+  // the scheme (never a hex). `inset: 0` inside a box that already holds its own height ⇒ it adds no
+  // geometry and CLS stays 0. `z-index: 1` puts it above the injected iframe (positioned, but
+  // `z-index: auto`); the spinner shares that index and comes later in the DOM, so it paints on top.
+  // `pointer-events: none` unconditionally: the scrim exists to be looked at, never to be clicked, so
+  // it can never swallow a click on a loaded map even mid-transition.
+  // No `backdrop-filter` — the wash alone must read as "loading"; blur was considered and left out
+  // rather than shipped as a capability the layout quietly depends on.
+  &__scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background-color: rgb(var(--color-background) / 60%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  // Loading affordance for the ~1s blank while the Embed iframe (re)loads on a branch switch — the
+  // theme's own `loading-spinner`, not a bespoke one. `.loading-spinner` is already
+  // `position: absolute; z-index: 1`, so it overlays both the scrim and the injected iframe (which is
+  // positioned but `z-index: auto`) and DISPLACES NOTHING: the map box holds its own height, so CLS
+  // stays 0. `inset: 0; margin: auto` centres it at whatever height the box resolves to. Revealed by
+  // the `is-loading` state class that `<maps-component>` puts on the root — the same
+  // hidden-by-default / state-class-reveals pairing as `cart-gift-wrapping` in `cart-modules`.
+  &__spinner {
+    inset: 0;
+    margin: auto;
+    color: rgb(var(--color-foreground));
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  // Both overlays share ONE state class, so the scrim can never be up without the spinner or vice
+  // versa. Neither can co-occur with the placeholder: a blank `api_key` means no iframe is ever
+  // created, so `is-loading` is never set.
+  &.is-loading &__scrim,
+  &.is-loading &__spinner {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  // Theme-Editor-only hint shown when the block has no Location child. It sits BELOW the map at every
+  // breakpoint: `order: 3` puts it after the map in the stacked flex flow, and in the overlay grid it
+  // is the only auto-placed child, so it lands in row 2 (map and card both pin themselves to 1 / 1).
+  // Consistent placement matters more than matching the card's corner — the map is what it explains.
+  &__onboarding {
+    order: 3;
+    color: var(--color-foreground-secondary);
+  }
+
+  // ── Card ───────────────────────────────────────────────────────────────────
+  // The card owns its OWN padding group (`card-padding-*`), separate from the block's `padding-*`.
+  // Exposed and emitted as TWO AXES — one setting and one var per axis, per device
+  // (`snippets/maps-markup.liquid`) — so the control granularity matches the CSS underneath; the
+  // desktop pair takes over at `md`. Flat per-device rather than a `clamp()` ramp on purpose: the
+  // design is a literal 24 at every desktop width, and a ramp would leave the card at ~0 at 768px.
+  &__card {
+    order: 1;
+    padding-block: var(--maps-card-padding-block-mobile, 0);
+    padding-inline: var(--maps-card-padding-inline-mobile, 0);
+    border-radius: var(--border-radius, 0);
+  }
+
+  // Dropdown → the branch panel. A literal 20 / 24 (Spacing table, "Card inner gap"), NOT `card_gap`:
+  // since round 3 that setting is the rhythm between the blocks INSIDE a panel (default 8), and the
+  // design uses the larger number here. Only ever visible with 2+ locations — the shipped
+  // single-location preset hides the dropdown, and `display: none` drops it out of the flex flow, so
+  // no phantom gap is left where it was.
+  &__card-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  // ── Dropdown ───────────────────────────────────────────────────────────────
+  // Reuses the theme's `.select` + `.form-control` chrome; only the design's tokens differ.
+  &__select {
+    // NONE of these four are theme defaults (`css-variables.liquid`: height 5rem, padding-inline
+    // 1.6rem, arrow 1.2rem) — override the tokens rather than declaring raw values, per
+    // `_component-swatch` / localization-dropdown. The design wants 48 / 12 / 16 (Spacing table).
+    --input-height: 4.8rem;
+    --input-border-radius: 0.4rem;
+    --input-padding-inline: 1.2rem;
+    --select-arrow-size: 1.6rem;
+
+    // `.select` ships `width: fit-content`; this card needs the full card width.
+    width: 100%;
+  }
+
+  &__select-input {
+    width: 100%;
+  }
+
+  // One branch (the shipped default) — a single-option dropdown is dead UI. `display: none` also
+  // removes it from the flex flow so the card keeps its spacing.
+  &--single &__select {
+    display: none;
+  }
+
+  // ── Panels ─────────────────────────────────────────────────────────────────
+  // The branch's body is composed from ITS nested blocks (`content_for 'blocks'` inside the panel
+  // fragment), so this is a plain flex column carrying `gap-style` — `card_gap` / `card_gap_mobile`
+  // are now the rhythm BETWEEN those blocks. `overflow-wrap` is inherited, so declaring it once here
+  // keeps any nested text (a long address, an unbroken branch name) inside the card at every width
+  // without this file having to know which blocks the merchant added.
+  &__panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-wrap: anywhere;
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  // ── Mobile overlay option ──────────────────────────────────────────────────
+  &--mobile-overlay {
+    @include maps-overlay;
+  }
+}
+
+// ─── Desktop ──────────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(md) {
+  .maps {
+    --maps-map-h: var(--maps-map-height, 53rem);
+
+    @include maps-overlay;
+  }
+
+  .maps__card {
+    padding-block: var(--maps-card-padding-block, 0);
+    padding-inline: var(--maps-card-padding-inline, 0);
+  }
+
+  .maps__card-inner {
+    gap: 2.4rem;
+  }
+}

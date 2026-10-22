@@ -1,0 +1,7 @@
+@use "../mixins" as *;
+
+// ─── Product recommendations ──────────────────────────────────────────────────
+
+.product-recommendations:has([data-has-recommendations="false"]) {
+  display: none;
+}

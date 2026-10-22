@@ -1,0 +1,174 @@
+{% doc %}
+  Presentation shell for the `maps` block.
+
+  Renders `<maps-component>` → the card (dropdown + the captured branch panels) and the deferred map
+  slot. All capturing/splitting of the child blocks stays in `blocks/maps.liquid`; this
+  snippet only lays the two halves out. The map itself is NEVER server-rendered — `<maps-component>`
+  injects the Embed API iframe once the block enters the viewport.
+
+  @param {object} settings - The parent block settings.
+  @param {string} [options_html] - Captured `<option>` fragments from the `_maps-location` children.
+  @param {string} [panels_html] - Captured info-panel fragments from the same children.
+  @param {number} [item_count] - How many branches were captured (0 → editor onboarding).
+  @param {boolean} [render_card] - Whether the card renders at all (`show_card` on AND ≥ 1 branch).
+  @param {string} [fallback_query] - Pre-escaped map query for when there is no `<select>` to read.
+  @param {string} [fallback_title] - Pre-escaped iframe title to go with `fallback_query`.
+  @param {string} [block_id] - The parent block's id — makes the `<select>` id unique per instance.
+  @param {string} [color_scheme] - Color scheme suffix (blank when inheriting).
+  @param {string} [block_style] - Inline spacing / size / border / gap / map CSS vars for the root.
+  @param {string} [shopify_attributes] - Theme editor attributes for the outer root.
+
+  @example
+  {% render 'maps-markup', settings: block.settings, options_html: options_html, panels_html: panels_html, item_count: 2 %}
+{% enddoc %}
+{{ 'scoped-maps.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign item_count = item_count | default: 0
+  assign render_card = render_card | default: false, allow_false: true
+  assign layout_mobile = settings.layout_mobile | default: 'stacked'
+
+  comment
+    The Theme Editor onboarding hint. It used to live inside the card, but at 0 locations there IS no
+    card any more (the map renders standalone instead), so it is its own element alongside the map —
+    the merchant still has to be told where locations come from.
+  endcomment
+  assign show_onboarding = false
+  if item_count == 0 and request.design_mode
+    assign show_onboarding = true
+  endif
+
+  assign position = settings.card_position | default: 'top-right' | split: '-'
+  assign position_block = position[0] | default: 'top'
+  assign position_inline = position[1] | default: 'right'
+
+  assign has_api_key = false
+  if settings.api_key != blank
+    assign has_api_key = true
+  endif
+
+  comment
+    NO `gap-style` on the root, and none on `.maps__card-inner` either: both of those gaps are
+    literals from the Spacing table (card→map 24 on stacked mobile, dropdown→panel 20/24) and must
+    stay independent of `card_gap` / `card_gap_mobile`. Since round 3 those two settings mean the
+    rhythm BETWEEN the blocks a merchant nests inside a location, so their only consumer is
+    `.maps__panel` (which carries `gap-style`); the `--f-row-gap*` vars emit on the root and inherit
+    down to it.
+  endcomment
+  assign root_class = 'maps spacing-style size-style'
+  assign root_class = root_class | append: ' maps--mobile-' | append: layout_mobile
+  assign root_class = root_class | append: ' maps--v-' | append: position_block
+  assign root_class = root_class | append: ' maps--h-' | append: position_inline
+  if item_count == 1
+    comment
+      Exactly one branch (the shipped default) — a <select> with a single option is dead UI, so the
+      dropdown is hidden. The <option> stays in the DOM: it carries the branch's map query for the JS.
+
+      `== 1`, not `< 2`: with ZERO branches there is no card and no <select> at all, so calling that
+      state "single" would be a class that lies about the DOM it is on.
+    endcomment
+    assign root_class = root_class | append: ' maps--single'
+  endif
+  if color_scheme != blank
+    assign root_class = root_class | append: ' color-' | append: color_scheme
+  endif
+
+  comment
+    The card's OWN padding, deliberately separate from the block's `padding-*` group — TWO AXES, not
+    four sides: one setting and one var per axis, per device, feeding `padding-block` /
+    `padding-inline` directly. A 4-side control was finer than both the design and the CSS under it.
+    Flat px per device rather than a `clamp()` ramp: the design is a literal 24 at every desktop
+    width, and a ramp up from mobile 0 would leave the card at ~0 padding at 768px, exactly where the
+    map floor is at its shortest too.
+  endcomment
+  capture card_style
+    echo '--maps-card-padding-block: '
+    echo settings['card-padding-block'] | default: 0
+    echo 'px;--maps-card-padding-inline: '
+    echo settings['card-padding-inline'] | default: 0
+    echo 'px;--maps-card-padding-block-mobile: '
+    echo settings['card-padding-block-mobile'] | default: 0
+    echo 'px;--maps-card-padding-inline-mobile: '
+    echo settings['card-padding-inline-mobile'] | default: 0
+    echo 'px;'
+  endcapture
+  assign card_style = card_style | strip | strip_newlines
+-%}
+
+<maps-component
+  class="{{ root_class }}"
+  style="{{ block_style | strip | strip_newlines }}"
+  data-api-key="{{ settings.api_key | escape }}"
+  data-zoom="{{ settings.zoom | default: 14 }}"
+  data-maptype="{{ settings.maptype | default: 'roadmap' }}"
+  {%- comment -%}
+    Only emitted when the card (and therefore the `<select>`) is absent — the parent has already
+    resolved the query down its three tiers and escaped it, so it goes out verbatim. JS reads it only
+    when there are no options, which is exactly this case.
+  {%- endcomment -%}
+  {%- if fallback_query != blank %}
+    data-fallback-query="{{ fallback_query }}"
+    data-fallback-title="{{ fallback_title }}"
+  {% endif -%}
+  {%- if shopify_attributes %}
+    {{ shopify_attributes -}}
+  {% endif %}
+>
+  {%- if render_card -%}
+    <div class="maps__card" style="{{ card_style }}">
+      <div class="maps__card-inner">
+        <div class="maps__select select">
+          <label class="visually-hidden" for="maps-select-{{ block_id }}">
+            {{- 'blocks.maps.select_label' | t -}}
+          </label>
+          <select
+            id="maps-select-{{ block_id }}"
+            class="maps__select-input form-control"
+            ref="select"
+            on:change="/handleSelect"
+          >
+            {{ options_html }}
+          </select>
+        </div>
+        {{ panels_html }}
+      </div>
+    </div>
+  {%- endif -%}
+
+  {%- comment -%}
+    The placeholder is the NO-KEY surface ONLY — it is server-rendered when `api_key` is blank and
+    never otherwise. It is deliberately NOT the pre-load surface: lifestyle artwork flashing while a
+    map loads reads as "this block is an image", which is wrong on first view-entry and wrong again on
+    every branch switch. Before the map arrives the box is simply empty at its configured height
+    (`min-height` on `__map`), so there is still no layout shift. It uses Shopify's built-in
+    `lifestyle-1` artwork — the theme's standard media placeholder (`_hero-banner-media`,
+    `_image-compare-side`, `video-markup`) — with the muted `.placeholder` treatment.
+
+    Loading is a SCRIM + the spinner, both `inset: 0` inside a box that already holds its height ⇒ no
+    geometry change, CLS 0. The scrim is a translucent wash from the scheme background role, the
+    spinner is the theme's own `loading-spinner` (absolutely positioned like every other overlay use
+    of it, e.g. `cart-gift-wrapping`). Both are revealed by the `is-loading` STATE class on the root
+    (state classes are the documented exception to the JS DOM contract, so `check-js-contract` stays
+    green) and hidden again on the iframe's `load`. Both sit at `z-index: 1`, above the injected
+    iframe (positioned but `z-index: auto`); the spinner is later in the DOM so it paints over the
+    scrim.
+
+    Placeholder and scrim are MUTUALLY EXCLUSIVE BY CONSTRUCTION: with a blank `api_key`
+    `<maps-component>` returns before observing, no iframe is ever created and `is-loading` can never
+    be set — so the no-key state shows the placeholder with no scrim and no spinner, and every
+    loading state has no placeholder underneath it.
+  {%- endcomment -%}
+  <div class="maps__map border-style" ref="map">
+    {%- if has_api_key == false -%}
+      <div class="maps__placeholder">
+        {{ 'lifestyle-1' | placeholder_svg_tag: 'maps__placeholder-svg placeholder' }}
+      </div>
+    {%- endif -%}
+    <div class="maps__scrim"></div>
+    {%- render 'loading-spinner', class: 'maps__spinner' -%}
+  </div>
+
+  {%- if show_onboarding -%}
+    <p class="maps__onboarding paragraph">{{ 'blocks.maps.no_locations' | t }}</p>
+  {%- endif -%}
+</maps-component>

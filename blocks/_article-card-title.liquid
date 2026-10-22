@@ -1,0 +1,102 @@
+{% doc %}
+  Article card title. Static block nested inside `_article-card`; receives `article` from the
+  `content_for` context. Renders the article title as a link, with the heading size controlled
+  by `type_preset` (mirrors the Text block preset system).
+{% enddoc %}
+{%- liquid
+  assign preset = block.settings.type_preset | default: 'h4'
+  assign line_limit = block.settings.text_line_limit | default: 'none'
+-%}
+<h3
+  class="article-card__title {{ preset }}"
+  {{ block.shopify_attributes }}
+>
+  {%- if article != blank -%}
+    <a
+      class="block reversed-link relative focus-visible--absolute text-limit-{{ line_limit }}"
+      href="{{ article.url }}"
+      style="--focus-radius: 0.4rem;"
+    >
+      <span class="reversed-link__text">{{ article.title }}</span>
+    </a>
+  {%- else -%}
+    {{ 'blogs.article.title' | t }}
+  {%- endif -%}
+</h3>
+
+{% schema %}
+{
+  "name": "t:names.title",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.typography"
+    },
+    {
+      "type": "select",
+      "id": "type_preset",
+      "label": "t:settings.preset",
+      "default": "h4",
+      "options": [
+        {
+          "value": "h1",
+          "label": "t:options.h1"
+        },
+        {
+          "value": "h2",
+          "label": "t:options.h2"
+        },
+        {
+          "value": "h3",
+          "label": "t:options.h3"
+        },
+        {
+          "value": "h4",
+          "label": "t:options.h4"
+        },
+        {
+          "value": "h5",
+          "label": "t:options.h5"
+        },
+        {
+          "value": "h6",
+          "label": "t:options.h6"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "text_line_limit",
+      "label": "t:settings.text_line_limit",
+      "default": "none",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.no_limit"
+        },
+        {
+          "value": "1-line",
+          "label": "t:options.1_line"
+        },
+        {
+          "value": "2-lines",
+          "label": "t:options.2_lines"
+        },
+        {
+          "value": "3-lines",
+          "label": "t:options.3_lines"
+        },
+        {
+          "value": "4-lines",
+          "label": "t:options.4_lines"
+        },
+        {
+          "value": "5-lines",
+          "label": "t:options.5_lines"
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

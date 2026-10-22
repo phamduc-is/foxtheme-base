@@ -1,0 +1,394 @@
+@use "../mixins" as *;
+
+.product-card {
+  &__compare {
+    position: absolute;
+    top: 1rem;
+    inset-inline-end: 1rem;
+
+    label::before {
+      content: "";
+      position: absolute;
+      inset: -9px;
+    }
+  }
+}
+
+.compare-bar {
+  --compare-item-media-size: 6rem;
+
+  position: fixed;
+  z-index: var(--layer-window-overlay);
+  transform: translateY(100%);
+  visibility: hidden;
+  background-color: rgb(var(--color-background));
+  box-shadow:
+    inset 0 0.1rem 0 0 rgb(var(--color-foreground) / 10%),
+    0 -0.6rem 2rem rgb(var(--color-foreground) / 8%);
+  will-change: transform;
+  transition:
+    transform 0.3s,
+    visibility 0.3s;
+
+  &__inner {
+    padding-block: 3rem 2rem;
+  }
+
+  // ─── Toggle list button ────────────────────────────────────────────────────
+  &__toggle {
+    --button-height: 4rem;
+
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgb(var(--color-background));
+    color: rgb(var(--color-foreground));
+    border-color: rgb(var(--color-foreground));
+
+    .icon {
+      // Same duration as the collapse it announces, so the two read as one move.
+      transition: transform var(--motion-ui) var(--motion-ease-out);
+    }
+
+    .is-collapsed & .icon {
+      transform: rotate(180deg);
+    }
+  }
+
+  // ─── List ────────────────────────────────────────────────────────────────
+  &__list {
+    --column-width: max(
+      21.2rem,
+      calc((var(--swipe-container-width, 100vw) - 4 * var(--f-column-gap-mobile, var(--f-column-gap))) / 5)
+    );
+
+    list-style: none;
+    padding-inline: 0;
+  }
+
+  // ─── Header row ──────────────────────────────────────────────────────────
+  &__header-text {
+    align-items: center;
+    column-gap: 0.6rem;
+  }
+
+  &__header-count {
+    font-size: 1.4rem;
+  }
+
+  &__clear {
+    color: rgb(var(--color-primary-button-background));
+    line-height: 2.1rem;
+  }
+
+  // ─── Item card ───────────────────────────────────────────────────────────
+  &__item {
+    container-type: inline-size;
+  }
+
+  // Same pairing as the horizontal product card (_component-product-card.scss): the box
+  // takes the merchant's card radius capped at 1rem, the media inside it 66% of that.
+  &__item[data-compare-bar-item-id] {
+    padding: 0.8rem;
+    border-radius: min(var(--product-card-radius-cap), var(--product-card-media-radius));
+    background-color: rgb(var(--color-background));
+    box-shadow: inset 0 0 0 0.1rem rgb(var(--color-foreground) / 10%);
+  }
+
+  &__item-media {
+    display: block;
+    width: var(--compare-item-media-size);
+    height: var(--compare-item-media-size);
+    border-radius: calc(
+      min(var(--product-card-radius-cap), var(--product-card-media-radius)) * var(--product-card-media-radius-ratio)
+    );
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &__item-title {
+    padding-inline-end: 2rem;
+  }
+
+  &__item-remove {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    line-height: 0;
+    color: rgb(var(--color-foreground));
+
+    // Undoes .button-unstyled's `overflow: hidden`, which clipped the hit area below
+    // to the button's own ~1.4rem icon box and left nothing of it. Ties 0-1-0 with
+    // that rule and wins on order — compare.css ships after theme.css.
+    overflow: visible;
+
+    // Hit area, not decoration: the icon is far below a comfortable target, so the
+    // button reaches 3rem through a transparent pseudo rather than by growing its
+    // box, which would push the icon off the item's top-right corner.
+    &::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 3rem;
+      height: 3rem;
+    }
+
+    .icon {
+      transition: transform var(--motion-ui-fast) var(--motion-ease-out);
+    }
+  }
+
+  &__item .price-container {
+    --price-gap-x: 0.4rem;
+
+    line-height: 2rem;
+  }
+
+  &__item .compare-at-price {
+    font-size: calc(var(--font-size--paragraph) * 0.933334);
+  }
+
+  // ─── Placeholder ─────────────────────────────────────────────────────────
+  &__item-placeholder {
+    position: relative;
+    border-radius: min(var(--product-card-radius-cap), var(--product-card-media-radius));
+    background-color: rgb(var(--color-foreground) / 5%);
+    min-height: 7.8rem;
+  }
+
+  // The dashed frame is an inline <svg> (compare-bar.liquid), not the mask image it
+  // replaced: a mask image cannot read a custom property, while a real <rect> takes its
+  // corner radius from the same vars the slot does. `border-style: dashed` is not an
+  // option either — the theme paints its dashes rather than leave the dash length to the
+  // browser (see process-steps.scss).
+  &__item-placeholder-frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+
+    rect {
+      --frame-stroke: 1.5px;
+
+      fill: none;
+
+      // Inset by half the stroke, exactly as the design's own SVG is (Figma 3535:1031:
+      // `x=.75 width=W-1.5` at `stroke-width: 1.5`): a stroke straddles its path, so a
+      // rect at the full 100% loses its outer half to the viewport edge and draws thin.
+      x: calc(var(--frame-stroke) / 2);
+      y: calc(var(--frame-stroke) / 2);
+      width: calc(100% - var(--frame-stroke));
+      height: calc(100% - var(--frame-stroke));
+
+      // Geometry properties, so the corners follow the slot's own radius through the
+      // cascade. Less half the stroke, so the stroke's OUTER edge lands on that radius.
+      rx: max(
+        0px,
+        calc(min(var(--product-card-radius-cap), var(--product-card-media-radius)) - var(--frame-stroke) / 2)
+      );
+      stroke: rgb(var(--color-foreground) / 30%);
+      stroke-width: var(--frame-stroke);
+
+      // 4/4 with butt caps, from the design (Figma 3535:1031). The 1/7 it replaced left
+      // the four corners sitting in a gap often enough that the slot read as square.
+      // px, never unitless and never rem: Firefox drops an unitless dasharray and Safari
+      // drops a rem one, both leaving the frame solid (measured — see
+      // product-bundle-choose.scss).
+      stroke-dasharray: 4px 4px;
+    }
+  }
+
+  // ─── Collapsed state ─────────────────────────────────────────────────────
+  // `display: none` gave the toggle nothing to animate: the bar's height and the
+  // page's bottom padding that tracks it both jumped in a single frame. A
+  // 1fr → 0fr grid row is the animatable form of "auto height", so the same
+  // toggle now runs as a transition; compare.js feeds every intermediate height
+  // to --compare-bar-height so the page bottom stays glued to the bar.
+  &__collapse {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--motion-ui) var(--motion-ease-out);
+  }
+
+  // The clip has to sit on the row that shrinks. The list inside bleeds to the
+  // page edges (.swipe-all margins out of the page padding), so this box carries
+  // the same bleed — otherwise the clip cuts the row short of the edges it is
+  // meant to reach.
+  &__collapse-inner {
+    min-height: 0;
+    overflow: hidden;
+    margin-inline: calc(var(--page-padding) * -1);
+    padding-inline: var(--page-padding);
+  }
+
+  &.is-collapsed {
+    .compare-bar__collapse {
+      grid-template-rows: 0fr;
+    }
+  }
+
+  // ─── Mobile bleed for horizontal scroll ──────────────────────────────────
+  @include media-breakpoint-down(md) {
+    &__toggle {
+      transform: translate(-50%, -1.4rem);
+    }
+  }
+
+  @include media-breakpoint-up(md) {
+    &__inner {
+      padding-block: 2rem 1.4rem;
+    }
+
+    &__header {
+      margin-bottom: 0.6rem;
+    }
+
+    // Top space inside the collapsing row, as below md — a gap on __inner would survive
+    // the collapse and hold the bar 2px taller than its closed height.
+    &__list-wrap {
+      padding-block: 0.2rem 0.6rem;
+    }
+
+    &__list {
+      --column-width: max(
+        var(--compare-bar-item-width, 21.2rem),
+        calc((var(--swipe-container-width, 100vw) - 4 * var(--f-column-gap)) / 5)
+      );
+    }
+
+    &__header-count {
+      font-size: 1.5rem;
+    }
+  }
+
+  @include media-breakpoint-up(xl) {
+    --swipe-container-width: 100%;
+
+    &__list {
+      --compare-bar-item-width: 20.8rem;
+    }
+  }
+}
+
+@container (min-width: 220px) {
+  .compare-bar__item {
+    &-media {
+      --compare-item-media-size: 7rem;
+    }
+  }
+}
+
+// ─── Compare modal ─────────────────────────────────────────────────────────────
+.compare-drawer {
+  --dialog-content-padding-inline: 3rem;
+  --dialog-content-padding-block: 3rem;
+  --heading-col-width: 18rem;
+  --product-col-width: 23.2rem;
+
+  // Widen the modal to fit the compared columns. --number-items is set by
+  // compare.js on <compare-dialog>, the ancestor this var inherits from.
+  // 6.6rem = modal gap * 2 + modal scrollbar width.
+  --dialog-max-width: max(
+    71rem,
+    calc(var(--number-items, 2) * var(--product-col-width) + var(--heading-col-width) + 6.6rem)
+  );
+
+  .compare-table__container {
+    margin-inline: calc(var(--dialog-content-padding-inline) * -1);
+    padding-inline: var(--dialog-content-padding-inline);
+    max-width: unset;
+  }
+
+  .compare-table .td-label {
+    &::after {
+      content: "";
+      position: absolute;
+      inset-block: 0;
+      inset-inline: calc(var(--dialog-content-padding-inline) * -1) 0;
+      z-index: -2;
+      background: inherit;
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .compare-drawer {
+    --dialog-content-padding-block: 3.2rem;
+    --dialog-content-padding-inline: 1.6rem;
+    --heading-col-width: 10rem;
+    --product-col-width: 16rem;
+  }
+}
+
+// ─── Compare active ─────────────────────────────────────────────────────────────
+
+.compare-is-active {
+  padding-bottom: var(--compare-bar-height);
+
+  .product-card__media {
+    .product-card__compare {
+      display: block !important;
+    }
+
+    // Sits on the photo, not on a scheme surface: fixed black/white so it reads on
+    // any image. The checkbox paints border/fill/tick from these two roles — the
+    // `--input-border-color` / `--input-background-color` it declares are only
+    // read by `.form-control`.
+    .product-card__compare input[type="checkbox"] {
+      --color-foreground: var(--color-black);
+      --color-background: var(--color-white);
+    }
+  }
+
+  // Compare active: the compare checkbox takes the top-right slot, so move
+  // quick-view to the (free) bottom-right instead of hiding it. `static` rather
+  // than a bottom inset, so it joins the overlay's flex flow and stacks with an
+  // on-media quick-add; the collapsed overlay then holds the pair on the bottom
+  // edge. Ties 0-3-0 with the `position: absolute` in _component-product-card
+  // and wins on order — compare.css ships after theme.css.
+  .product-card__media-actions {
+    inset-block-start: auto;
+
+    .quick-view {
+      position: static;
+    }
+  }
+
+  &:has([data-compare-bar-ready]) {
+    .compare-bar {
+      transform: translateZ(0);
+      visibility: visible;
+    }
+  }
+
+  // Mobile: the overlay is inset only 1rem, too tight to stack the compare
+  // checkbox and quick-view — drop quick-view instead of shrinking both.
+  @include media-breakpoint-down(md) {
+    .product-card__media-actions {
+      .quick-view {
+        display: none;
+      }
+    }
+  }
+}
+
+// ––– Hover state ─────────────────────────────────────────────────────────────
+
+@media (hover: hover) and (pointer: fine) {
+  .compare-bar {
+    &__item-remove:hover {
+      .icon {
+        transform: rotate(180deg);
+      }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+@use "../mixins" as *;
+@use "./component-product";
+
+.media-gallery--quick-view {
+  --media-gallery-browse-gap: 1.2rem;
+  --media-carousel-thumbs-vertical-size: 6rem;
+
+  .carousel__controls--group {
+    --carousel-controls-margin-top: 1.2rem;
+  }
+}
+
+// ─── Dialog max-width ─────────────────────────────────────────────────────────
+
+#quick-view-modal-dialog {
+  --dialog-max-width: 104rem;
+
+  // UA stylesheet sets inset: 0 on <dialog>, giving it a definite viewport height.
+  // fit-content auto-sizes to content; overflow-y: auto scrolls when content exceeds max-height.
+  dialog {
+    height: fit-content;
+    overflow-y: auto;
+  }
+}
+
+// ─── Quick View Dialog ────────────────────────────────────────────────────────
+
+.quick-view-dialog__inner {
+  overflow: hidden;
+  max-height: inherit;
+}
+
+.quick-view-dialog__inner .quick-view__content,
+.quick-view-modal__inner .quick-view__content {
+  padding: var(--quick-view-content-padding, 1.2rem);
+  align-content: flex-start;
+}
+
+.quick-view__footer-link {
+  border-top: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+  padding: 1.2rem 1.6rem;
+  font-family: var(--font-button--family);
+  font-weight: var(--font-button--weight);
+}
+
+// ─── Quick View Modal ─────────────────────────────────────────────────────────
+
+.quick-view-modal__inner {
+  // display: block neutralizes the Tailwind flex-1 on .quick-view__content,
+  // preventing Chrome from treating max-height as a definite flex size.
+  // Vertical scroll is handled by the dialog element itself.
+  display: block;
+  overflow: hidden;
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  #quick-view-modal-dialog {
+    dialog {
+      height: 100dvh;
+      overflow-y: hidden;
+    }
+
+    .quick-view-modal__inner {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow-y: auto;
+    }
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .quick-view-dialog__inner .quick-view__content {
+    padding: var(--quick-view-content-padding, 3rem);
+  }
+
+  .quick-view__footer-link {
+    padding: 1.6rem 2.4rem;
+  }
+
+  .quick-view-modal__inner .quick-view__content {
+    display: grid;
+    grid-template-columns: minmax(0, 55%) minmax(0, 45%);
+
+    // grid-row: 1/span 100 on media-gallery creates 100 tracks; row-gap × 99 = huge phantom height.
+    // Blocks use spacing-style margins for vertical rhythm, so row-gap can be 0.
+    gap: 0 var(--quick-view-content-gap, 4rem);
+    padding: var(--quick-view-content-padding, 3rem);
+
+    > media-gallery.media-gallery--quick-view {
+      grid-column: 1;
+      grid-row: 1 / span 100;
+      align-self: start;
+      position: sticky;
+      top: 0;
+    }
+
+    > *:not(media-gallery.media-gallery--quick-view) {
+      grid-column: 2;
+    }
+
+    // No media: collapse to single column so content fills the full modal width
+    &:has(> media-gallery.media-gallery--quick-view.hidden) {
+      grid-template-columns: minmax(0, 1fr);
+
+      > *:not(media-gallery.media-gallery--quick-view) {
+        grid-column: 1;
+      }
+    }
+  }
+}

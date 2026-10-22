@@ -1,0 +1,89 @@
+// @capability Animated underline link — a background-gradient underline that wipes in from one side on hover, with a wipe-out/wipe-in replay animation for links that start underlined; direction-aware via --transform-origin variables.
+// @when Any "fancy underline" text link or nav item; add the class instead of writing text-decoration hover CSS. Pure CSS, no pairing JS.
+// @contract .reversed-link (optionally wrapping .reversed-link__text), variant .reversed-link--underline (starts underlined); opt-outs [aria-disabled] / .reversed-link--no-hover; tune via --underline-thickness / --underline-color / --reversed-link-hover-color (hover text colour, defaults to the scheme foreground).
+// @keywords underline animation, hover underline, link effect, wipe underline, animated link, text link hover
+
+@use "../mixins" as *;
+
+// ─── Keyframes ────────────────────────────────────────────────────────────────
+
+@keyframes reversed-link-underlined {
+  0% {
+    background-size: 100% var(--underline-thickness);
+    background-position-x: var(--transform-origin-end);
+  }
+
+  50% {
+    background-size: 0% var(--underline-thickness);
+    background-position-x: var(--transform-origin-end);
+  }
+
+  51% {
+    background-size: 0% var(--underline-thickness);
+    background-position-x: var(--transform-origin-start);
+  }
+
+  100% {
+    background-size: 100% var(--underline-thickness);
+    background-position-x: var(--transform-origin-start);
+  }
+}
+
+// ─── Base styles and variables ───────────────────────────────────────────────
+
+.reversed-link {
+  --underline-thickness: 0.1rem;
+  --underline-x: var(--transform-origin-end);
+  --underline-y: bottom;
+  --underline-color: currentcolor;
+
+  cursor: pointer;
+
+  &:not(:has(.reversed-link__text)) {
+    --underline-y: bottom 0.2em;
+  }
+}
+
+.reversed-link:not(:has(.reversed-link__text)),
+.reversed-link .reversed-link__text {
+  text-decoration: none;
+  background-image: linear-gradient(to var(--transform-origin-end), var(--underline-color), var(--underline-color));
+  background-repeat: no-repeat;
+  background-size: 0% var(--underline-thickness);
+  background-position: var(--transform-origin-end) var(--underline-y);
+  transition:
+    background-size var(--motion-ui) var(--motion-ease-out),
+    color var(--motion-ui) var(--motion-ease-out);
+}
+
+// ─── Variants ────────────────────────────────────────────────────────────────
+
+.reversed-link--underline:not(:has(.reversed-link__text)),
+.reversed-link--underline .reversed-link__text {
+  background-size: 100% var(--underline-thickness);
+  background-position: var(--transform-origin-start) var(--underline-y);
+}
+
+// ─── Interaction states ───────────────────────────────────────────────────────
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .reversed-link:not([aria-disabled], .reversed-link--no-hover) {
+    &:not(:has(.reversed-link__text)):hover {
+      background-size: 100% var(--underline-thickness);
+      background-position: var(--transform-origin-start) var(--underline-y);
+    }
+
+    &:hover .reversed-link__text {
+      background-size: 100% var(--underline-thickness);
+      background-position: var(--transform-origin-start) var(--underline-y);
+      color: var(--reversed-link-hover-color, rgb(var(--color-foreground)));
+    }
+  }
+
+  .reversed-link--underline:not([aria-disabled], .reversed-link--no-hover) {
+    &:not(:has(.reversed-link__text)):hover,
+    &:hover .reversed-link__text {
+      animation: reversed-link-underlined 0.7s;
+    }
+  }
+}

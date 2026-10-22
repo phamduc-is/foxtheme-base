@@ -1,0 +1,449 @@
+// @capability Media primitives — aspect-ratio boxes ([style*="--aspect-ratio"] padding hack and .media with --ratio/--ratio-mobile), image lazy-load fade-in, CSS-only zoom-out reveal on scroll, deferred video/3D-model shells with a centered play button and loading spinner, and video interaction controls.
+// @when Any image, video, or 3D model embed; always wrap media in .media (via the responsive-image snippet). Deferred parts pair with the deferred-media and product-model custom elements in src/js/global/modules.js.
+// @contract .media > .media__image (.loading/.loaded states), [style*="--aspect-ratio"], .image-zoom-reveal ([data-reveal-pending] arms the start state, .loaded.in-view plays, [data-reveal-settled] releases the will-change surface once the zoom has landed), deferred-media / product-model elements with .deferred-media__poster-button + .deferred-media__poster-icon, .video-placeholder-wrapper, .video-interaction__control, .loading-spinner > .spinner.
+// @keywords media, aspect ratio, responsive image, lazy load fade, zoom reveal, video poster, play button, deferred media, 3D model, loading spinner
+
+@use "../mixins" as *;
+@use "sass:math";
+
+// ─── Media ────────────────────────────────────────────────────────────────────
+[style*="--aspect-ratio"] {
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    --box-ratio: var(--aspect-ratio, #{math.div(16, 9)});
+
+    content: "";
+    height: 0;
+    display: block;
+    padding-top: min(var(--media-max-height, 100dvh), calc(100% / (0 + var(--box-ratio))));
+  }
+
+  > :first-child:not(source),
+  > :first-child:is(source) ~ img {
+    inset: 0;
+    position: absolute !important;
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+  }
+
+  @include media-breakpoint-down(md) {
+    &::before {
+      --box-ratio: var(--aspect-ratio-mobile, var(--aspect-ratio, #{math.div(16, 9)}));
+    }
+  }
+}
+
+.media {
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: var(--ratio);
+  background-color: rgb(var(--color-foreground) / 5%);
+
+  // Declared on the base rule rather than on `.loaded`, where it used to live.
+  // As a shorthand on `.media.loaded` this had specificity 0-2-0, so on any
+  // .media element that also carried a 0-1-0 class of its own it won and RESET
+  // every transition longhand that class had declared. .product-card__image IS
+  // a .media, so the second-image crossfade stopped existing the moment the
+  // image finished loading — which is to say, always. Here at 0-1-0 a component
+  // class can still override it.
+
+  // No delay. This used to carry a 0.5s transition-delay, so the grey backdrop
+  // sat behind a fully painted image for 0.85s after `.loaded` (measured:
+  // loaded at 344ms, still grey at 925ms, gone at 1186ms). Invisible under a
+  // cover-fit JPEG, plainly visible behind a transparent PNG cut-out, an
+  // `object-fit: contain` image, or any ratio mismatch — it read as "the image
+  // is there, what is it waiting for". The backdrop is a placeholder: it goes
+  // the moment the image starts to fade in.
+  transition: background-color var(--motion-ui) var(--motion-ease);
+
+  &__image {
+    object-fit: cover;
+    height: 100%;
+
+    // The load fade is loading feedback, owned by every image. It used to be
+    // written `&:not(.media-hover__element)` on the assumption that the hover
+    // rule (`.media-hover--scale .media-hover__element`, _helpers.scss) would
+    // supply a transition list of its own — it does, but only INSIDE a
+    // `.media-hover--scale` ancestor. The snippet adds media-hover__element by
+    // default, so every image outside a card and outside a zoom-reveal wrapper
+    // (Animations off) had no transition at all and popped in. Measured with
+    // the load-fade harness: opacity 1.00 at 0/120/600ms. The two shorthands
+    // that override this both list opacity, so nothing is lost.
+
+    // --motion-ui-fast, not --motion-ui: this is loading feedback (a state
+    // change), not a reveal. On a linear curve the extra 100ms is all spent in
+    // the half-transparent band where the image reads as still loading.
+    transition: opacity var(--motion-ui-fast) var(--motion-ease-fade);
+
+    &.loading:not(svg.placeholder) {
+      opacity: 0;
+    }
+  }
+
+  &.loaded {
+    background-color: transparent;
+  }
+
+  @include media-breakpoint-down(md) {
+    aspect-ratio: var(--ratio-mobile, var(--ratio));
+  }
+}
+
+// ─── Image zoom reveal ────────────────────────────────────────────────────────
+// CSS-only zoom-out reveal. Replaces <motion-component> — same visual effect,
+// zero custom-element overhead. Requires .loaded AND .in-view to play.
+// The start state is armed PER IMAGE by responsive-image (`data-reveal-pending`
+// on the wrapper), set when the element upgrades and the bytes have not
+// arrived yet. It used to be unconditional, applied at first paint: an image
+// that finished downloading before the deferred bundle ran sat hidden behind
+// the grey placeholder until JS lifted it — measured 1.4s on Fast 3G with the
+// bytes already there. An image that is complete when JS arrives now simply
+// shows; one still in flight is hidden before it has anything to show, so
+// nothing flashes either way. The attribute is cleared in the same write that
+// adds `.in-view`, so a revealed wrapper never reads as pending.
+
+// Mouse devices only. On touch a fast flick lazy-loads image after image, and
+// a fade on each one reads as flicker and lag rather than an entrance; the
+// image simply appears once it has loaded, as it does with reduced motion.
+@media (prefers-reduced-motion: no-preference) and (pointer: fine) {
+  .image-zoom-reveal {
+    .media__image {
+      &.media-hover__element {
+        transition:
+          transform var(--motion-image-reveal) var(--motion-ease-out),
+          scale var(--motion-overlay) var(--motion-ease-out),
+          opacity var(--motion-image-reveal) var(--motion-ease-out);
+      }
+
+      &:not(.media-hover__element) {
+        transition:
+          transform var(--motion-image-reveal) var(--motion-ease-out),
+          opacity var(--motion-image-reveal) var(--motion-ease-out);
+      }
+    }
+
+    // Firefox (WebRender) snaps an image it scales in place to the device-pixel
+    // grid on every frame: as the 1.3s zoom crawls through its last pixel the
+    // edges step instead of glide, and the picture inside re-samples with
+    // each step — the "shiver" Firefox users report on reveal. A will-change
+    // hint makes the image its own surface, rasterised once and transformed
+    // by the compositor (Chrome does that on its own). It is held only while
+    // it earns its memory: from the moment the reveal is armed until the
+    // transform transition has ended — responsive-image stamps
+    // `data-reveal-settled` on transitionend (1.6s fallback), and the surface
+    // is released so the settled image is drawn crisp, in place.
+    &[data-reveal-pending] .media__image,
+    &.in-view:not([data-reveal-settled]) .media__image {
+      will-change: transform;
+    }
+
+    // AFTER the transition rules above: same 0-3-0 specificity, so source order
+    // is what lets `transition: none` win while pending.
+    &[data-reveal-pending] .media__image {
+      transform: scale(var(--motion-image-reveal-scale));
+      opacity: 0;
+
+      // Arming is instant: without this the image TWEENS into the start state
+      // (opacity 1→0, scale 1→1.15), visible as a fade-out on an image that sat
+      // in the 50px band just under the viewport edge. The reveal still
+      // animates — the attribute is removed in the same write that adds
+      // .in-view, and a transition is resolved from the style AFTER the change.
+      transition: none;
+    }
+
+    &.loaded.in-view .media__image {
+      opacity: 1;
+      transform: none;
+    }
+
+    // Firefox only (-moz-appearance is the one property no other engine
+    // accepts in @supports). WebRender snaps a 2D axis-aligned transform to
+    // the device-pixel grid — with will-change alone the zoom still settled in
+    // visible steps on a collection page. It does NOT snap a 3D transform, so
+    // the start state carries a translateZ the eye cannot see (there is no
+    // perspective): the whole tween then interpolates as a 3D matrix and only
+    // the resting `none` is snapped, when nothing moves. It has to be non-zero
+    // — Firefox flattens translateZ(0) back to a 2D matrix, measured:
+    // scale(1.15) translateZ(0) computes to matrix(...), translateZ(0.01px) to
+    // matrix3d(...). Not applied elsewhere: Safari has a history of
+    // losing the border-radius clip on 3D-transformed children.
+    @supports (-moz-appearance: none) {
+      &[data-reveal-pending] .media__image {
+        transform: scale(var(--motion-image-reveal-scale)) translateZ(0.01px);
+      }
+    }
+  }
+}
+
+// There is deliberately NO `body:not(.animations-enabled)` override here. The
+// one that used to sit at this spot aimed at four things and hit the wrong
+// three. It was written to unhide the .image-zoom-reveal prestage — but that
+// class is gated in Liquid (responsive-image, video-markup and
+// collection-banner-image all test settings.animations_enabled), so with the
+// setting off it is never in the DOM and there is nothing to unhide. What it
+// did reach was the lazy-image load fade, which is loading feedback rather than
+// a scroll reveal, and — as collateral, since `body:not(…) .media
+// .media__image:not(svg.placeholder)` is 0-4-2 against .media-hover--scale
+// .media-hover__element's 0-2-0 — the hover transition. Measured: with the
+// setting off the card still scaled to 1.05 on hover, it just arrived in one
+// frame instead of twenty-eight, so hover changed character based on a setting
+// that never claimed to govern it. The Animations setting governs entrance and
+// in-view reveals, and those are already gated in Liquid where the class is
+// emitted; media needs no CSS fallback for it.
+
+// ─── Deferred media ───────────────────────────────────────────────────────────
+
+:is(product-model, deferred-media) {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+:is(deferred-media) {
+  video::-webkit-media-controls {
+    visibility: hidden;
+  }
+
+  video::-webkit-media-controls-enclosure {
+    visibility: visible;
+  }
+}
+
+:is(product-model) > .shopify-model-viewer-ui,
+:is(deferred-media) > .deferred-media__poster-button ~ *:not(template, .relative),
+:is(deferred-media) > .deferred-media__poster-button ~ noscript video {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  padding: inherit;
+}
+
+:is(deferred-media, .video-placeholder-wrapper).border-style {
+  overflow: hidden;
+}
+
+.deferred-media__poster-button {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: var(--video-aspect-ratio, auto);
+  cursor: pointer;
+  transition:
+    opacity var(--motion-ui) var(--motion-ease-fade),
+    visibility var(--motion-ui) var(--motion-ease);
+}
+
+deferred-media iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  aspect-ratio: var(--size-style-aspect-ratio, auto);
+  vertical-align: bottom;
+}
+
+.deferred-media__poster-button.deferred-media__playing {
+  opacity: 0;
+  transition: opacity var(--motion-ui) var(--motion-ease-fade);
+}
+
+deferred-media img {
+  height: 100%;
+  object-fit: cover;
+  transition: opacity var(--motion-ui) var(--motion-ease-fade);
+}
+
+deferred-media .media__image {
+  height: 100%;
+}
+
+.deferred-media__poster-icon,
+.video-placeholder-wrapper__poster-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--button-width, var(--button-height, 5rem));
+  height: var(--button-height, 5rem);
+  background: rgb(var(--color-background));
+  box-shadow: 0 0.5rem 2rem 0 rgb(var(--color-foreground) / 8%);
+  transition: color var(--motion-ui) var(--motion-ease-out);
+}
+
+@media (hover: hover) {
+  .deferred-media__poster-icon:hover,
+  .video-placeholder-wrapper__poster-icon:hover {
+    color: rgb(var(--color-foreground) / 55%);
+  }
+}
+
+.shopify-model-viewer-ui button.shopify-model-viewer-ui__button--poster {
+  width: var(--button-width, var(--button-height, 5rem));
+  height: var(--button-height, 5rem);
+  border-radius: 50%;
+  color: rgb(var(--color-foreground));
+  box-shadow: 0 0.5rem 2rem 0 rgb(var(--color-foreground) / 8%);
+  transition: color var(--motion-ui) var(--motion-ease-out);
+
+  > svg {
+    height: 4rem;
+  }
+}
+
+.video-placeholder-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: var(--size-style-aspect-ratio, auto);
+}
+
+.deferred-media__loading {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background, rgb(0 0 0 / 0%));
+}
+
+deferred-media[data-loading] > .deferred-media__loading {
+  display: flex;
+  background-color: rgb(var(--color-foreground) / 5%);
+}
+
+deferred-media[data-loading] > .deferred-media__loading::after {
+  content: "";
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  border: 0.3rem solid rgb(var(--color-foreground) / 10%);
+  border-top-color: rgb(var(--color-foreground) / 60%);
+  animation: spinLoading 0.8s linear infinite;
+}
+
+deferred-media[data-loading] > .deferred-media__poster-button {
+  opacity: 0;
+  visibility: hidden;
+}
+
+deferred-media:not([data-media-loaded="true"]) .video-interaction-hint {
+  display: none;
+}
+
+// ─── Video interaction controls ───────────────────────────────────────────────
+
+.video-interaction {
+  &__controls-inner {
+    padding: 1rem;
+  }
+
+  &__control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    width: 3.6rem;
+    height: 3.6rem;
+    color: #fff; // intentional: always white on dark video overlay
+    background: rgb(0 0 0 / 40%);
+    border-radius: 50%;
+    border: 0;
+    padding: 0;
+
+    > span:not(.hidden) {
+      display: flex;
+    }
+  }
+
+  @include media-breakpoint-up(md) {
+    &__controls-inner {
+      padding: 1.6rem;
+    }
+  }
+}
+
+.video-interaction-hint {
+  opacity: 0;
+  transition: opacity var(--motion-ui) var(--motion-ease-fade);
+  z-index: var(--layer-raised);
+
+  &:hover,
+  &:focus-within {
+    opacity: 1;
+  }
+}
+
+// ─── 3D model viewer ──────────────────────────────────────────────────────────
+
+product-model model-viewer {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+button[data-shopify-xr] {
+  width: 100%;
+  margin-block-start: var(--spacing-3);
+}
+
+.button-shopify-xr[data-shopify-xr-hidden] {
+  display: none;
+}
+
+// ─── Loading spinner ──────────────────────────────────────────────────────────
+
+.loading-spinner {
+  display: inline-block;
+  position: absolute;
+  z-index: 1;
+  width: var(--loading-size, 2rem);
+  height: var(--loading-size, 2rem);
+  line-height: 1;
+
+  .spinner {
+    animation: rotator 1.4s linear infinite;
+    width: 100%;
+    height: 100%;
+  }
+
+  .path {
+    stroke-dasharray: 280;
+    stroke-dashoffset: 0;
+    transform-origin: center;
+    stroke: currentcolor;
+    animation: dash 1.4s ease-in-out infinite;
+    vector-effect: none;
+  }
+}
+
+@media screen and (forced-colors: active) {
+  .path {
+    stroke: CanvasText;
+  }
+}
+
+// Focal point (set on the Files page / via image_picker) — responsive-image
+// writes --focal-position(-mobile) on the img element itself, so the vars work
+// with and without the .media wrapper. The theme's object-position:center
+// rules resolve through the same var, so no rule fights another; below md the
+// mobile var wins, matching the <picture> mobile source.
+.media__image {
+  object-position: var(--focal-position-mobile, var(--focal-position, center));
+
+  @include media-breakpoint-up(md) {
+    object-position: var(--focal-position, center);
+  }
+}

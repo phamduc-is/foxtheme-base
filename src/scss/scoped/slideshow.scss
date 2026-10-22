@@ -1,0 +1,93 @@
+@use "../mixins" as *;
+
+// ─── Slideshow ────────────────────────────────────────────────────────────────
+
+.section-slideshow {
+  --slide-padding-x: 4rem;
+  --slide-padding-y: 4rem;
+}
+
+.slide {
+  height: 100%;
+  min-height: var(--height-mobile, 0);
+  max-height: 100dvh;
+}
+
+.slideshow:has(.slideshow__controls) .slide {
+  grid-template-rows: minmax(0, 1fr) var(--control-height, auto);
+}
+
+.slide__media {
+  @include full-bleed-media-cover;
+}
+
+.slide__content {
+  padding-block: var(--slide-padding-y);
+  padding-inline: var(--slide-padding-x);
+  grid-row: 1 / span 1;
+  z-index: var(--layer-raised);
+  min-width: 0;
+}
+
+.slideshow {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.slideshow .swiper-slide {
+  height: auto;
+}
+
+.slideshow__controls {
+  --carousel-controls-margin-top: 0;
+
+  z-index: 1;
+  background: transparent !important;
+  width: auto;
+  grid-row: 2/-1;
+  padding: 0 var(--slide-padding-x) var(--slide-show-control-offset-bottom, var(--slide-padding-y));
+}
+
+// ─── Variants ─────────────────────────────────────────────────────────────────
+
+.slideshow--content-inside {
+  --slide-padding-x: 0;
+}
+
+.slideshow--content-inside .slide__content,
+.slideshow--content-inside .slideshow__controls {
+  grid-column: 2;
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(md) {
+  .slide {
+    min-height: var(--height, 0);
+  }
+
+  // `--slideshow-ratio` is the first slide's, declared on the section only under
+  // `height: auto`; the per-slide `--ratio` answers when it is absent. Swiper equalises
+  // slide heights, so one ratio for the deck is what closes the gap under shorter ones.
+  .media--adapt .slide__media {
+    @include full-bleed-media-adapt(var(--slideshow-ratio, var(--ratio)));
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .slideshow {
+    --slide-padding-x: 1.6rem;
+    --slide-padding-y: 2.4rem;
+  }
+
+  .slideshow--content-inside {
+    --slide-padding-x: 0;
+  }
+
+  .media-mobile--adapt .slide__media {
+    @include full-bleed-media-adapt(var(--slideshow-ratio-mobile, var(--ratio-mobile, var(--ratio))));
+  }
+
+  .slide__inner {
+    contain: layout;
+  }
+}

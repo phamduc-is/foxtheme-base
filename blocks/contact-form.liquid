@@ -1,0 +1,276 @@
+{%- liquid
+  assign form_id = 'ContactForm-' | append: block.id
+-%}
+<div
+  class="contact-form size-style"
+  style="{% render 'size-style', settings: block.settings %}"
+  {{ block.shopify_attributes }}
+>
+  {% comment %}
+    The form tag lives here, not in contact-form-markup: `content_for` only works
+    in a section/block file, and the three static field blocks must be captured
+    INSIDE the form tag for their `form.*` reads to resolve.
+  {% endcomment %}
+  {%- form 'contact', id: form_id, class: 'w-full' -%}
+    {%- capture name_field_html -%}
+      {% content_for 'block', type: '_contact-field-name', id: 'contact-field-name', parent_id: block.id %}
+    {%- endcapture -%}
+    {%- capture email_field_html -%}
+      {% content_for 'block', type: '_contact-field-email', id: 'contact-field-email', parent_id: block.id %}
+    {%- endcapture -%}
+    {%- capture body_field_html -%}
+      {% content_for 'block', type: '_contact-field-body', id: 'contact-field-body', parent_id: block.id %}
+    {%- endcapture -%}
+    {%- capture inner_blocks_html -%}
+      {% content_for 'blocks' %}
+    {%- endcapture -%}
+    {% render 'contact-form-markup',
+      settings: block.settings,
+      form: form,
+      name_field_html: name_field_html,
+      email_field_html: email_field_html,
+      body_field_html: body_field_html,
+      inner_blocks_html: inner_blocks_html
+    %}
+  {%- endform -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.contact_form",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "row_gap",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_layout"
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "row_gap_mobile",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "t:content.submit_button"
+    },
+    {
+      "type": "select",
+      "id": "content_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "right",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "select",
+      "id": "content_alignment_mobile",
+      "label": "t:settings.alignment_mobile",
+      "options": [
+        {
+          "value": "",
+          "label": "t:options.inherit"
+        },
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "right",
+          "label": "t:options.right"
+        }
+      ],
+      "default": ""
+    },
+    {
+      "type": "range",
+      "id": "button_gap",
+      "label": "t:settings.gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "button_gap_mobile",
+      "label": "t:settings.gap_mobile",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "header",
+      "content": "t:content.size"
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "t:settings.width",
+      "options": [
+        {
+          "value": "fit-content",
+          "label": "t:options.fit"
+        },
+        {
+          "value": "fill",
+          "label": "t:options.fill"
+        },
+        {
+          "value": "custom",
+          "label": "t:options.custom"
+        }
+      ],
+      "default": "fill"
+    },
+    {
+      "type": "range",
+      "id": "custom_width",
+      "label": "t:settings.custom_width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "width_mobile",
+      "label": "t:settings.width_mobile",
+      "options": [
+        {
+          "value": "fit-content",
+          "label": "t:options.fit"
+        },
+        {
+          "value": "fill",
+          "label": "t:options.fill"
+        },
+        {
+          "value": "custom",
+          "label": "t:options.custom"
+        }
+      ],
+      "default": "fill"
+    },
+    {
+      "type": "range",
+      "id": "custom_width_mobile",
+      "label": "t:settings.custom_width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width_mobile == 'custom' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_custom-field"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.contact_form",
+      "category": "t:categories.forms",
+      "blocks": {
+        "contact-field-name": {
+          "type": "_contact-field-name",
+          "static": true
+        },
+        "contact-field-email": {
+          "type": "_contact-field-email",
+          "static": true
+        },
+        "contact-field-body": {
+          "type": "_contact-field-body",
+          "static": true
+        },
+        "custom_field_1": {
+          "type": "_custom-field",
+          "settings": {
+            "field_type": "phone",
+            "heading": "Phone Number"
+          }
+        },
+        "custom_field_2": {
+          "type": "_custom-field",
+          "settings": {
+            "field_type": "text",
+            "heading": "Order Number"
+          }
+        },
+        "custom_field_3": {
+          "type": "_custom-field",
+          "settings": {
+            "field_type": "select",
+            "heading": "Country",
+            "select_options": "Austria,Viet Nam,Japan",
+            "width": "full"
+          }
+        }
+      },
+      "block_order": ["custom_field_1", "custom_field_2", "custom_field_3"]
+    }
+  ]
+}
+{% endschema %}

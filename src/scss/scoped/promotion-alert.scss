@@ -1,0 +1,72 @@
+@use "../mixins" as *;
+
+// ─── Promotion alert ──────────────────────────────────────────────────────────
+
+.promotion-alert {
+  display: block;
+}
+
+// The custom element is display:block above, so it outranks the UA [hidden] rule.
+.promotion-alert[hidden] {
+  display: none;
+}
+
+.promotion-alert__wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2.4rem;
+  padding: 1.2rem;
+  color: rgb(var(--promotion-alert-color));
+  background-color: rgb(var(--promotion-alert-color) / 10%);
+
+  @include media-breakpoint-up(md) {
+    padding: 1.6rem;
+  }
+}
+
+.promotion-alert__content {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-start;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.promotion-alert__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.promotion-alert__text > * {
+  color: rgb(var(--promotion-alert-color));
+}
+
+.promotion-alert__close {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  transition: transform var(--motion-ui-fast) var(--motion-ease);
+
+  // The icon is only 16px — widen the hit area to 32px without moving the icon.
+  // The 0.8rem overflow stays inside the wrapper's own padding and the 2.4rem
+  // gap at every breakpoint, so it never covers the title or description.
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -0.8rem;
+  }
+
+  // Same affordance as the dialog close button — spin, never fade.
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      transform: rotate(180deg);
+    }
+  }
+}

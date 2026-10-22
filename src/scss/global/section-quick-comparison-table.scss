@@ -1,0 +1,20 @@
+@use "../mixins" as *;
+
+// The quick comparison table reuses `.compare-table` (see compare-table.scss) for
+// its layout and cell styles. Only the rules specific to the on-page (non-modal)
+// context live here — sticky first product column and denser mobile spacing.
+
+@include media-breakpoint-up(lg) {
+  .quick-comparison-table {
+    th,
+    td {
+      &:nth-child(2) {
+        // Keep the current product column pinned next to the label column.
+        z-index: 9;
+        position: sticky;
+        inset-inline-start: var(--heading-col-width);
+        background-color: rgb(var(--color-background));
+      }
+    }
+  }
+}

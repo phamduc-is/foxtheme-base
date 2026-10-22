@@ -1,0 +1,1098 @@
+// @capability The theme's product card — grid-area layout with independent vertical/horizontal modes per breakpoint, [data-layout="grid"|"list"] wrapper override, CSS-variable-driven meta visibility (vendor/type/price/swatches/badges per device), second-image hover crossfade, quick-add/quick-view overlay reveal, and box/bundle/fbt-card/mobile-solid variants.
+// @when ANY product listing card (grids, carousels, recommendations, bundles); pairs with src/js/modules/product-card.js, quick-add.js, and quick-view.js. Never build a new product card — configure this one.
+// @contract .product-card (--vertical/--horizontal/--mobile-vertical/--mobile-horizontal/--box/--bundle/--fbt-card/--mobile-solid) > .product-card__wrapper > .product-card__media (+ __image--first/--second, __media-actions, __badges--on-media) / .product-card__content (__title, __metas, __price, __swatches) / .product-card__actions (__view-details, __quick-add--h-fallback); quick-add-component / quick-view-component elements; wrapper [data-layout="grid"|"list"].
+// @keywords product card, product grid, list view, grid view, hover second image, quick add, quick view, card layout, badges on card, swatches on card, horizontal card
+
+@use "../mixins" as *;
+
+// ─── Product card ─────────────────────────────────────────────────────────────
+// Two layout modes (vertical / horizontal), applied independently at desktop
+// and mobile via modifier classes:
+//   .product-card--vertical / --horizontal / --mobile-vertical / --mobile-horizontal
+// Wrapper uses CSS Grid; areas: media / content / actions.
+// [data-layout="grid"|"list"] on a wrapper overrides mode classes without per-card JS.
+// Meta visibility (vendor, type, price, swatches, badges) driven by CSS custom
+// properties set inline on metas / card: --metas-d/m, --vendor-d/m, --type-d/m, --price-d/m,
+// --swatch-d/m, --badges-d/m.
+
+// ─── 1. Base styles ───────────────────────────────────────────────────────────
+
+.product-card {
+  position: relative;
+  container-type: inline-size;
+  width: 100%;
+
+  // Media
+  &__media {
+    border-radius: var(--product-card-media-radius);
+  }
+
+  &__image {
+    // Shorthand on purpose, where the three longhands used to be. This element
+    // is also a .media, and .media declares a background-color transition of
+    // its own; longhands here would override the property, duration and curve
+    // while quietly inheriting whatever delay .media carries (it once carried
+    // 0.5s, and the crossfade sat still for half a second before starting). A
+    // shorthand resets all of them.
+    // Note that check-motion-easing cannot see this: it only matches a
+    // shorthand when `transition:` and the property share a line, and prettier
+    // wraps a list this long. The opacity curve here is linear by hand.
+    transition:
+      opacity var(--motion-ui-fast) var(--motion-ease-fade),
+      visibility var(--motion-ui-fast) var(--motion-ease);
+  }
+
+  &__image--second {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  // Content — `pcard_content_alignment` is read here, once, for every card.
+  &__content {
+    gap: var(--product-card-content-gap, 0.8rem);
+    align-items: var(--content-alignment, flex-start);
+    text-align: var(--content-text-align, start);
+    min-width: 0;
+  }
+
+  // Title
+  &__title {
+    text-decoration: none;
+    color: rgb(var(--color-foreground));
+    font-family: var(--font-pcard-title--family);
+    font-weight: var(--font-pcard-title--weight);
+    font-style: var(--font-pcard-title--style);
+    font-size: var(--font-pcard-title--size);
+    text-transform: var(--font-pcard-title--transform);
+    letter-spacing: var(--font-pcard-title--letter-spacing);
+  }
+
+  // Vendor / type metas
+  &__metas {
+    display: var(--metas-d, flex);
+    flex-wrap: wrap;
+
+    .product-card__meta + .product-card__meta::before {
+      content: ", ";
+    }
+  }
+
+  &__meta {
+    color: rgb(var(--color-foreground) / 70%);
+    font-size: calc(var(--font-size--paragraph) * 0.867);
+
+    &--vendor {
+      display: var(--vendor-d, block);
+    }
+
+    &--type {
+      display: var(--type-d, block);
+    }
+  }
+
+  // Price / swatches
+  &__price {
+    display: var(--price-d, block);
+  }
+
+  &__swatches {
+    display: var(--swatch-d, block);
+  }
+
+  // Badges (placement controlled by mode — see section 3)
+  &__badges {
+    padding: var(--product-card-badges-padding, 1rem);
+    z-index: 1;
+  }
+
+  &__badges--on-media {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+  }
+
+  &__badges--on-content {
+    padding: 0;
+  }
+
+  // Actions: unified quick-add + view-details column (replaces __footer + __side-actions)
+  &__actions {
+    display: flex;
+  }
+
+  // Horizontal fallback for on-media quick-add: hidden by default, shown via card-layout-horizontal mixin
+  &__quick-add--h-fallback {
+    display: none;
+  }
+
+  // View details — hidden everywhere by default, only shown via [data-layout="list"]
+  &__view-details {
+    display: none;
+    text-decoration: none;
+  }
+}
+
+// Editor preview: prevent narrow collapse. 250px, not 100vw: this element wraps EVERY
+// Add-block picker preview containing a product card, including multi-card blocks —
+// featured-collection renders three per row, and at 100vw each card grew to viewport
+// width, its 1/1 media with it (~1400px tall), clipped to a sliver by its own slide.
+// 250 keeps the LONE card (the public product-card block) above the 199px narrow-card
+// container query. Inside a carousel the slide already has a real width from Swiper, so
+// the guard is not needed and would only crop each card to a 250px strip — drop it there.
+shopify-visual-preview-block-list .product-card {
+  min-width: 250px;
+}
+
+shopify-visual-preview-block-list .swiper-slide .product-card {
+  min-width: 0;
+}
+
+// ─── 2. Mode layout mixins ────────────────────────────────────────────────────
+
+// Undoes the alignment the base rule reads: beside the media, centring the content
+// only detaches the text from the image. A mixin, not a rule on `--horizontal`,
+// because [data-layout="list"] turns a `--vertical` card horizontal too.
+@mixin card-content-alignment-reset {
+  align-items: flex-start;
+  text-align: start;
+
+  .price--on-sale:not(.price--sale-badge-inline) .price__sale:has(.price__sale-badge) {
+    align-items: flex-start;
+  }
+}
+
+// ── Vertical layout ───────────────────────────────────────────────────────────
+@mixin card-layout-vertical {
+  .product-card__wrapper {
+    display: grid;
+    grid-template-areas:
+      "media"
+      "content"
+      "actions";
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 0;
+  }
+
+  // Media: full-width, natural height; margin creates gap to content
+  .product-card__media {
+    grid-area: media;
+    width: auto;
+    min-width: 0;
+    margin-block-end: var(--product-card-wrapper-gap, 2rem);
+  }
+
+  // Content: full width — the one arrangement that keeps the base alignment
+  .product-card__content {
+    grid-area: content;
+    min-width: 0;
+  }
+
+  // Height balance: content row expands to fill remaining wrapper height
+  &.product-card--height-balance {
+    .product-card__wrapper {
+      height: 100%;
+      grid-template-rows: auto 1fr auto;
+    }
+  }
+
+  // Actions: stacked below content with smaller gap than media→content.
+  // Hidden by default — in vertical the only thing that can live here is the
+  // on-media quick-add fallback (horizontal-only) or a vertical-hidden
+  // view-details, so collapse the whole row (no empty padding, no double button).
+  .product-card__actions {
+    grid-area: actions;
+    min-width: 0;
+    flex-direction: column;
+    padding-block-start: 1.6rem;
+    display: none;
+  }
+
+  // placement='actions': the real quick-add lives in __actions — show it here too.
+  &.product-card--atc-actions .product-card__actions {
+    display: flex;
+  }
+
+  // Badges: on media overlay only
+  .product-card__badges--on-media {
+    display: var(--badges-d, flex);
+  }
+
+  .product-card__badges--on-content {
+    display: none;
+  }
+
+  // Quick-view: overlay on media
+  .product-card__media-actions {
+    display: flex;
+    padding: 0;
+  }
+}
+
+// ── Horizontal layout (desktop / 3-column) ────────────────────────────────────
+@mixin card-layout-horizontal {
+  .product-card__wrapper {
+    display: grid;
+    grid-template-areas: "media content actions";
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    width: 100%;
+    gap: 0;
+  }
+
+  // Media: fixed width column; --_media-w set by container query defaults below
+  .product-card__media {
+    grid-area: media;
+    min-width: 0;
+    width: var(--media-width, var(--media-w-auto, 8rem));
+    margin-block-end: 0;
+    border-radius: min(1rem, var(--product-card-media-radius));
+  }
+
+  // Content: fills remaining space
+  .product-card__content {
+    grid-area: content;
+    min-width: 0;
+    margin-inline-start: var(--product-card-media-gap, 1.2rem);
+
+    @include card-content-alignment-reset;
+  }
+
+  // Actions: right column, full-width stacked buttons, vertically centered.
+  // Always shown in horizontal (holds the on-media fallback / view-details / atc).
+  .product-card__actions {
+    grid-area: actions;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.8rem;
+    align-self: center;
+    margin-inline-start: var(--product-card-actions-gap, 2.4rem);
+    padding-block-start: 0;
+    display: flex;
+  }
+
+  // Badges: in content only
+  .product-card__badges--on-media {
+    display: none;
+  }
+
+  .product-card__badges--on-content {
+    display: var(--badges-d, flex);
+  }
+
+  // Quick-view overlay: hidden in horizontal
+  .product-card__media-actions {
+    display: none;
+  }
+
+  // On-media quick-add fallback: show text button in actions column
+  .product-card__quick-add--h-fallback {
+    display: flex;
+  }
+
+  // A single-option multi-variant product renders BOTH the ATC and the "Choose
+  // options" quick-view, and `quick-add` passes the fallback class to both — so
+  // the rule above would show the pair. Only one may win, and which one is state:
+  // quick-add.js flips data-quick-add-button on variantSelected. Restate the two
+  // global rules here; `display: flex` above (0-3-0 under [data-layout="list"])
+  // outranks them at their own specificity (0-1-2 / 0-2-2).
+  quick-add-component[data-quick-add-button="choose"].product-card__quick-add--h-fallback {
+    display: none;
+  }
+
+  quick-add-component[data-quick-add-button="add"] ~ quick-view-component.product-card__quick-add--h-fallback {
+    display: none;
+  }
+}
+
+// Horizontal layout with layout list
+@mixin card-layout-horizontal-list {
+  .product-card__content {
+    --product-card-media-gap: 3rem;
+
+    padding-block: 2.4rem;
+    height: 100%;
+  }
+
+  .product-card__price {
+    margin-block-start: 1.2rem;
+  }
+
+  .product-card__actions {
+    padding-inline-end: 1.2rem;
+  }
+}
+
+// ── Horizontal layout (mobile / 2-row: media+content top, actions bottom) ─────
+@mixin card-layout-horizontal-mobile {
+  .product-card__wrapper {
+    display: grid;
+    grid-template-areas:
+      "media content"
+      "actions actions";
+    grid-template-columns: auto 1fr;
+    width: 100%;
+    gap: 0;
+  }
+
+  .product-card__media {
+    grid-area: media;
+    min-width: 0;
+    width: var(--media-width-mobile, var(--media-width, var(--media-w-auto, 8rem)));
+    margin-block-end: 0;
+    border-radius: min(1rem, var(--product-card-media-radius));
+  }
+
+  .product-card__content {
+    grid-area: content;
+    min-width: 0;
+    margin-inline-start: var(--product-card-media-gap, 1.2rem);
+
+    @include card-content-alignment-reset;
+  }
+
+  .product-card__actions {
+    grid-area: actions;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.8rem;
+    padding-block-start: 0.8rem;
+  }
+
+  .product-card__badges--on-media {
+    display: none;
+  }
+
+  .product-card__badges--on-content {
+    display: var(--badges-d, flex);
+  }
+
+  .product-card__media-actions {
+    display: none;
+  }
+}
+
+// ─── 3. Apply mode classes at breakpoints ────────────────────────────────────
+
+// Desktop modes (≥ 768px)
+@include media-breakpoint-up(md) {
+  .product-card--vertical {
+    @include card-layout-vertical;
+  }
+
+  .product-card--horizontal {
+    @include card-layout-horizontal;
+  }
+}
+
+// Mobile modes (< 768px)
+@include media-breakpoint-down(md) {
+  .product-card--mobile-vertical {
+    @include card-layout-vertical;
+  }
+
+  .product-card--mobile-horizontal {
+    @include card-layout-horizontal;
+
+    .product-card__media {
+      width: var(--media-width-mobile, var(--media-width, var(--media-w-auto, 8rem)));
+    }
+  }
+}
+
+// Toggle via wrapper [data-layout] — overrides mode classes.
+// Specificity 0-3-0 ([attr] + .card + .wrapper) beats mode class 0-2-0 (.mode + .wrapper).
+// view-details is hidden by default (base style) and only shown here.
+@include media-breakpoint-up(md) {
+  [data-layout="grid"] .product-card {
+    @include card-layout-vertical;
+  }
+
+  [data-layout="list"] .product-card {
+    @include card-layout-horizontal;
+    @include card-layout-horizontal-list;
+  }
+
+  [data-layout="list"] .product-card__view-details {
+    display: flex;
+  }
+}
+
+@include media-breakpoint-down(md) {
+  [data-layout="list"] .product-card {
+    @include card-layout-horizontal-mobile;
+  }
+
+  [data-layout="list"] .product-card__view-details {
+    display: flex;
+  }
+
+  [data-layout="list"] .product-card__actions {
+    display: flex;
+  }
+
+  [data-layout="list"] .product-card__quick-add--h-fallback {
+    display: flex;
+  }
+
+  [data-layout="list"] .product-card__actions:has(quick-view-component) quick-add-component {
+    display: none;
+  }
+}
+
+// ─── Responsive media width defaults (container query) ───────────────────────
+// Sets --media-w-auto based on card width; inline --media-width/--media-width-mobile
+// overrides these. Scoped to horizontal-mode selectors only.
+
+// Desktop (≥ 768px)
+@include media-breakpoint-up(md) {
+  @container (min-width: 500px) {
+    [data-layout="list"] .product-card__media,
+    .product-card--horizontal .product-card__media {
+      --media-w-auto: 24rem;
+    }
+  }
+}
+
+// Mobile (< 768px)
+@include media-breakpoint-down(md) {
+  @container (min-width: 400px) {
+    [data-layout="list"] .product-card__media,
+    .product-card--horizontal .product-card__media {
+      --media-w-auto: 24rem;
+    }
+  }
+
+  @container (max-width: 400px) {
+    [data-layout="list"] .product-card__media,
+    .product-card--horizontal .product-card__media {
+      --media-w-auto: 14rem;
+    }
+  }
+}
+
+// Explicit badge placement overrides — higher specificity wins over data-layout rules (0-3-0).
+[data-layout] .product-card--badge-on-media {
+  .product-card__badges--on-media {
+    display: var(--badges-d, flex);
+  }
+
+  .product-card__badges--on-content {
+    display: none;
+  }
+}
+
+[data-layout] .product-card--badge-on-content {
+  .product-card__badges--on-media {
+    display: none;
+  }
+
+  .product-card__badges--on-content {
+    display: var(--badges-d, flex);
+  }
+}
+
+// ─── 4. Meta visibility — mobile overrides ───────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .product-card {
+    &__metas {
+      display: var(--metas-m, flex);
+    }
+
+    &__meta--vendor {
+      display: var(--vendor-m, flex);
+    }
+
+    &__meta--type {
+      display: var(--type-m, flex);
+    }
+
+    &__price {
+      display: var(--price-m, block);
+    }
+
+    &__swatches {
+      display: var(--swatch-m, block);
+    }
+
+    // Badge mobile visibility (placement still governed by mode class)
+    &__badges--on-media {
+      --badges-d: var(--badges-m, flex);
+    }
+
+    &__badges--on-content {
+      --badges-d: var(--badges-m, flex);
+    }
+  }
+}
+
+// ─── 5. Quick add / quick view ────────────────────────────────────────────────
+
+// Mobile
+.product-card .quick-add--combine product-form-component,
+.product-card quick-view-component.quick-add--combine {
+  display: var(--quick-add-display-mobile, flex);
+}
+
+.product-card quick-view-component.quick-view {
+  display: var(--quick-view-display-mobile, flex);
+}
+
+// Desktop
+@include media-breakpoint-up(md) {
+  .product-card .quick-add--combine product-form-component,
+  .product-card quick-view-component.quick-add--combine {
+    display: var(--quick-add-display, flex);
+  }
+
+  .product-card quick-view-component.quick-view {
+    display: var(--quick-view-display, flex);
+  }
+}
+
+// ─── 6. Quick view media overlay ─────────────────────────────────────────────
+
+.product-card__media-actions {
+  position: absolute;
+  inset: 1rem;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.product-card .product-card__media .quick-add {
+  pointer-events: auto;
+  background-color: transparent;
+  position: absolute;
+}
+
+// On-media placement (quick_add_placement: 'on-media') — sit in the overlay's
+// flex flow (bottom-right via __media-actions) so it stacks with quick-view
+// instead of overlapping. Overrides the absolute scaffolding above; hover-reveal
+// (desktop) / always-visible (mobile) is inherited from the media .quick-add rules.
+.product-card .product-card__media .product-card__quick-add--on-media {
+  position: static;
+}
+
+// When an on-media quick-add is present, keep quick-view in the same flex flow
+// (not the desktop top-right pin) so both stack at the bottom-right.
+.product-card .product-card__media:has(.product-card__quick-add--on-media) .quick-view {
+  position: static;
+}
+
+@include media-breakpoint-up(md) {
+  .product-card .quick-view {
+    inset-block: 0 auto;
+    inset-inline: auto 0;
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .product-card__media-actions {
+    inset: 1rem;
+  }
+}
+
+// ─── 7. Hover effects ────────────────────────────────────────────────────────
+
+// Second image crossfade
+@media (hover: hover) {
+  .product-card__image {
+    &--first {
+      // Hidden at the END of the swap, but never faded. Both images fading at
+      // once meant that halfway through, the composite was only 75% image and
+      // 25% page behind it — a pale flash, worst on a dark photo over a light
+      // page. The one underneath now stays opaque and the incoming one simply
+      // covers it. `visibility` still carries the handover because it steps
+      // rather than interpolates: going to `hidden` it holds `visible` for the
+      // whole duration and flips at the end, by which point the top image is
+      // opaque. That flip is what keeps a transparent PNG from showing the old
+      // image through it once the swap has settled.
+      .product-card__media--has-second-image:hover & {
+        visibility: hidden;
+      }
+    }
+
+    &--second {
+      .product-card__media--has-second-image:hover & {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+  }
+
+  // Hide swatch sold-out icon on non-hover
+  .variant-option__swatch svg {
+    display: none;
+  }
+
+  [data-available-count="0"] ~ svg {
+    display: block;
+  }
+}
+
+// Quick-add fade-in on media hover
+@media (hover: hover) and (pointer: fine) {
+  .product-card .product-card__media .quick-add {
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: var(--motion-ui-fast);
+    transition-timing-function: var(--motion-ease-fade);
+  }
+
+  .product-card .quick-view {
+    transition-property: opacity;
+  }
+
+  .product-card .product-card__media:hover .quick-add {
+    opacity: 1;
+  }
+
+  .product-card .product-card__media .quick-add:focus-within {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// ─── 8. Container query adjustments (narrow cards) ───────────────────────────
+
+@container (max-width: 199px) {
+  .product-card__media-actions {
+    inset: 1rem;
+  }
+
+  .product-card .product-card__media .quick-add {
+    position: static;
+  }
+
+  .product-card__media .quick-add {
+    --button-height: 3.8rem;
+  }
+}
+
+// Grid block width fixes
+@include media-breakpoint-down(md) {
+  .grid-block--width-mobile-fit-content:has(> .grid-block-content > .product-card) {
+    width: 100%;
+  }
+
+  .product-card--standard .product-card__media .quick-add {
+    position: static;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .grid-block--width-fit-content:has(> .grid-block-content > .product-card) {
+    width: 100%;
+  }
+}
+
+// ─── 9. Special card variants ─────────────────────────────────────────────────
+
+// ── Box style ─────────────────────────────────────────────────────────────────
+// `padding-block-end` is RE-DECLARED in the md block on purpose: `padding` is a
+// shorthand, so the later md rule silently reset the bottom set above it.
+// Fallback chains to `--product-card-box-padding` — a caller passing that a
+// multi-value shorthand must set the bottom too, or it computes to 0.
+.product-card--box {
+  background: rgb(var(--color-background));
+  border-radius: var(--product-card-media-radius);
+  padding: var(--product-card-box-padding, 0.8rem);
+  padding-block-end: var(--product-card-box-padding-bottom, var(--product-card-box-padding, 0.8rem));
+
+  .product-card__media {
+    border-radius: max(0px, calc(var(--product-card-media-radius) - var(--product-card-box-padding, 0.8rem)));
+  }
+
+  @include media-breakpoint-up(md) {
+    padding: var(--product-card-box-padding, 1.2rem);
+    padding-block-end: var(--product-card-box-padding-bottom, var(--product-card-box-padding, 1.2rem));
+
+    .product-card__media {
+      border-radius: max(0px, calc(var(--product-card-media-radius) - var(--product-card-box-padding, 1.2rem)));
+    }
+  }
+}
+
+// A boxed card on the SAME background as its host has nothing marking its edge.
+// Inset shadow, not a `border`, so the ring costs no layout box — as `--fbt-border`.
+.product-card--box-border {
+  box-shadow: inset 0 0 0 0.1rem rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+// ── Bundle ────────────────────────────────────────────────────────────────────
+.product-card--bundle {
+  min-width: 0;
+
+  // No wrapper `gap` here any more: this card now carries the same
+  // `product-card--vertical` / `--mobile-horizontal` classes as every other one, so
+  // the layout mixins supply the media→content spacing themselves. Keeping the gap
+  // on top of the mixin's `margin-block-end` double-spaced the stacked card.
+}
+
+// ── Bundle ↔ grid-contract bridge ─────────────────────────────────────────────
+// The layout mixins are written for a wrapper whose direct children are __media /
+// __content / __actions. This card nests both its content and its form inside
+// __content-wrap, so every mixin rule aimed at __content lands one level too deep.
+// These carry those rules to the element that IS the grid item, at 0-3-0 (two
+// classes on the root + the target) to outrank the mixin's own 0-2-0.
+// Everything here hangs off the layout modifier, never off a breakpoint: the thumb
+// width and the alignment are traits of the ARRANGEMENT, and a caller may now ask
+// for either one at either breakpoint.
+
+@mixin bundle-card-horizontal {
+  padding-inline-end: 0.1rem;
+
+  .product-card__media {
+    width: var(--product-card-media-width, 8rem);
+    border-radius: min(1rem, var(--product-card-media-radius));
+  }
+
+  // The offset belongs on the grid item, or the form under the content stays flush
+  // against the media while the text beside it is indented.
+  .product-card__content {
+    margin-inline-start: 0;
+  }
+
+  .product-card__content-wrap {
+    margin-inline-start: var(--product-card-media-gap, 1.2rem);
+  }
+}
+
+@mixin bundle-card-vertical {
+  // On the WRAP, so the form controls under the content follow the alignment as
+  // they always did.
+  .product-card__content-wrap {
+    text-align: var(--content-text-align, start);
+  }
+
+  .product-card__form {
+    align-items: var(--content-alignment);
+  }
+}
+
+.product-card--bundle.product-card--horizontal {
+  @include media-breakpoint-up(md) {
+    @include bundle-card-horizontal;
+  }
+}
+
+.product-card--bundle.product-card--mobile-horizontal {
+  @include media-breakpoint-down(md) {
+    @include bundle-card-horizontal;
+  }
+}
+
+.product-card--bundle.product-card--vertical {
+  @include media-breakpoint-up(md) {
+    @include bundle-card-vertical;
+  }
+}
+
+.product-card--bundle.product-card--mobile-vertical {
+  @include media-breakpoint-down(md) {
+    @include bundle-card-vertical;
+  }
+}
+
+// This card has no __actions column, so a caller that pins badges on the media means
+// it in both arrangements — but `card-layout-horizontal` hides __badges--on-media,
+// since the standard card moves them into the content column there. Only the pinned
+// case is restored; `badge_placement: 'auto'` keeps the mixin's behaviour.
+.product-card--bundle.product-card--badge-on-media .product-card__badges--on-media {
+  display: block;
+}
+
+// ── FBT card chrome (`style: 'card'`) ─────────────────────────────────────────
+.product-card--fbt-card {
+  background-color: transparent;
+
+  .product-card {
+    &__wrapper {
+      padding-block: var(--fbt-card-padding-block, 1.4rem);
+      padding-inline: var(--fbt-card-padding-inline, 1.4rem 1.6rem);
+      border-radius: min(1rem, var(--product-card-media-radius));
+      background-color: rgb(var(--color-background));
+      transition: box-shadow var(--motion-ui) var(--motion-ease);
+    }
+
+    &__media {
+      width: var(--product-card-media-width, 8rem);
+      border-radius: min(1rem, var(--product-card-media-radius));
+    }
+
+    &__form {
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity var(--motion-ui) var(--motion-ease-fade),
+        visibility var(--motion-ui) var(--motion-ease);
+    }
+  }
+
+  .product-bought-together__checkbox {
+    --choice-input-size: 2.4rem;
+
+    border-radius: min(var(--input-border-radius), 0.4rem);
+  }
+
+  &:has(.product-bought-together__checkbox:checked) {
+    .product-card {
+      // The ring is the SELECTION signal here, not decoration, so it is drawn
+      // whatever the scheme comparison decided about the resting edge below — a card
+      // that drops its resting ring because it paints its own background still has to
+      // show that it is chosen.
+      &__wrapper {
+        box-shadow: inset 0 0 0 0.1rem rgb(var(--color-border) / 100%);
+      }
+
+      &__form {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
+  }
+
+  @include media-breakpoint-up(md) {
+    --product-card-media-width: 10rem;
+  }
+}
+
+// ── FBT card axes ─────────────────────────────────────────────────────────────
+// `product-card-fbt-markup` renders ONE markup contract and varies only its
+// arrangement and its controls. These are the structural halves of that; sizes,
+// radii and colours stay with whoever hosts the card.
+
+// The media → content gutter, on every FBT card whatever its chrome — the wrapper
+// carries `flex` from a utility class and had no gap at all, so the two sat flush.
+// Through the shared `--product-card-wrapper-gap` so a host can retune it without
+// reaching into this file (the `standard` design wants 1.2rem, per Figma).
+.product-card--fbt {
+  .product-card__wrapper {
+    gap: var(--product-card-wrapper-gap, 1.6rem);
+  }
+
+  // __content / __form / __checkbox are placed by area, so a host switches the
+  // arrangement with one `grid-template-areas` (see `_block-product-bought-together`)
+  // instead of flipping `flex-direction` on two nested boxes. Side by side by default.
+  // Spacing is MARGIN on the items, never `gap`: content→form and content→checkbox are
+  // different distances, and a single `gap` — which is all one grid gets per axis —
+  // cannot hold both.
+  .product-card__content-wrap {
+    display: grid;
+    grid-template-areas:
+      "content checkbox"
+      "form    checkbox";
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-content: center;
+  }
+
+  .product-card__content {
+    grid-area: content;
+    min-width: 0;
+  }
+
+  // `justify-content`, not the `align-items` the bundle card's form uses: this one is a
+  // flex ROW (select + quantity), so the inline axis is the main axis. Same reason the
+  // control below needs it — `__content`'s `align-items` cannot reach either of them.
+  .product-card__form {
+    grid-area: form;
+    min-width: 0;
+    margin-block-start: var(--fbt-card-form-gap, 0.6rem);
+    justify-content: var(--content-alignment, flex-start);
+  }
+
+  .product-card__checkbox {
+    grid-area: checkbox;
+    align-self: center;
+    margin-inline-start: var(--fbt-card-control-gap, 1.6rem);
+  }
+}
+
+// The Add / Added control is a row of its own, so it needs `justify-content` to follow
+// the setting the text follows through `align-items`. It only moves where the host has
+// stretched this box to the full column — stacked, in other words; beside the media it
+// is shrink-to-fit and this is inert either way. Left at 0-1-0 so the horizontal
+// resets below out-specify it whatever the source order.
+.product-card__checkbox {
+  justify-content: var(--content-alignment, flex-start);
+}
+
+// The RESTING edge — decoration only, and only when nothing else marks it: the snippet
+// withholds this class once the card's own background differs from its host's, where a
+// permanent hairline would just be noise. The selected ring is separate, above.
+// `inset`, not an outer ring: an outer one is painted outside the border box and any
+// ancestor with `overflow: hidden`/`clip` shaves it off, which is exactly what a card
+// sitting in a scroll row or a clipped panel does. Inset paints inside the same box
+// the radius already rounds, costs no layout, and cannot be clipped.
+.product-card--fbt-border .product-card__wrapper {
+  box-shadow: inset 0 0 0 0.1rem rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+// Title → price, tightened only where the card is a horizontal `card` (Figma 4 vs the
+// shared 0.8rem default). Both halves of the condition matter: stacked, the two lines
+// need the default room back; and the `standard` design draws 8 even horizontally, so
+// this cannot key off the layout axis alone.
+.product-card--fbt-card.product-card--fbt-horizontal {
+  @include media-breakpoint-up(md) {
+    --product-card-content-gap: 0.4rem;
+  }
+}
+
+.product-card--fbt-card.product-card--fbt-horizontal-mobile {
+  @include media-breakpoint-down(md) {
+    --product-card-content-gap: 0.4rem;
+  }
+}
+
+// Vertical: media above the content instead of beside it. The wrapper carries the
+// utility classes `flex items-center`, so these need 0-2-0 to override them —
+// which is also why the modifier sits on the ROOT and not on the wrapper itself.
+@mixin fbt-card-vertical {
+  .product-card__wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  // Released from the fixed `--product-card-media-width` the horizontal card pins,
+  // and from `shrink-0`, so the media fills the column it now heads.
+  .product-card__media {
+    width: 100%;
+  }
+}
+
+// `layout` owns md and up, `layout_mobile` owns below md — the two never overlap, so
+// `layout: vertical` + `layout_mobile: horizontal` resolves the way it reads. Scoping
+// `layout` to `up(md)` is what makes that work: unscoped it would also win on mobile,
+// where nothing would be left to undo it.
+// The stacked arrangement is where `pcard_content_alignment` reads, so the card
+// declares it (see `product-card-fbt-markup`) and the rules above pick it up. Nothing
+// to add for that side — but the horizontal one has to hand it back, or a card that is
+// stacked on one breakpoint would centre on the other too.
+@mixin fbt-card-content-alignment-reset {
+  .product-card__content {
+    @include card-content-alignment-reset;
+  }
+
+  .product-card__form,
+  .product-card__checkbox {
+    justify-content: flex-start;
+  }
+}
+
+.product-card--fbt-horizontal {
+  @include media-breakpoint-up(md) {
+    @include fbt-card-content-alignment-reset;
+  }
+}
+
+.product-card--fbt-horizontal-mobile {
+  @include media-breakpoint-down(md) {
+    @include fbt-card-content-alignment-reset;
+  }
+}
+
+.product-card--fbt-vertical {
+  @include media-breakpoint-up(md) {
+    @include fbt-card-vertical;
+  }
+}
+
+.product-card--fbt-vertical-mobile {
+  @include media-breakpoint-down(md) {
+    @include fbt-card-vertical;
+  }
+}
+
+// Toggle as a button: the focusable element is still the checkbox, so the two faces
+// switch off `.is-selected` — which `products-bundle.js` sets on the <product-card>,
+// never on the label — and every rule here is an ancestor-descendant selector.
+.product-card--fbt-toggle-button {
+  .product-card__toggle-face {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .product-card__toggle-face--added {
+    display: none;
+  }
+
+  &.is-selected {
+    .product-card__toggle-face--add {
+      display: none;
+    }
+
+    .product-card__toggle-face--added {
+      display: inline-flex;
+    }
+  }
+
+  // The checkbox is `.visually-hidden` at 2x2px with a clip-path, so the focus ring
+  // `_component-form.scss` gives every checkbox paints nothing — a keyboard user would
+  // get no feedback at all on the card's primary control (WCAG 2.4.7). `:focus-within`
+  // cannot help: the input is the label's SIBLING, not its child, so the ring is
+  // forwarded with `+`. Two-tone because `--color-focus-ring` is a fixed blue, not
+  // per-scheme, and needs an inner band to stay visible on a dark card.
+  .product-bought-together__checkbox:focus-visible + .product-card__toggle {
+    box-shadow:
+      0 0 0 0.2rem rgb(var(--color-foreground)),
+      0 0 0 0.4rem rgb(var(--color-focus-ring));
+  }
+}
+
+// ── Solid background (mobile) ─────────────────────────────────────────────────
+@include media-breakpoint-down(md) {
+  .product-card--mobile-solid {
+    --media-width: 8rem;
+    --product-card-wrapper-gap: 1.2rem;
+
+    background: rgb(var(--color-background-secondary));
+    border-radius: min(1rem, var(--product-card-media-radius));
+    padding: 0.8rem;
+    padding-inline-end: 1.6rem;
+  }
+}
+
+// ─── Quick add button visibility ──────────────────────────────────────────────
+// For single-option multi-variant products: toggle between ATC and Choose Options.
+// <quick-add-component data-quick-add-button="add|choose"> precedes
+// <quick-view-component class="quick-add--combine"> as DOM siblings.
+
+quick-add-component[data-quick-add-button="choose"] add-to-cart-component {
+  display: none;
+}
+
+quick-add-component[data-quick-add-button="add"] ~ quick-view-component.quick-add--combine {
+  display: none;
+}
+
+// ─── Selection card controls ──────────────────────────────────────────────────
+// Keyed on the element, not `.product-card__form` — `product-card-bundle-markup`
+// carries that class too and keeps its own stacked layout. `display: flex` is
+// load-bearing: a custom element is inline by default.
+
+product-bundle-selection {
+  display: flex;
+  gap: 0.6rem;
+}
+
+// 140, not the card's ~160: a size container query resolves against the container's
+// CONTENT box, so the box padding is already subtracted (and `@container` cannot
+// take `var()`). A tuned threshold — re-measure if that padding changes.
+@container (max-width: 140px) {
+  product-bundle-selection {
+    flex-direction: column;
+  }
+}
+
+.product-card {
+  .price--on-sale:not(.price--sale-badge-inline) .price__sale:has(.price__sale-badge) {
+    align-items: var(--content-alignment);
+  }
+}

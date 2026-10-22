@@ -1,0 +1,36 @@
+{%- liquid
+  assign featured_media = product.featured_media
+
+  # Non-image media (video / external_video / model) only expose dimensions via preview_image.
+  if featured_media.media_type != 'image'
+    assign featured_media = product.featured_media.preview_image
+  endif
+-%}
+<li
+  class="compare-bar__item"
+  data-compare-bar-item-id="{{ product.id }}"
+>
+  <div class="compare-bar__item-container relative flex items-start gap-3">
+    <a
+      href="{{ product.url }}"
+      class="compare-bar__item-media shrink-0"
+    >
+      {% render 'responsive-image', image: featured_media, image_ratio: '1', sizes: '70px' %}
+    </a>
+    <div class="compare-bar__item-content flex flex-col gap-1 flex-grow min-w-0">
+      <a href="{{ product.url }}" class="compare-bar__item-title text-body-sm text-limit-2-lines reversed-link">
+        <span class="reversed-link__text">{{- product.title -}}</span>
+      </a>
+      {% render 'price', product_resource: product, use_variant: false %}
+    </div>
+    <button
+      type="button"
+      is="compare-remove"
+      data-product-id="{{ product.id }}"
+      class="compare-bar__item-remove button-unstyled cursor-pointer"
+      aria-label="{{ 'accessibility.remove_item' | t: title: product.title }}"
+    >
+      {% render 'icon', icon: 'close', size: 'small' %}
+    </button>
+  </div>
+</li>

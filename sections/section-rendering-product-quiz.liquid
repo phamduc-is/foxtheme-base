@@ -1,0 +1,82 @@
+{% comment %}
+  Standalone Section Rendering API data endpoint for the `finder-quiz` and `recommendation-quiz`
+  sections (`<product-quiz>`). Never placed.
+
+  Fetched via `sectionRenderer.getSectionHTML('section-rendering-product-quiz', false, url)`:
+    - Store-filter mode: `url` is the quiz collection URL + the cumulative `filter.*` params, so
+      `collection` resolves to that collection with the shopper's answers applied — Shopify
+      recomputes every filter's value counts against the active selection (mirror:
+      section-rendering-product-finder.liquid).
+    - Product-list mode (and the fallback products): `url` is
+      `/search?type=product&q=id:1 OR id:2 …`, so `search.results` holds exactly those products.
+
+  Emits, all inside `<div hidden>`:
+    1. `[data-quiz-filter]` per collection filter, with a `[data-value]` span per value whose
+       count is above 0 (collection context only). Every filter is listed, the availability one
+       (`filter.v.availability`) included: the runtime detects it there and then adds
+       `filter.v.availability=1` to its cascade and results URLs;
+    2. `[data-quiz-products]` — the first 12 AVAILABLE products (sold-out ones are skipped in
+       both modes) as `snippets/product-quiz-row.liquid`. The runtime trims to the section's
+       `results_limit` and, in product-list mode, re-orders to its own id order (search order is
+       relevance, not ours). Liquid cannot read an arbitrary query param, so the cap is fixed here.
+{% endcomment %}
+{%- liquid
+  assign max_rows = 12
+  assign rendered = 0
+-%}
+<div hidden>
+  {%- if collection -%}
+    <div data-quiz-filters>
+      {%- for filter in collection.filters -%}
+        <div data-quiz-filter data-param-name="{{ filter.param_name }}" data-label="{{ filter.label | escape }}">
+          {%- for value in filter.values -%}
+            {%- if value.count > 0 -%}
+              <span
+                data-value="{{ value.value | escape }}"
+                data-label="{{ value.label | escape }}"
+                data-count="{{ value.count }}"
+              ></span>
+            {%- endif -%}
+          {%- endfor -%}
+        </div>
+      {%- endfor -%}
+    </div>
+    <div data-quiz-products>
+      {%- paginate collection.products by 24 -%}
+        {%- for product in collection.products -%}
+          {%- if product.available -%}
+            {% render 'product-quiz-row', product: product %}
+            {%- assign rendered = rendered | plus: 1 -%}
+            {%- if rendered >= max_rows -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endpaginate -%}
+    </div>
+  {%- elsif search.performed -%}
+    <div data-quiz-products>
+      {%- paginate search.results by 24 -%}
+        {%- for item in search.results -%}
+          {%- if item.object_type == 'product' and item.available -%}
+            {% render 'product-quiz-row', product: item %}
+            {%- assign rendered = rendered | plus: 1 -%}
+            {%- if rendered >= max_rows -%}
+              {%- break -%}
+            {%- endif -%}
+          {%- endif -%}
+        {%- endfor -%}
+      {%- endpaginate -%}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.product_quiz_rendering",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": []
+}
+{% endschema %}

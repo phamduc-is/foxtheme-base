@@ -1,0 +1,112 @@
+[
+  {
+    "file": "src/js/modules/carousel-centered-slider.js",
+    "kind": "class",
+    "expr": "params.slideClass"
+  },
+  {
+    "file": "src/js/modules/carousel.js",
+    "kind": "class",
+    "expr": "this.slideClass"
+  },
+  {
+    "file": "src/js/modules/carousel.js",
+    "kind": "class",
+    "expr": "this.slideClass"
+  },
+  {
+    "file": "src/js/modules/carousel.js",
+    "kind": "unescaped",
+    "expr": "targetBreakpoint"
+  },
+  {
+    "file": "src/js/modules/carousel.js",
+    "kind": "unescaped",
+    "expr": "name"
+  },
+  {
+    "file": "src/js/modules/carousel.js",
+    "kind": "unescaped",
+    "expr": "name"
+  },
+  {
+    "file": "src/js/modules/carousel.js",
+    "kind": "class",
+    "expr": "this.slideClass"
+  },
+  {
+    "file": "src/js/modules/carousel.js",
+    "kind": "class",
+    "expr": "this.slideClass"
+  },
+  {
+    "file": "src/js/modules/compare.js",
+    "kind": "unescaped",
+    "expr": "productId"
+  },
+  {
+    "file": "src/js/modules/compare.js",
+    "kind": "unescaped",
+    "expr": "row.dataset.compareKey"
+  },
+  {
+    "file": "src/js/modules/component.js",
+    "kind": "unescaped",
+    "expr": "event.type"
+  },
+  {
+    "file": "src/js/modules/local-pickup.js",
+    "kind": "unescaped",
+    "expr": "variantId"
+  },
+  {
+    "file": "src/js/modules/media-gallery.js",
+    "kind": "unescaped",
+    "expr": "mediaId"
+  },
+  {
+    "file": "src/js/modules/media-gallery.js",
+    "kind": "unescaped",
+    "expr": "mediaId"
+  },
+  {
+    "file": "src/js/modules/product-card.js",
+    "kind": "unescaped",
+    "expr": "this.dataset.productId"
+  },
+  {
+    "file": "src/js/modules/product-recommendations.js",
+    "kind": "unescaped",
+    "expr": "id"
+  },
+  {
+    "file": "src/js/modules/slideshow.js",
+    "kind": "unescaped",
+    "expr": "oldValue"
+  },
+  {
+    "file": "src/js/modules/slideshow.js",
+    "kind": "unescaped",
+    "expr": "newValue"
+  },
+  {
+    "file": "src/js/modules/sticky-add-to-cart.js",
+    "kind": "unescaped",
+    "expr": "productId"
+  },
+  {
+    "file": "src/js/modules/sticky-add-to-cart.js",
+    "kind": "unescaped",
+    "expr": "sectionId"
+  },
+  {
+    "file": "src/js/modules/sticky-add-to-cart.js",
+    "kind": "unescaped",
+    "expr": "productId"
+  },
+  {
+    "file": "src/js/modules/variant-picker.js",
+    "kind": "unescaped",
+    "expr": "target"
+  }
+]

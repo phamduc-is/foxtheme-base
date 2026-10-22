@@ -1,0 +1,62 @@
+<template data-compare-placeholder-row-template>
+  <table>
+    <tr>
+      {%- for block in section.blocks -%}
+        <td
+          class="compare-table__col compare-table__col--type-{{ block.type }}"
+          data-compare-key="{{ block.type }}"
+        >
+          {%- case block.type -%}
+            {%- when 'info' -%}
+              <div class="compare-table__col-media relative">
+                <div
+                  class="compare-table__col-image border-style"
+                  style="{% render 'border-style', border_radius: block.settings.image_border_radius %}"
+                >
+                  {% render 'responsive-image', image: blank, image_ratio: '1', svg_placeholder: 'product-1' %}
+                </div>
+                <button
+                  class="compare-table__col-remove btn btn--white rounded btn--no-label"
+                  aria-label="{{ 'actions.remove' }}"
+                >
+                  {% render 'icon', icon: 'close', size: 'extra-small' %}
+                </button>
+              </div>
+              <div class="compare-table__col-info text-center">
+                <h3 class="product-card__title">
+                  <a class="reversed-link block" role="button">
+                    <span class="reversed-link__text">{{- 'placeholders.product_title' | t -}}</span>
+                  </a>
+                </h3>
+                {%- if block.settings.enable_view_details_button -%}
+                  <a role="button" class="btn btn--primary w-full">
+                    <span class="btn__text flex gap-1 items-center" data-label="{{ 'actions.view_details' | t | escape }}">
+                      {{- 'actions.view_details' | t -}}
+                    </span>
+                  </a>
+                {%- endif -%}
+              </div>
+            {%- when 'price' -%}
+              {% render 'price', product_resource: blank %}
+            {%- when 'description' -%}
+              {%- assign children = 'placeholders.product_description' | t -%}
+              {%- if block.settings.show_view_more_button and block.settings.text_line_limit != 'none' -%}
+                {% render 'collapse-text-markup',
+                  children: children,
+                  line_limit: block.settings.text_line_limit,
+                  content_class: 'rte',
+                  toggle_style: 'link'
+                %}
+              {%- else -%}
+                <div class="rte text-limit-{{ block.settings.text_line_limit }}">
+                  {{- children -}}
+                </div>
+              {%- endif -%}
+            {%- else -%}
+              N/A
+          {%- endcase -%}
+        </td>
+      {%- endfor -%}
+    </tr>
+  </table>
+</template>

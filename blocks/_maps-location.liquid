@@ -1,0 +1,121 @@
+{% doc %}
+  One branch ("Location") of the `maps` parent block.
+
+  Renders TWO fragments separated by "maps/split" HTML marker comments, because a parent block
+  cannot read a nested block's settings (block.blocks yields opaque theme-block handles whose settings
+  are blank). The parent captures `content_for 'blocks'`, splits on the marker and routes each half:
+  fragment 1 = the `<option>` that goes inside the card's `<select>`; fragment 2 = the info panel
+  that goes inside the card.
+
+  This block carries NO fixed content settings — only what the PARENT needs (`name` for the dropdown
+  label, `map_query` for the map URL). The card's body is composed by the merchant from nested blocks
+  rendered by `content_for 'blocks'` INSIDE the panel fragment, so phone numbers, parking notes or
+  holiday hours are just more blocks rather than a capped set of fields.
+
+  `block.shopify_attributes` sits on fragment 2 only (one half — the disclosure/tabs convention). No
+  index is emitted anywhere: JS pairs `select.selectedIndex` with `panels[selectedIndex]`, so DOM order
+  is the contract.
+
+  IMPORTANT — the panel ships `hidden="hidden"` so exactly one panel is visible before JS runs; the PARENT strips that exact token from the FIRST
+  panel it routes (`blocks/maps.liquid`). Keep `hidden="hidden"` as a single unbroken token — it is a string contract between the two files.
+  It is also the FIRST attribute-like text in the fragment, so the parent's `replace_first` can never
+  hit something a nested block emitted instead.
+
+  @example
+  {% content_for 'block', type: '_maps-location', id: 'location' %}
+{% enddoc %}
+
+{%- liquid
+  assign settings = block.settings
+
+  assign name = settings.name
+
+  capture map_title
+    echo 'blocks.maps.map_title' | t: name: name
+  endcapture
+-%}
+<!-- @maps/split -->
+<option value="{{ block.id }}" data-map-query="{{ settings.map_query | escape }}" data-map-title="{{ map_title | escape }}">
+  {{- name | escape -}}
+</option>
+<!-- @maps/split -->
+<div class="maps__panel gap-style" ref="panels[]" hidden="hidden" {{ block.shopify_attributes }}>
+  {% content_for 'blocks' %}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.maps_location",
+  "tag": null,
+  "blocks": [{ "type": "text" }],
+  "settings": [
+    { "type": "header", "content": "t:content.content" },
+    {
+      "type": "text",
+      "id": "name",
+      "label": "t:settings.heading",
+      "info": "t:info.maps_location_name",
+      "default": "New York"
+    },
+    {
+      "type": "text",
+      "id": "map_query",
+      "label": "t:settings.map_query",
+      "info": "t:info.maps_map_query",
+      "default": "6100 Wilshire Blvd, Los Angeles"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.maps_location",
+      "blocks": {
+        "name": {
+          "type": "text",
+          "name": "t:names.heading",
+          "settings": {
+            "text": "<p>New York</p>",
+            "type_preset": "h5",
+            "text_color": "text",
+            "width": "100%",
+            "width_mobile": "100%"
+          }
+        },
+        "address": {
+          "type": "text",
+          "settings": {
+            "text": "<p>6100 Wilshire Blvd 2nd Floor CA 9004 +1 310 499 7700</p>",
+            "type_preset": "rte",
+            "text_color": "subtext",
+            "width": "100%",
+            "width_mobile": "100%"
+          }
+        },
+        "hours_heading": {
+          "type": "text",
+          "name": "t:names.heading",
+          "settings": {
+            "text": "<p>Opening Hours</p>",
+            "type_preset": "h5",
+            "text_color": "text",
+            "width": "100%",
+            "width_mobile": "100%",
+            "padding-block-start": 16,
+            "mobile-padding-scale": 75
+          }
+        },
+        "hours": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Monday-Saturday 11am–7pm ET<br>Sunday 11am–6pm ET</p>",
+            "type_preset": "rte",
+            "text_color": "subtext",
+            "width": "100%",
+            "width_mobile": "100%"
+          }
+        }
+      },
+      "block_order": ["name", "address", "hours_heading", "hours"]
+    }
+  ]
+}
+{% endschema %}

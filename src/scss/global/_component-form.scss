@@ -1,0 +1,410 @@
+// @capability Complete form control kit — custom-drawn checkboxes/radios, .form-control text inputs and grouped inputs, styled selects with masked arrow (blank/outline/small variants), toggle switch, focus styles, error/success/warning messages, and the iOS input-zoom fix.
+// @when ANY form field, newsletter input, select dropdown, checkbox/radio, or toggle; compose these classes instead of styling inputs per feature. Pure CSS states, no pairing JS.
+// @contract .form-control / .form-control-group / .form-control-element, .select (--blank/--outline/--small) wrapping a native select, .switch > .switch__checkbox + .switch__slider, .form-label, .form-field__choice, .form-message--error/--success/--warning.
+// @keywords form, input, checkbox, radio, select dropdown, toggle switch, textarea, focus ring, validation message, error state, iOS zoom fix
+
+@use "../mixins" as *;
+
+// ─── Label ────────────────────────────────────────────────────────────────────
+
+label[for] {
+  cursor: pointer;
+
+  &:has([disabled]) {
+    cursor: not-allowed;
+  }
+}
+
+// ─── Base inputs ─────────────────────────────────────────────────────────────
+
+input,
+textarea,
+select {
+  font: inherit;
+  background-color: rgb(var(--color-input-background));
+  color: rgb(var(--color-input-text));
+}
+
+input,
+input.form-control {
+  &:is([type="checkbox"], [type="radio"]) {
+    --input-border-color: rgb(var(--color-foreground), 1);
+    --input-background-color: rgb(var(--color-background), 1);
+
+    appearance: none;
+    width: var(--choice-input-size, 2rem);
+    height: var(--choice-input-size, 2rem);
+    margin: 0;
+    padding: 0;
+    background-color: rgb(
+      var(--input-active-color, var(--color-background)) / var(--input-active-alpha, var(--color-background-alpha, 1))
+    );
+    border-width: 0.1rem;
+    border-style: solid;
+    border-color: rgb(
+      var(--input-active-color, var(--color-foreground)) /
+        var(--input-active-border-alpha, var(--color-foreground-alpha, 100%))
+    );
+    display: inline-flex;
+    position: relative;
+    transition-property: background-color, border-color, box-shadow;
+    transition-duration: var(--motion-ui);
+    transition-timing-function: var(--motion-ease);
+    cursor: pointer;
+
+    &[disabled] {
+      cursor: not-allowed;
+    }
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+    }
+  }
+
+  &:is([type="checkbox"])::after {
+    border: 0.2rem solid rgb(var(--color-background));
+    border-inline-start: 0;
+    border-block-start: 0;
+    width: calc(var(--choice-input-size, 2rem) * 0.3);
+    height: calc(var(--choice-input-size, 2rem) * 0.6);
+    transform: translate(-50%, -65%) rotate(43deg) scaleX(var(--flip-x-factor));
+  }
+
+  &:is([type="radio"])::after {
+    border-radius: 50%;
+    width: 50%;
+    height: 50%;
+    background: rgb(var(--color-background));
+    transform: translate(-50%, -50%);
+  }
+
+  &:is([type="checkbox"], [type="radio"]) {
+    &:checked {
+      --input-active-color: var(--color-foreground);
+    }
+
+    &:focus {
+      box-shadow: none;
+    }
+
+    &:hover {
+      box-shadow: 0 0 0 3px rgb(var(--color-foreground) / 10%);
+    }
+
+    &:focus-visible {
+      box-shadow: 0 0 0 2px rgb(var(--color-focus-ring));
+    }
+  }
+}
+
+input:is([type="checkbox"]) {
+  border-radius: min(var(--input-border-radius), 0.2rem);
+  border-style: solid;
+}
+
+input:is([type="radio"]) {
+  border-radius: 50%;
+  border-style: solid;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+// ─── Form control ─────────────────────────────────────────────────────────────
+
+.form-control,
+.form-control-group {
+  height: var(--input-height, 5rem);
+  padding: var(--input-padding-block) var(--input-padding-inline);
+  line-height: var(--input-line-height, var(--font-paragraph--line-height, 1.6));
+  box-shadow: inset 0 0 0 var(--input-border-width) var(--input-border-color);
+  border: 0 var(--input-border-style, solid) var(--input-border-color, currentcolor);
+  border-radius: var(--input-border-radius, 0);
+  background-color: rgb(var(--color-input-background));
+  color: rgb(var(--color-input-text));
+  transition-property: color, background-color, box-shadow;
+  transition-duration: var(--motion-ui);
+  transition-timing-function: var(--motion-ease);
+}
+
+.form-control-group {
+  padding: 0;
+
+  :is(input, select, textarea) {
+    outline: 0;
+  }
+}
+
+.form-control-element {
+  height: var(--input-height, 5rem);
+  padding: var(--input-padding-block) var(--input-padding-inline);
+  color: inherit;
+  background-color: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transition: none;
+}
+
+.select:has(select.form-control-element)::after {
+  background-color: currentcolor;
+}
+
+// ─── Select ───────────────────────────────────────────────────────────────────
+
+.select {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    inset-inline-end: var(--input-padding-inline);
+    background-color: rgb(var(--color-input-text));
+    mask-image: var(--select-arrow-icon);
+    width: var(--select-arrow-size);
+    aspect-ratio: 1;
+    pointer-events: none;
+    transition-property: background-color;
+    transition-duration: var(--motion-ui);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  select {
+    appearance: none;
+    padding-inline-end: calc(var(--input-padding-inline) + var(--select-arrow-size) + var(--select-arrow-gap));
+    cursor: pointer;
+    max-width: 100%;
+    text-overflow: ellipsis;
+  }
+
+  &--blank {
+    &::after {
+      inset-inline-end: 0;
+      background-color: rgb(var(--color-foreground));
+    }
+
+    select {
+      border: 0;
+      box-shadow: none;
+      border-radius: 0;
+      padding-block: 0;
+      padding-inline: 0 calc(var(--select-arrow-size) + var(--select-arrow-gap));
+      height: auto;
+      color: rgb(var(--color-foreground));
+      background-color: transparent;
+
+      &:focus {
+        box-shadow: inset 0 -0.1rem 0 0 rgb(var(--color-foreground));
+      }
+
+      // Windows draws the option popup itself: options inherit the select's
+      // foreground but not its transparent background, so a dark scheme gives
+      // white text on the system's white popup. macOS's native menu ignores both.
+      option {
+        background-color: rgb(var(--color-background));
+        color: rgb(var(--color-foreground));
+      }
+    }
+  }
+
+  &--outline {
+    // The base arrow is `--color-input-text`, which pairs with the filled input
+    // surface. This variant is transparent and sits on the scheme background, so
+    // the arrow has to follow the text to `--color-foreground` — exactly what
+    // `--blank` already does above. Without it, any scheme whose `input_text`
+    // differs from `foreground` draws the arrow in the wrong colour; in
+    // `scheme-inverse` (background #000, foreground #fff, input_text #000) that
+    // is a black arrow on black, i.e. invisible from shipped defaults alone.
+    &::after {
+      background-color: rgb(var(--color-foreground));
+    }
+
+    select {
+      background-color: transparent;
+      color: rgb(var(--color-foreground));
+      box-shadow: inset 0 0 0 var(--input-border-width) rgb(var(--color-foreground) / 20%);
+    }
+  }
+
+  &--small {
+    --input-padding-block: 0.4rem;
+    --input-height: 4rem;
+
+    select {
+      padding-inline-end: 3.6rem;
+    }
+  }
+
+  &--sizing-content select {
+    field-sizing: content; // JS fallback needed.
+  }
+
+  // The wrapper is `width: fit-content`; the `.w-full` utility widens it but the
+  // control keeps its intrinsic width, so it has to be stretched too.
+  &.w-full select {
+    width: 100%;
+  }
+}
+
+textarea.form-control {
+  --input-height: auto;
+
+  display: block;
+  resize: vertical;
+  width: 100%;
+  min-height: var(--textareas-min-height, 0);
+  border-radius: var(--textareas-radius);
+}
+
+// ─── Toggle switch ─────────────────────────────────────────────────────────────
+
+.switch {
+  &__slider {
+    position: relative;
+    display: inline-block;
+    width: 4.8rem;
+    height: 2.4rem;
+    border-radius: 10rem;
+    background-color: rgb(var(--color-foreground) / 15%);
+    transition: background-color var(--motion-ui-fast) var(--motion-ease);
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0.2rem;
+      inset-inline-start: 0.2rem;
+      height: 2rem;
+      width: 2rem;
+      border-radius: 50%;
+      background: rgb(var(--color-background));
+      transition: transform var(--motion-ui-fast) var(--motion-ease-out);
+    }
+  }
+
+  .switch__checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  &:has(:checked) {
+    .switch__slider {
+      background-color: rgb(var(--color-foreground));
+
+      &::before {
+        transform: translateX(calc(2.4rem * var(--flip-x-factor)));
+      }
+    }
+  }
+}
+
+// ─── Form helpers ─────────────────────────────────────────────────────────────
+
+.form-label {
+  display: block;
+  margin-block-end: 0.8rem;
+}
+
+.form-field__choice {
+  display: inline-flex;
+  align-items: center;
+}
+
+.form-field__choice .form-label {
+  margin-block-end: 0;
+  padding-inline-start: 0.8rem;
+}
+
+.form-control:focus,
+.form-control:focus-visible,
+.form-control-group:has(:focus, :focus-visible),
+.quantity-selector .quantity-input:focus,
+.quantity-selector .quantity-input:focus-visible {
+  outline: 0;
+  box-shadow: inset 0 0 0 var(--input-border-width) rgb(var(--color-foreground));
+  color: rgb(var(--color-input-focus-text));
+  background-color: rgb(var(--color-input-focus-background, var(--color-background)));
+}
+
+.form-control-group:has(:focus, :focus-visible) .select,
+.select:has(:focus, :focus-visible) {
+  &::after {
+    background-color: rgb(var(--color-input-focus-text));
+  }
+}
+
+// ─── Form message ─────────────────────────────────────────────────────────────
+
+.form-message {
+  display: flex;
+
+  &:not(:is(h1, h2, h3, h4, h5, h6)) {
+    font-size: var(--font-size--paragraph, 1.4rem);
+  }
+
+  .form-field & {
+    margin-top: var(--spacing-2, 0.8rem);
+  }
+}
+
+.form-message--small {
+  font-size: var(--font-size--paragraph-small, 1.2rem);
+}
+
+.form-message--error {
+  color: rgb(var(--color-notification-error, 196, 48, 28));
+}
+
+.form-message--success {
+  color: rgb(var(--color-notification-success, 13, 135, 86));
+}
+
+.form-message--warning {
+  color: rgb(var(--color-notification-warning, 206, 161, 0));
+}
+
+.customer {
+  .form-message {
+    .icon {
+      transform: translateY(3px);
+    }
+  }
+}
+
+// ─── iOS zoom fix ─────────────────────────────────────────────────────────────
+// Prevents iOS from zooming in on input focus when font-size < 16px.
+
+@supports (-webkit-overflow-scrolling: touch) {
+  input:where(
+    [type="text"],
+    [type="email"],
+    [type="url"],
+    [type="password"],
+    [type="search"],
+    [type="number"],
+    [type="tel"]
+  ),
+  select,
+  textarea {
+    font-size: max(16px, var(--font-size--paragraph)) !important;
+  }
+}
+
+// ─── Third-party overrides ────────────────────────────────────────────────────
+
+input[type="checkbox"].foxkit-checkbox {
+  background-color: rgb(
+    var(--input-active-color, var(--color-background)) / var(--input-active-alpha, var(--color-background-alpha, 1))
+  ) !important;
+}

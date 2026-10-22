@@ -1,0 +1,109 @@
+{% render 'cart-drawer-recommendation', section: section, block_settings: block.settings, block_attributes: block.shopify_attributes %}
+
+{% schema %}
+{
+  "name": "t:names.cart_recommendations",
+  "tag": null,
+  "settings": [
+    {
+      "type": "product_list",
+      "id": "cart_product_recommendations",
+      "label": "t:settings.product_recommendations",
+      "limit": 10,
+      "info": "t:info.cart_product_recommendations"
+    },
+    {
+      "type": "text",
+      "id": "cart_recommendations_title",
+      "label": "t:settings.heading",
+      "default": "Complete The Look"
+    },
+    {
+      "type": "range",
+      "id": "cart_recommendations_limit",
+      "label": "t:settings.number_products_to_show",
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "select",
+      "id": "product_title_line_limit",
+      "label": "t:settings.product_title_line_limit",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.no_limit"
+        },
+        {
+          "value": "1-line",
+          "label": "t:options.1_line"
+        },
+        {
+          "value": "2-lines",
+          "label": "t:options.2_lines"
+        },
+        {
+          "value": "3-lines",
+          "label": "t:options.3_lines"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_swatches",
+      "label": "t:settings.show_swatches",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_vendor",
+      "label": "t:settings.show_product_vendor",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_type",
+      "label": "t:settings.show_product_type",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_quick_add",
+      "label": "t:settings.show_quick_add",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "select",
+      "id": "pcard_style",
+      "label": "t:settings.style",
+      "options": [
+        { "value": "", "label": "t:options.use_global_settings" },
+        { "value": "default", "label": "t:options.default" },
+        { "value": "box", "label": "t:options.box" }
+      ],
+      "default": ""
+    },
+    {
+      "type": "checkbox",
+      "id": "pcard_box_custom_color_scheme",
+      "label": "t:settings.use_custom_color_scheme",
+      "default": false,
+      "visible_if": "{{ block.settings.pcard_style == 'box' or block.settings.pcard_style == blank and settings.pcard_style == 'box' }}"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.pcard_box_custom_color_scheme == true and block.settings.pcard_style == 'box' or block.settings.pcard_box_custom_color_scheme == true and block.settings.pcard_style == blank and settings.pcard_style == 'box' }}"
+    }
+  ]
+}
+{% endschema %}

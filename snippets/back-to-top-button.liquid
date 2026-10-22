@@ -1,0 +1,17 @@
+{% doc %}
+  Renders the floating back-to-top button.
+  The button starts hidden (opacity-0) and is shown/hidden by the back-to-top custom element
+  based on scroll position.
+
+  @example
+  {% render 'back-to-top-button' %}
+{% enddoc %}
+
+<back-to-top class="back-to-top block fixed opacity-0 visibility-hidden">
+  <button
+    on:click="/backToTop"
+    class="btn btn--primary btn--medium btn--icon-only"
+  >
+    {% render 'icon', icon: 'arrow-up' %}
+  </button>
+</back-to-top>

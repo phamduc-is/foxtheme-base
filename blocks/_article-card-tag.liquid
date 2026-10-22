@@ -1,0 +1,93 @@
+{% doc %}
+  Article card tag. Static block nested inside `_article-card`; receives `article` + `layout`
+  from the `content_for` context. Renders the article's first tag, styled like a label.
+
+  Placement `media` → tag overlays the image (hardcoded white background).
+  Placement `content` → tag sits in the text column (secondary background).
+{% enddoc %}
+{%- liquid
+  assign placement = block.settings.placement | default: 'media'
+  if placement != 'media' and placement != 'content'
+    assign placement = 'media'
+  endif
+
+  assign tag_text = article.tags.first
+-%}
+{%- if tag_text != blank -%}
+  {%- capture styles -%}
+    {% if placement == 'content' %}{% render 'spacing-style', settings: block.settings %}{% endif %}
+  {%- endcapture -%}
+  <span
+    class="article-card__tag article-card__tag--{{ placement }}{% if placement == 'content' %} spacing-style{% endif %} badge"
+    data-card-label-slot="{{ placement }}"
+    {% if styles != blank %}
+      style="{{ styles | strip | strip_newlines }}"
+    {% endif %}
+    {{- block.shopify_attributes -}}
+  >
+    {{- tag_text | escape -}}
+  </span>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:names.tag",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "placement",
+      "label": "t:settings.placement",
+      "options": [
+        {
+          "value": "media",
+          "label": "t:options.label_on_media"
+        },
+        {
+          "value": "content",
+          "label": "t:options.label_in_content"
+        }
+      ],
+      "default": "media"
+    },
+    {
+      "type": "header",
+      "content": "t:content.margin",
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    },
+    {
+      "type": "range",
+      "id": "mobile-margin-scale",
+      "label": "t:settings.mobile_scale",
+      "min": 20,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 80,
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    }
+  ]
+}
+{% endschema %}

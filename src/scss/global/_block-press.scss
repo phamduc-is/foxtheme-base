@@ -1,0 +1,29 @@
+@use "../mixins" as *;
+
+// ─── Press ────────────────────────────────────────────────────────────────────
+
+.press {
+  container-type: inline-size;
+  container-name: press;
+}
+
+.press__image {
+  width: var(--image-width);
+}
+
+.press__text {
+  order: -1;
+}
+
+@container press style(--horizontal-alignment: center) {
+  .press__info,
+  .press__info .author-info__inner {
+    align-items: var(--horizontal-alignment);
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .press__image {
+    width: var(--image-mobile-width);
+  }
+}

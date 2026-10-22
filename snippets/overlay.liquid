@@ -1,0 +1,38 @@
+{% doc %}
+  Renders a full-bleed overlay — a flat colour or a gradient.
+
+  Both variants paint through the SAME `--overlay-color` custom property, because
+  `background` accepts a gradient wherever it accepts a colour. The modifier class only
+  names which one is in play; it carries no declaration of its own.
+
+  @param {string} [overlay_type] - `'gradient'` to use `overlay_gradient`; anything else
+    (including blank) uses `overlay_color`. Omit for a colour-only overlay.
+  @param {string} [overlay_color] - Overlay colour. Defaults to a 25% black scrim.
+  @param {string} [overlay_gradient] - CSS gradient, used only when `overlay_type` is
+    `'gradient'`. Defaults to a transparent → 75% black vertical scrim.
+  @param {string} [layer] - The z-index layer for the overlay, defaults to `var(--layer-flat)`.
+
+  @example
+  {% render 'overlay', overlay_color: section.settings.overlay_color, layer: 'var(--layer-raised)' %}
+
+  {% render 'overlay',
+    overlay_type: block.settings.overlay_type,
+    overlay_color: block.settings.overlay_color,
+    overlay_gradient: block.settings.overlay_gradient
+  %}
+{% enddoc %}
+
+{%- liquid
+  if overlay_type == 'gradient'
+    assign overlay_modifier = 'overlay--gradient'
+    assign overlay_bg = overlay_gradient | default: 'linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.75) 100%)'
+  else
+    assign overlay_modifier = 'overlay--solid'
+    assign overlay_bg = overlay_color | default: 'rgb(0 0 0 / var(--opacity-25))'
+  endif
+-%}
+
+<div
+  class="overlay {{ overlay_modifier }} absolute inset-0 pointer-events-none"
+  style="--overlay-layer: {{ layer | default: 'var(--layer-flat)' }};--overlay-color: {{ overlay_bg }};"
+></div>

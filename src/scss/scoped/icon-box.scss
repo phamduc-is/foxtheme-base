@@ -1,0 +1,108 @@
+@use "../mixins" as *;
+
+// ─── Icon box ─────────────────────────────────────────────────────────────────
+
+.icon-box {
+  --card-border-offset: max(0.1rem, var(--border-width, 0.1rem));
+
+  // The stretched link (`icon-box-markup`: `<a class="absolute inset-0">`) is
+  // rendered BEFORE the content, so the content paints over it. Making the card
+  // inert is what lets the link win the click — but only a LINKED card should
+  // be inert. Applied unconditionally it also made every link-less card
+  // unclickable: text can't be selected, and the theme editor's inspector
+  // resolves the click through to the grid, selecting the Grid instead of the
+  // icon box the merchant aimed at.
+  &:has(> a[href]) {
+    pointer-events: none;
+
+    a {
+      pointer-events: auto;
+    }
+  }
+
+  &__content {
+    gap: var(--content-gap);
+  }
+
+  // The link caret rides inside the heading's last line, so it earns its spacing
+  // inline rather than from a flex gap — that keeps it next to the final word
+  // even once the heading wraps. A break is still allowed before an inline SVG,
+  // so a final word that just fits would push the caret onto a line of its own.
+  // The negative end margin gives the caret zero advance — it can never be what
+  // overflows, so it stays on the last word's line — and the paragraph's end
+  // padding is the room it hangs into.
+  &__heading {
+    --heading-caret-space: calc(1.2rem + 0.4rem);
+  }
+
+  &__heading p:has(> .icon-box__heading-caret) {
+    padding-inline-end: var(--heading-caret-space);
+  }
+
+  &__heading-caret {
+    margin-inline: 0.4rem calc(-1 * var(--heading-caret-space));
+    vertical-align: middle;
+  }
+
+  &--card {
+    transition: box-shadow var(--motion-ui) var(--motion-ease);
+    padding-block: calc(var(--padding-block-start-mobile, 2rem) - 0.1rem + var(--card-border-offset))
+      calc(var(--padding-block-end-mobile, 2rem) - 0.1rem + var(--card-border-offset));
+    padding-inline: calc(var(--padding-inline-start-mobile, 1.6rem) - 0.1rem + var(--card-border-offset))
+      calc(var(--padding-inline-end-mobile, 1.6rem) - 0.1rem + var(--card-border-offset));
+
+    @include media-breakpoint-up(md) {
+      padding-block: calc(var(--padding-block-start, 2rem) - 0.1rem + var(--card-border-offset))
+        calc(var(--padding-block-end, 2rem) - 0.1rem + var(--card-border-offset));
+      padding-inline: calc(var(--padding-inline-start, 1.6rem) - 0.1rem + var(--card-border-offset))
+        calc(var(--padding-inline-end, 1.6rem) - 0.1rem + var(--card-border-offset));
+    }
+  }
+
+  &--shadow {
+    border: 0;
+    box-shadow: inset 0 0 0 var(--border-width) var(--border-color);
+  }
+
+  &__arrow {
+    &::before {
+      background: rgb(var(--color-primary-button-background));
+    }
+  }
+}
+
+// ─── Per-breakpoint direction ───────────────────────────────────────────────────
+
+// Core `.layout-panel-flex--row` (mobile) sets `flex: 1 1 <basis>` on every
+// descendant `.text-block` — meant for panels whose DIRECT children are text
+// blocks. Ours are nested in `.icon-box__content`, so that basis lands on the
+// wrong (block) axis; keep them at natural size. Higher specificity than core.
+@include media-breakpoint-down(md) {
+  .icon-box.layout-panel-flex--row .icon-box__content .text-block {
+    flex: initial;
+  }
+}
+
+// ─── Hover states ─────────────────────────────────────────────────────────────
+
+@media (hover: hover) and (pointer: fine) {
+  .icon-box {
+    // The full-strength border ring is opt-in (`border_hover`); the arrow
+    // hover below is link feedback and stays on every card.
+    &--border-hover:hover {
+      box-shadow: inset 0 0 0 max(0.1rem, var(--border-width, 0px))
+        var(--border-color-hover, rgb(var(--color-foreground)));
+    }
+
+    &--card:hover {
+      .icon-box__arrow {
+        color: rgb(var(--color-primary-button-text));
+        border-color: rgb(var(--color-primary-button-background));
+
+        &::before {
+          width: calc(100% + var(--button-border-thickness, 0.1rem) * 2);
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,83 @@
+@use "../mixins" as *;
+
+// ─── Cart Page Layout ─────────────────────────────────────────────────────────
+
+.cart-page__inner.grid {
+  --sticky-element-top: var(--header-height);
+
+  grid-template-columns: 1fr;
+  gap: var(--column-gap, 3.2rem);
+}
+
+.cart-page__inner.flex {
+  max-width: 66rem;
+  margin: 0 auto;
+}
+
+.cart-page__title {
+  padding-bottom: 2.4rem;
+}
+
+.cart-page__items .cart-items__wrapper {
+  padding-block: 2rem;
+  border-bottom: 0.1rem solid rgb(var(--color-foreground) / 10%);
+  border-top: 0.1rem solid rgb(var(--color-foreground) / 10%);
+}
+
+// ─── Cart Summary Addon ───────────────────────────────────────────────────────
+
+.cart-summary__addon {
+  --summary-padding-block: 1.6rem;
+
+  border-radius: var(--button-corner-radius);
+  transition: border-radius calc(var(--accordion-duration) * 1ms) var(--accordion-easing);
+}
+
+.cart-summary__addon:has([aria-expanded="true"]) {
+  border-radius: min(1rem, var(--button-corner-radius));
+}
+
+.cart-summary__addon--border {
+  box-shadow: inset 0 0 0 0.1rem rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+.cart-summary__addon .accordion__summary {
+  --summary-font-family: var(--font-heading--family);
+  --summary-font-style: var(--font-heading--style);
+  --summary-font-weight: var(--font-heading--weight);
+  --summary-font-size: var(--font-size--h6);
+  --summary-line-height: var(--font-h6--line-height);
+
+  padding-inline: 2rem;
+}
+
+.cart-summary__addon .accordion__inner {
+  padding: 0 2rem 2rem;
+}
+
+.cart-summary__addons {
+  gap: 1rem;
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(lg) {
+  .cart-page__inner.grid {
+    grid-template-columns: 1fr var(--cart-page-summary-width, 32rem);
+  }
+
+  .cart-page__title {
+    padding-bottom: 4rem;
+  }
+}
+
+@include media-breakpoint-up(xl) {
+  .cart-page__inner.grid {
+    --cart-page-summary-width: 45.7rem;
+    --column-gap: 5rem;
+  }
+
+  .cart-page__items .cart-items__wrapper {
+    padding-block: 2.4rem;
+  }
+}

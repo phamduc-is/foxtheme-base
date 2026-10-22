@@ -1,0 +1,13 @@
+@use "../mixins" as *;
+
+// ─── Section header vertical ──────────────────────────────────────────────────
+
+.section-header-block .button-block {
+  margin-top: 2.4rem;
+}
+
+@include media-breakpoint-up(md) {
+  .section-header-block .button-block {
+    margin-top: 3.2rem;
+  }
+}

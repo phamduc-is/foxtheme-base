@@ -1,0 +1,44 @@
+@use "../mixins" as *;
+
+// ─── Newsletter ───────────────────────────────────────────────────────────────
+
+.newsletter {
+  > * {
+    flex: 1 1 0px;
+  }
+}
+
+.newsletter-form {
+  .dialog__content {
+    padding: 5rem;
+  }
+
+  &--design-1 {
+    .form-control {
+      padding-inline: 2rem 5.8rem;
+    }
+
+    .newsletter-form {
+      &__field {
+        --input-height: 5.8rem;
+
+        &:not(:has(input:focus)) {
+          --color-primary-button-background: var(--color-input-text);
+          --color-primary-button-text: var(--color-input-background);
+        }
+
+        &:has(input:focus) {
+          --color-primary-button-background: var(--color-input-focus-text, var(--color-input-background));
+          --color-primary-button-text: var(--color-input-focus-background, var(--color-input-text));
+        }
+      }
+
+      &__button {
+        position: absolute;
+        inset-inline-end: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+    }
+  }
+}

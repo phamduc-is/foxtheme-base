@@ -1,0 +1,25 @@
+{% doc %}
+  Renders the order note textarea bound to the cart form.
+  Updates the cart note on input via the cart-note custom element.
+
+  @example
+  {% render 'cart-note' %}
+{% enddoc %}
+
+<cart-note class="flex flex-col gap-4 xl:gap-5">
+  <label
+    for="cart-note"
+    class="visually-hidden"
+  >
+    {{- 'content.seller_note' | t -}}
+  </label>
+  <textarea
+    form="cart-form"
+    on:input="/updateCartNote"
+    id="cart-note"
+    class="cart-note__instructions form-control w-full"
+    placeholder="{{ 'content.seller_note' | t }}"
+    name="note"
+    rows="5"
+  >{{ cart.note }}</textarea>
+</cart-note>

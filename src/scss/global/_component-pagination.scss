@@ -1,0 +1,27 @@
+// @capability Numbered pagination — circular page items with a filled current-page state and spaced prev/next arrow items.
+// @when Any paginated list (collections, blogs, search results) with server-rendered page links; reuse instead of new pager styles. No pairing JS.
+// @contract .pagination__list > .pagination__item; states .pagination__item--current / --previous / --next.
+// @keywords pagination, page numbers, pager, next prev, page links, numbered navigation
+
+@use "../mixins" as *;
+
+// ─── Pagination ───────────────────────────────────────────────────────────────
+
+.pagination__list .pagination__item {
+  min-width: 4rem;
+  height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  gap: 0.6rem;
+  line-height: 1;
+}
+
+.pagination__item--previous {
+  padding-inline-end: 1.2rem;
+}
+
+.pagination__item--next {
+  padding-inline-start: 1.2rem;
+}

@@ -1,0 +1,32 @@
+{% doc %}
+  Renders the cart link/button shown in the header, with the live cart count bubble.
+  Opens the cart drawer on click when the cart type is `drawer` and the visitor is
+  not already on the cart page; otherwise it is a plain link to the cart page.
+
+  @param {boolean} [show_label] - Add a "Cart (N)" label from lg up (the header's Show icon
+    labels); there the count reads in the label, zero included, instead of the bubble.
+
+  @example
+  {% render 'header-cart-drawer-button' %}
+{% enddoc %}
+<a
+  href="{{ routes.cart_url }}"
+  class="header__button cart-drawer-button cart-icon flex items-center justify-center text-decoration-none color-current relative cursor-pointer"
+  {% if request.page_type != 'cart' and settings.cart_type == 'drawer' %}
+    on:click="#CartDrawer/open"
+    aria-label="{{ 'actions.open_cart_drawer' | t }}"
+    aria-haspopup="dialog"
+    aria-controls="cart-drawer-dialog"
+  {% else %}
+    aria-label="{{ 'accessibility.cart' | t }}"
+  {% endif %}
+>
+  {%- render 'icon', icon: 'cart', size: 'large' -%}
+  {%- if show_label -%}
+    <span class="header__icon-label" aria-hidden="true">
+      {{- 'content.cart' | t }}
+      {% render 'cart-count', show_zero: true -%}
+    </span>
+  {%- endif -%}
+  {% render 'cart-count', style: 'bubble', class: 'cart-count--absolute' %}
+</a>

@@ -1,0 +1,112 @@
+{%- doc -%}
+  Returns a rich text string with its italic runs (`<em>`, the "I" button in the richtext
+  editor) rewritten as highlights. Output only — capture it and hand it on as the text of
+  whatever renders it (`text-markup`'s `text` / `fallback_text`, or a raw `{{ }}`).
+
+  - text-color: the run changes color only
+  - solid-background: a shape behind the run. With theme animations on it is an
+    `<em is="highlight-text">` whose shape sweeps in on scroll — `highlight-text.js` is loaded
+    globally for that by `scripts.liquid`.
+  - badge: the run is set as an inline badge (`.badge` — the theme's badge type, padding and
+    corner radius); the shape color fills it and the text color writes on it. No font style,
+    no reveal.
+
+  Colors are optional: unset or fully transparent, the text inherits its color and the shape
+  follows the highlight text color — or the foreground when that is unset too — at the alpha
+  the style sets in CSS (`--hl-shape-alpha`, 20% for solid-background).
+
+  @param {string} text - Rich text to rewrite
+  @param {string} style - 'none' | 'text-color' | 'solid-background' | 'badge'. 'none' returns the text as is
+  @param {string} [font_style] - 'italic' | 'normal'. Default 'italic'
+  @param {object} [text_color] - Color setting for the highlighted text
+  @param {object} [shape_color] - Color setting for the shape ('solid-background' and 'badge')
+
+  @example
+  {%- capture heading -%}
+    {%- render 'highlight-text',
+      text: section.settings.heading,
+      style: section.settings.heading_highlight_style,
+      font_style: section.settings.heading_highlight_font_style,
+      text_color: section.settings.heading_highlight_text_color,
+      shape_color: section.settings.heading_highlight_shape_color
+    -%}
+  {%- endcapture -%}
+{%- enddoc -%}
+
+{%- liquid
+  assign highlight_style = style | default: 'none'
+  assign highlight_text = text
+
+  assign has_text_color = false
+  if text_color != blank and text_color.alpha > 0
+    assign has_text_color = true
+  endif
+
+  assign has_shape_color = false
+  if highlight_style == 'solid-background' or highlight_style == 'badge'
+    if shape_color != blank and shape_color.alpha > 0
+      assign has_shape_color = true
+    endif
+  endif
+-%}
+
+{%- comment -%}
+  `--hl-text-rgb` lets a shape with no color of its own follow the text color at the alpha
+  its style sets (`--hl-shape-alpha` in `_component-highlight-text.scss`).
+{%- endcomment -%}
+{%- capture highlight_vars -%}
+  --hl-font-style: {{ font_style | default: 'italic' }};
+  {%- if has_text_color -%}
+    --hl-text-color: {{ text_color }};
+    --hl-text-rgb: {{ text_color.rgb }};
+  {%- endif -%}
+  {%- if has_shape_color -%}
+    --hl-shape-color: {{ shape_color }};
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- liquid
+  assign highlight_vars = highlight_vars | strip_newlines
+
+  if highlight_style != 'none' and highlight_text contains '<em>'
+    # The solid shape sweeps in when the run scrolls into view (`highlight-text.js`), only with
+    # theme animations on — off, it is simply there from first paint.
+    assign reveal = false
+    case highlight_style
+      when 'solid-background'
+        if settings.animations_enabled
+          assign reveal = true
+        endif
+    endcase
+
+    assign em_classes = 'highlight-text highlight-text--' | append: highlight_style
+    if highlight_style == 'badge'
+      assign em_classes = em_classes | append: ' badge'
+    endif
+    # A slanted run overhangs its own box: the last glyph leans past the advance width, and a
+    # shape drawn on that box leaves its top corner bare. `--slanted` pads the shape over it.
+    if highlight_style == 'solid-background' and font_style != 'normal'
+      assign em_classes = em_classes | append: ' highlight-text--slanted'
+    endif
+    assign em_attrs = ''
+    if reveal
+      assign em_classes = em_classes | append: ' highlight-text--reveal'
+      assign em_attrs = ' is="highlight-text"'
+    endif
+
+    assign em_open = '<em class="' | append: em_classes | append: '"' | append: em_attrs | append: ' style="' | append: highlight_vars | append: '">'
+    assign em_close = '</em>'
+
+    # The solid shape is the <em>'s own background, which paints over a gradient-clipped
+    # parent's text (`.color-gradient`). The inner <span> lets the text re-clip the gradient
+    # on top of the shape — see `.highlight-text--solid-background` in `_component-highlight-text.scss`.
+    if highlight_style == 'solid-background'
+      assign em_open = em_open | append: '<span>'
+      assign em_close = '</span></em>'
+    endif
+
+    assign highlight_text = highlight_text | replace: '<em>', em_open | replace: '</em>', em_close
+  endif
+
+  echo highlight_text
+-%}

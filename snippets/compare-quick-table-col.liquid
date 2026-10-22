@@ -1,0 +1,30 @@
+{% doc %}
+  Renders a single <td> cell for the quick comparison table, switching content by block type.
+
+  @param {object} block - Comparison row block. Uses block.type ('info' | 'price' | 'description' | 'vendor' | 'type' | 'variants') and block.settings (enable_view_details_button, show_view_more_button, text_line_limit).
+  @param {product} product - Product whose data fills the cell.
+{% enddoc %}
+<td
+  class="compare-table__col compare-table__col--type-{{ block.type }}"
+>
+  {%- case block.type -%}
+    {%- when 'info' -%}
+      {% render 'compare-table-col-product-info', product: product, block: block %}
+    {%- when 'price' -%}
+      {% render 'price', product_resource: product %}
+    {%- when 'description' -%}
+      {% render 'compare-table-col-product-description', product: product, block: block %}
+    {%- when 'vendor' -%}
+      {{- product.vendor -}}
+    {%- when 'type' -%}
+      {{- product.type -}}
+    {%- when 'variants' -%}
+      {%- unless product.has_only_default_variant -%}
+        {% render 'compare-table-col-product-variants', product: product %}
+      {%- endunless -%}
+    {%- when 'metafield' -%}
+      {%- unless block.settings.metafield_key == blank -%}
+        {% render 'compare-table-col-product-metafield', product: product, block: block %}
+      {%- endunless -%}
+  {%- endcase -%}
+</td>

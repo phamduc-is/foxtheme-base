@@ -1,0 +1,15 @@
+{% doc %}
+  Markup for the custom-liquid theme block (no schema).
+
+  @param {object} settings - Block settings (spacing, custom_liquid).
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+{% enddoc %}
+<div
+  class="custom-liquid-block spacing-style"
+  style="{% render 'spacing-style', settings: settings %}"
+  {{ shopify_attributes }}
+>
+  <div class="custom-liquid-block__content">
+    {{ settings.custom_liquid }}
+  </div>
+</div>

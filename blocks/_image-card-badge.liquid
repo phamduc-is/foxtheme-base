@@ -1,0 +1,179 @@
+{% liquid
+  assign text = block.settings.text | strip
+  assign highlight = block.settings.highlight | strip
+
+  capture badge_style
+    echo '--badge-size: ' | append: block.settings.size | append: 'px;'
+    echo '--badge-size-mobile: ' | append: block.settings.size_mobile | append: 'px;'
+    if block.settings.background != blank
+      echo '--badge-background: ' | append: block.settings.background | append: ';'
+    endif
+    if block.settings.text_color != blank
+      echo '--badge-color: ' | append: block.settings.text_color | append: ';'
+    endif
+  endcapture
+%}
+{%- if text != blank or highlight != blank -%}
+  <div
+    class="image-card-badge image-card-badge--{{ block.settings.shape }} image-card-badge--{{ block.settings.position }}"
+    style="{{ badge_style }}"
+    {{ block.shopify_attributes }}
+  >
+    {%- if text != blank -%}
+      <span class="image-card-badge__text {{ block.settings.text_preset }}">{{ text | escape }}</span>
+    {%- endif -%}
+    {%- if highlight != blank -%}
+      <span class="image-card-badge__highlight {{ block.settings.highlight_preset }}">{{ highlight | escape }}</span>
+    {%- endif -%}
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:names.image_card_badge",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "text",
+      "label": "t:settings.text"
+    },
+    {
+      "type": "select",
+      "id": "text_preset",
+      "label": "t:settings.text_preset",
+      "options": [
+        {
+          "value": "paragraph",
+          "label": "t:options.paragraph"
+        },
+        {
+          "value": "h4",
+          "label": "t:options.h4"
+        },
+        {
+          "value": "h5",
+          "label": "t:options.h5"
+        },
+        {
+          "value": "h6",
+          "label": "t:options.h6"
+        },
+        {
+          "value": "text-subheading",
+          "label": "t:options.subheading"
+        }
+      ],
+      "default": "h6"
+    },
+    {
+      "type": "text",
+      "id": "highlight",
+      "label": "t:settings.highlight"
+    },
+    {
+      "type": "select",
+      "id": "highlight_preset",
+      "label": "t:settings.highlight_preset",
+      "options": [
+        {
+          "value": "h1",
+          "label": "t:options.h1"
+        },
+        {
+          "value": "h2",
+          "label": "t:options.h2"
+        },
+        {
+          "value": "h3",
+          "label": "t:options.h3"
+        },
+        {
+          "value": "h4",
+          "label": "t:options.h4"
+        }
+      ],
+      "default": "h2"
+    },
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "shape",
+      "label": "t:settings.shape",
+      "options": [
+        {
+          "value": "starburst",
+          "label": "t:options.starburst"
+        },
+        {
+          "value": "circle",
+          "label": "t:options.circle"
+        }
+      ],
+      "default": "starburst"
+    },
+    {
+      "type": "select",
+      "id": "position",
+      "label": "t:settings.position",
+      "options": [
+        {
+          "value": "top-left",
+          "label": "t:options.top_left"
+        },
+        {
+          "value": "top-right",
+          "label": "t:options.top_right"
+        },
+        {
+          "value": "bottom-left",
+          "label": "t:options.bottom_left"
+        },
+        {
+          "value": "bottom-right",
+          "label": "t:options.bottom_right"
+        }
+      ],
+      "default": "bottom-right"
+    },
+    {
+      "type": "range",
+      "id": "size",
+      "label": "t:settings.size",
+      "min": 60,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 130
+    },
+    {
+      "type": "range",
+      "id": "size_mobile",
+      "label": "t:settings.size_mobile",
+      "min": 40,
+      "max": 160,
+      "step": 2,
+      "unit": "px",
+      "default": 100
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color",
+      "id": "background",
+      "label": "t:settings.background",
+      "info": "t:info.image_card_badge_color"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "t:settings.text_color"
+    }
+  ]
+}
+{% endschema %}

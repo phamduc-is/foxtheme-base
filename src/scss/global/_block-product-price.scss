@@ -1,0 +1,12 @@
+@use "../mixins" as *;
+
+// ─── Product price ────────────────────────────────────────────────────────────
+
+.product-price {
+  --price-gap-x: 1.2rem;
+}
+
+.product-information--main .product-price-block .compare-at-price {
+  font-size: var(--font-size--h5);
+  font-weight: var(--font-body--weight);
+}

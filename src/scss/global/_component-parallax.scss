@@ -1,0 +1,129 @@
+// @capability Scroll parallax surface styles for <parallax-component> — pins the media to the viewport for the `fixed` mode with no script at all, and gives the three moving modes their own compositor layer so the drift cannot stutter.
+// @when Paired with the parallax-component custom element on a full-bleed banner; never needed on its own. The moving modes still need the element's JS, the fixed mode does not.
+// @contract parallax-component[data-parallax-direction="fixed"] clips with clip-path and takes its :is(img, video, svg) fixed to the viewport VERTICALLY, sized horizontally from --parallax-frame-width that the host publishes (falls back to 100vw), plus --parallax-frame-bleed on each side so a pixel of rounding cannot open a seam; the other directions only get will-change on the same media. Honors prefers-reduced-motion by dropping both.
+// @keywords parallax, scroll effect, fixed background, pinned media, hero banner, clip-path, will-change, compositor layer
+
+@use "../mixins" as *;
+
+// ─── Fixed: pin the media, let the frame travel across it ─────────────────────
+// The frame is clipped with `clip-path`, NOT `overflow: hidden` — overflow does
+// not clip a fixed-position descendant, and clip-path does, without becoming the
+// containing block that would defeat the pinning. Nothing here runs on the main
+// thread: the browser holds a fixed element still for free, which is why this
+// mode cannot stutter the way a scroll-driven transform can.
+// The entrance animation is dropped for this mode in `_hero-banner-media`, and it
+// has to stay dropped: a transformed ancestor WOULD become the containing block,
+// and the media would pin to it instead of to the viewport.
+// Both attributes are in the selector for SPECIFICITY, not for matching: the host
+// always carries both. `full-bleed-media-cover` pins the media with
+// `.hero-banner__media img` (0-1-1), and a single attribute here ties that at
+// 0-1-1 — a tie the mixin wins, because it ships in the section's scoped
+// stylesheet and that loads after this one. Two attributes make it 0-2-1.
+parallax-component[data-parallax][data-parallax-direction="fixed"] {
+  clip-path: inset(0);
+
+  :is(img, video, svg) {
+    position: fixed;
+
+    // Pinned VERTICALLY to the viewport — that is the whole effect — but sized
+    // HORIZONTALLY to the frame it shows through. A fixed element is laid out
+    // against the viewport, so left to itself it would also be viewport-WIDE:
+    // in a boxed section on a wide screen that scales the photo up to cover
+    // 100vw while the frame reveals only its middle, and the subject of the
+    // picture drifts out of the opening. `--parallax-frame-width` is what the
+    // host publishes for its own frame — `100%` full-bleed, minus the grid's
+    // padding columns when boxed. Percentages here resolve against the initial
+    // containing block, which is the viewport WITHOUT the scrollbar and so is
+    // exactly the container's width; `100vw` would be that plus the scrollbar.
+    // …and grown by a few pixels on each side, because that width is COMPUTED
+    // rather than measured and its inputs can be a pixel off: the padding
+    // formula reads `var(--scrollbar-width)`, which is measured in the <head>
+    // (snippets/scripts.liquid) but only re-measured on resize after a debounce,
+    // and `50vw` falls on a half-pixel at odd viewport widths. The errors are
+    // always a pixel or two, never more, but a photo one pixel short of its
+    // frame shows the page through the seam. Overshooting costs nothing: the
+    // host's `clip-path: inset(0)` throws the surplus away, and a fixed element
+    // adds nothing to the document's scroll width. So the media is told to be
+    // generous instead of exact.
+    top: 0;
+    left: 50%;
+    translate: -50% 0;
+    width: calc(var(--parallax-frame-width, 100vw) + 2 * var(--parallax-frame-bleed, 4px));
+    height: 100svh;
+    object-fit: cover;
+
+    @include media-breakpoint-up(lg) {
+      height: 100dvh;
+    }
+  }
+}
+
+// ─── Moving modes: give the media its own layer ───────────────────────────────
+// These three are driven from JS, so the transform lands a frame behind the
+// compositor's scroll unless the element is already promoted. Scoped to the
+// modes that actually move: `fixed` needs no layer, and an idle promoted layer
+// is memory for nothing.
+parallax-component[data-parallax]:is(
+    [data-parallax-direction="vertical"],
+    [data-parallax-direction="horizontal"],
+    [data-parallax-direction="zoom"]
+  )
+  :is(img, video, svg) {
+  will-change: transform;
+}
+
+// ─── Entrance: the zoom-out, played by parallax-component itself ──────────────
+// The theme's `zoom-out` preset, on the individual `scale` property, which
+// composes with the drift's `transform` instead of replacing it. See
+// #startEntrance in parallax-component.js for why this is not a wrapping
+// motion-component any more.
+// --
+// WHAT scales differs per mode, and each choice is forced:
+// - moving modes: this ELEMENT. The script transforms only the media inside it
+//   and never touches it, so its origin stays at the centre — the zoom looks as
+//   it did when motion-component scaled `.media`. Not the media's wrapper: for a
+//   video that wrapper is <deferred-media>, which the drift itself transforms,
+//   and `scale` shares `transform-origin` with it — so the zoom would anchor to
+//   the bottom or right edge. A video inserted late from its <template> lands
+//   inside a box that is already zooming. Every host clips this element: the
+//   three sections that render the media block wrap it in `overflow-hidden`.
+// - fixed: the pinned media ITSELF. A transform on an ancestor — this element
+//   included — would become the containing block and un-pin it; one on the
+//   element does not.
+// --
+// `1.15` is zoom-out's `from.scale` in src/js/modules/motion-presets.js,
+// restated because this rule has to paint before any script runs. Keep them
+// equal: a mismatch shows as a jump the moment the script takes over. No opacity
+// on purpose — a faded hero image is not an LCP candidate, and a stuck start
+// state (script failed) is then only an image 15% too large, never a hidden one.
+// --
+// The TRANSITION exists only while `data-entrance-running` does — the zoom's own
+// duration. Not while pending: arming happens early, and a transition present
+// then would tween the image UP into its start scale (the trap .image-zoom-reveal
+// documents). Not after it lands either: a `transition` declaration replaces the
+// whole list, so left on it would kill the image frame's backdrop fade and a
+// video poster's hand-over fade for the life of the page.
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion-armed]
+    parallax-component[data-parallax-entrance]:not([data-entrance-played], [data-parallax-direction="fixed"]),
+  [data-motion-armed]
+    parallax-component[data-parallax-entrance][data-parallax-direction="fixed"]:not([data-entrance-played])
+    :is(img, video, svg) {
+    scale: 1.15;
+  }
+
+  parallax-component[data-parallax-entrance][data-entrance-running]:not([data-parallax-direction="fixed"]),
+  parallax-component[data-parallax-entrance][data-parallax-direction="fixed"][data-entrance-running]
+    :is(img, video, svg) {
+    transition: scale var(--parallax-entrance-duration, var(--motion-reveal, 1.5s)) var(--motion-ease-entrance);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  parallax-component :is(img, video, svg) {
+    position: static;
+    transform: none;
+    scale: none;
+    will-change: auto;
+  }
+}

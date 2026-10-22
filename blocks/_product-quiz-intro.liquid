@@ -1,0 +1,103 @@
+{% doc %}
+  Intro screen of the product quiz (STATIC, shared by `sections/finder-quiz.liquid` and
+  `sections/recommendation-quiz.liquid`). Hidden with the editor's eye toggle, it renders nothing and
+  the quiz starts on its first question.
+  A container like `group`: the copy is dynamic `text` children (plus optional `_content-label`
+  pills, e.g. an eyebrow above the heading; their look is the global Label theme settings), all
+  rendered in merchant order inside `[data-quiz-copy]`. The Start button is the static
+  `_product-quiz-start-button` block (`start-button`: a `<button type="button">` with no Link
+  setting) and the picture is the static `_product-quiz-image` block (`image`). A blank image
+  renders a placeholder; only a hidden Image block renders nothing, so the text column goes full
+  width.
+
+  The Start button hands off to `<product-quiz>` through its `[data-quiz-start]` wrapper (`start`);
+  in the Finder quiz it shows its own spinner (`btn--loading`) while the first question is
+  pre-fetched. The screen
+  itself takes focus on a screen change (`data-quiz-focus`), and the runtime announces the first
+  child that is not a label, or `data-quiz-label` when there is none.
+
+  @example
+  {% content_for 'block', type: '_product-quiz-intro', id: 'product-quiz-intro' %}
+{% enddoc %}
+
+{%- liquid
+  capture image_html
+    content_for 'block', type: '_product-quiz-image', id: 'image'
+  endcapture
+  assign image_html = image_html | strip
+
+  capture text_html
+    content_for 'blocks'
+  endcapture
+  assign text_html = text_html | strip
+
+  capture start_button
+    content_for 'block', type: '_product-quiz-start-button', id: 'start-button'
+  endcapture
+  assign start_button = start_button | strip
+
+  assign intro_class = 'product-quiz__screen product-quiz-intro'
+  # Grid `align-items` of the two columns (desktop only; mobile stacks image first).
+  assign intro_align = block.settings.vertical_alignment | replace: 'top', 'start' | replace: 'bottom', 'end'
+  if image_html != blank
+    assign intro_class = intro_class | append: ' product-quiz-intro--image-' | append: block.settings.image_position
+  else
+    assign intro_class = intro_class | append: ' product-quiz-intro--no-image'
+  endif
+
+  assign fallback_label = 'blocks.product_quiz.start' | t
+-%}
+{%- capture intro_style -%}
+  --product-quiz-intro-align: {{ intro_align }};
+{%- endcapture -%}
+<div
+  class="{{ intro_class }}"
+  ref="intro"
+  tabindex="-1"
+  data-quiz-focus
+  data-quiz-label="{{ fallback_label | escape }}"
+  style="{{ intro_style | strip | strip_newlines }}"
+  {{ block.shopify_attributes }}
+>
+  {{ image_html }}
+  <div class="product-quiz-intro__content">
+    {%- if text_html != blank -%}
+      <div class="product-quiz-intro__text" data-quiz-copy>{{ text_html }}</div>
+    {%- endif -%}
+    <div class="product-quiz-intro__actions" data-quiz-start on:click="product-quiz/start">
+      {{- start_button -}}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.product_quiz_intro",
+  "tag": null,
+  "blocks": [{ "type": "text" }, { "type": "_content-label" }],
+  "settings": [
+    { "type": "header", "content": "t:content.layout" },
+    {
+      "type": "select",
+      "id": "image_position",
+      "label": "t:settings.image_position",
+      "options": [
+        { "value": "left", "label": "t:options.left" },
+        { "value": "right", "label": "t:options.right" }
+      ],
+      "default": "right"
+    },
+    {
+      "type": "select",
+      "id": "vertical_alignment",
+      "label": "t:settings.vertical_alignment",
+      "options": [
+        { "value": "top", "label": "t:options.top" },
+        { "value": "center", "label": "t:options.center" },
+        { "value": "bottom", "label": "t:options.bottom" }
+      ],
+      "default": "center"
+    }
+  ]
+}
+{% endschema %}

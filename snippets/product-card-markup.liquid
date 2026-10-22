@@ -1,0 +1,526 @@
+{% doc %}
+  Renders a product card with vertical or horizontal layout, independently configurable per breakpoint.
+
+  @param {object} product
+  @param {string} [mode] - Desktop layout: 'vertical' | 'horizontal' (default: 'vertical')
+  @param {string} [mode_mobile] - Mobile layout: 'vertical' | 'horizontal' (default: mode)
+  @param {string} [media_width] - Image width in horizontal mode (desktop), e.g. '15rem'. Default: responsive via @container query.
+  @param {string} [media_width_mobile] - Image width in horizontal mode (mobile). Overrides media_width on mobile. Default: falls back to media_width then @container query.
+  @param {boolean} [show_vendor] - Desktop: show vendor (default: settings.pcard_show_vendor)
+  @param {boolean} [show_vendor_mobile] - Mobile: show vendor (default: show_vendor)
+  @param {boolean} [show_type] - Desktop: show type (default: settings.pcard_show_type)
+  @param {boolean} [show_type_mobile] - Mobile: show type (default: show_type)
+  @param {boolean} [show_price] - Desktop: show price (default: true)
+  @param {boolean} [show_price_mobile] - Mobile: show price (default: show_price)
+  @param {boolean} [show_swatch] - Desktop: show swatches (default: settings.pcard_show_swatches)
+  @param {boolean} [show_swatch_mobile] - Mobile: show swatches (default: show_swatch)
+  @param {boolean} [show_badges] - Desktop: show badges (default: true)
+  @param {boolean} [show_badges_mobile] - Mobile: show badges (default: show_badges)
+  @param {string} [badge_placement] - Where to render badges: 'on-media' | 'on-content' | 'auto' (default: 'auto' — both rendered, CSS controls per mode)
+  @param {boolean} [show_quick_add] - Desktop: show quick add (default: settings.pcard_show_quick_add)
+  @param {boolean} [show_quick_add_mobile] - Mobile: show quick add (default: show_quick_add)
+  @param {boolean} [show_quick_view] - Desktop: show quick view (default: settings.pcard_show_quick_view)
+  @param {boolean} [show_quick_view_mobile] - Mobile: show quick view (default: show_quick_view)
+  @param {boolean} [show_compare_checkbox] - Show product compare checkbox on card media (default: false)
+  @param {boolean} [show_view_details] - Show 'View details' link in actions column (default: false)
+  @param {string} [quick_add_button_layout] - Quick add button layout: 'text-only' | 'icon-only' | 'with-icon' (default: 'text-only')
+  @param {string} [form_id_suffix] - Passed through to `quick-add`. Required when the SAME product and block render more than once in one document (e.g. a desktop panel plus a mobile dialog), or the two quick-add forms collide on a single id.
+  @param {string} [quick_add_placement] - Where quick add renders: 'actions' (below content / actions column) | 'on-media' (circular icon button overlaid on the media, bottom-right). Default: 'actions'
+  @param {string} [product_title_line_limit] - Max lines for title: 'none' | '1-line' | '2-lines' | '3-lines' (default: settings.pcard_title_line_limit)
+  @param {string} [style] - Card visual style: 'default' | 'box' (default: settings.pcard_style)
+  @param {string} [color_scheme] - Colour scheme id painting the box panel; only used under `style: 'box'` (default: settings.pcard_box_color_scheme)
+  @param {string} [image_ratio] - Aspect ratio override
+  @param {boolean} [show_second_image_on_hover]
+  @param {boolean} [height_balance]
+  @param {string} [media_sizes]
+  @param {string} [media_widths]
+  @param {string} [loading]
+  @param {string} [fetchpriority]
+  @param {string} [children]
+  @param {string} [view_event_context] - Context of the standard `shopify:product:view` the card reports when half of it scrolls into view: 'collection' | 'search' | 'recommendation', or 'none' to report nothing (menus). Default: 'collection' on a collection page, 'search' on the search page, else 'recommendation'.
+  @param {object} [section] - Shopify section global (implicit, no need to pass explicitly)
+  @param {object} [block] - Shopify block global — also used for block.shopify_attributes (implicit, no need to pass explicitly)
+{% enddoc %}
+
+{% liquid
+  # ── Layout mode ──────────────────────────────────────────────────────────────
+  assign mode = mode | default: 'vertical'
+  assign mode_mobile = mode_mobile | default: mode
+
+  # ── Quick add ─────────────────────────────────────────────────────────────────
+  assign show_quick_add = show_quick_add | default: settings.pcard_show_quick_add, allow_false: true
+  assign show_quick_add_mobile = show_quick_add_mobile | default: settings.pcard_show_quick_add_mobile, allow_false: true
+
+  assign has_quick_add = false
+  if product != blank
+    if show_quick_add or show_quick_add_mobile
+      assign has_quick_add = true
+    endif
+  endif
+
+  # ── Quick view ────────────────────────────────────────────────────────────────
+  assign show_quick_view = show_quick_view | default: settings.pcard_show_quick_view, allow_false: true
+  assign show_quick_view_mobile = show_quick_view_mobile | default: settings.pcard_show_quick_view_mobile, allow_false: true
+
+  assign has_quick_view = false
+  if product != blank
+    if show_quick_view or show_quick_view_mobile
+      assign has_quick_view = true
+    endif
+  endif
+
+  # ── Compare ───────────────────────────────────────────────────────────────────
+  assign show_compare_checkbox = show_compare_checkbox | default: false, allow_false: true
+
+  # ── View details ──────────────────────────────────────────────────────────────
+  assign show_view_details = show_view_details | default: false, allow_false: true
+
+  # ── Quick add button style ────────────────────────────────────────────────────
+  assign quick_add_button_layout = quick_add_button_layout | default: 'text-only'
+  assign quick_add_placement = quick_add_placement | default: settings.pcard_quick_add_placement | default: 'actions'
+
+  assign show_price = show_price | default: true, allow_false: true
+  assign show_price_mobile = show_price_mobile | default: show_price, allow_false: true
+
+  assign show_swatch = show_swatch | default: settings.pcard_show_swatches, allow_false: true
+  assign show_swatch_mobile = show_swatch_mobile | default: show_swatch, allow_false: true
+
+  assign show_badges = show_badges | default: true, allow_false: true
+  assign show_badges_mobile = show_badges_mobile | default: show_badges, allow_false: true
+  assign badge_placement = badge_placement | default: 'auto'
+
+  # ── Images ────────────────────────────────────────────────────────────────────
+  assign variant_to_link = product.selected_or_first_available_variant
+  assign featured_image = product.featured_media
+  assign featured_image_alt = product.featured_media.alt | default: product.title
+  assign first_media_type = product.featured_media.media_type
+
+  # Only `image` media exposes width/height/aspect_ratio directly — every other type reaches
+  # them through `preview_image`. Enumerating the other types missed `external_video`, so a
+  # product whose first media is a YouTube/Vimeo embed handed `image_url` a nil width and
+  # printed "Width must be between 1 and 5760" into the card. Inverted rather than extended so
+  # a media type added later cannot reintroduce it.
+  if first_media_type != 'image'
+    assign featured_image = product.featured_media.preview_image
+  endif
+
+  assign show_second_image_on_hover = show_second_image_on_hover | default: settings.show_second_image_on_hover, allow_false: true
+  assign second_image = ''
+  if show_second_image_on_hover and product.images.size > 1 and product.images[1] != blank
+    assign second_image = product.images[1]
+  endif
+
+  if image_ratio == blank
+    assign image_ratio = settings.pcard_aspect_ratio | default: '1'
+  endif
+  if image_ratio == 'auto'
+    if featured_image != blank
+      assign image_ratio = featured_image.aspect_ratio
+    else
+      assign image_ratio = '1'
+    endif
+  endif
+
+  assign loading = loading | default: 'lazy'
+  assign media_sizes = media_sizes | default: ''
+  assign media_widths = media_widths | default: ''
+
+  # ── Onboarding placeholder ────────────────────────────────────────────────────
+  assign onboarding = false
+  assign product_title = product.title
+  if product.id == empty or product == blank
+    assign onboarding = true
+    assign product_title = 'placeholders.product_title' | t
+  endif
+
+  # ── Standard product view ─────────────────────────────────────────────────────
+  # A card reports a view only once it is actually seen (trigger 'intersect').
+  # Never for a placeholder card. Callers outside product listings — menus —
+  # pass 'none'; a list inside another page's context (cart drawer
+  # recommendations on a collection page) passes 'recommendation' explicitly.
+  assign view_event_context = view_event_context | default: ''
+  if view_event_context == blank
+    case template.name
+      when 'collection'
+        assign view_event_context = 'collection'
+      when 'search'
+        assign view_event_context = 'search'
+      else
+        assign view_event_context = 'recommendation'
+    endcase
+  endif
+  if onboarding
+    assign view_event_context = 'none'
+  endif
+
+  # ── DOM presence flags ────────────────────────────────────────────────────────
+  # Badges: always render both locations — CSS switches visibility per mode.
+  # This supports runtime toggle without re-rendering HTML.
+  assign has_badges = false
+  if product != blank
+    if show_badges or show_badges_mobile
+      assign has_badges = true
+    endif
+  endif
+
+  # Quick-view overlay: always render when enabled — CSS hides it in horizontal.
+  # Quick-add placement: 'on-media' renders it as a circular icon button over the
+  # media (like quick-view); otherwise it lives in the actions element.
+  assign quick_add_on_media = false
+  assign quick_add_in_actions = false
+  assign quick_add_h_fallback = false
+  if has_quick_add
+    if quick_add_placement == 'on-media'
+      assign quick_add_on_media = true
+      # Fallback for horizontal mode: __media-actions is hidden there, so also
+      # render a text button in __actions (CSS shows it only when horizontal).
+      assign quick_add_h_fallback = true
+    else
+      assign quick_add_in_actions = true
+    endif
+  endif
+
+  # Actions: single element replacing __footer + __side-actions.
+  assign need_actions = false
+  if quick_add_in_actions or quick_add_h_fallback or show_view_details
+    assign need_actions = true
+  endif
+
+  # ── Sale badge placement ──────────────────────────────────────────────────────
+  assign show_sale_badge_on_content = false
+  assign show_sale_badge_on_media = false
+  if settings.pcard_show_sale_badge
+    if settings.pcard_sale_badge_placement == 'content'
+      assign show_sale_badge_on_content = true
+    elsif settings.pcard_sale_badge_placement == 'media'
+      assign show_sale_badge_on_media = true
+    endif
+  endif
+
+  # ── CSS classes ───────────────────────────────────────────────────────────────
+  assign height_balance = height_balance | default: false, allow_false: true
+  assign product_title_line_limit = product_title_line_limit | default: settings.pcard_title_line_limit | default: 'none'
+  assign style = style | default: settings.pcard_style | default: 'default'
+
+  assign classes = 'block product-card'
+  assign classes = classes | append: ' product-card--' | append: mode
+  assign classes = classes | append: ' product-card--mobile-' | append: mode_mobile
+  assign classes = classes | append: ' product-card--atc-' | append: quick_add_placement
+  if style == 'box'
+    # The box panel follows the global card scheme unless the caller paints it itself.
+    if color_scheme == blank
+      assign color_scheme = settings.pcard_box_color_scheme
+    endif
+    assign classes = classes | append: ' product-card--box'
+    assign classes = classes | append: ' color-' | append: color_scheme
+  endif
+  if height_balance
+    assign classes = classes | append: ' product-card--height-balance h-full'
+  endif
+  if badge_placement == 'on-media'
+    assign classes = classes | append: ' product-card--badge-on-media'
+  elsif badge_placement == 'on-content'
+    assign classes = classes | append: ' product-card--badge-on-content'
+  endif
+
+  assign media_class = 'product-card__media media-hover--scale relative media-mask-clip'
+  if second_image != blank
+    assign media_class = media_class | append: ' product-card__media--has-second-image'
+  endif
+%}
+
+{%- capture card_style -%}
+  {%- comment -%} Quick add / view CSS vars {%- endcomment -%}
+  {%- if has_quick_add -%}
+    --quick-add-display: {% if show_quick_add %}flex{% else %}none{% endif %};
+    --quick-add-display-mobile: {% if show_quick_add_mobile %}flex{% else %}none{% endif %};
+  {%- endif -%}
+  {%- if has_quick_view -%}
+    --quick-view-display: {% if show_quick_view %}flex{% else %}none{% endif %};
+    --quick-view-display-mobile: {% if show_quick_view_mobile %}flex{% else %}none{% endif %};
+  {%- endif -%}
+  --price-d: {% if show_price %}block{% else %}none{% endif %};
+  --price-m: {% if show_price_mobile %}block{% else %}none{% endif %};
+  --swatch-d: {% if show_swatch %}block{% else %}none{% endif %};
+  --swatch-m: {% if show_swatch_mobile %}block{% else %}none{% endif %};
+  --badges-d: {% if show_badges %}flex{% else %}none{% endif %};
+  --badges-m: {% if show_badges_mobile %}flex{% else %}none{% endif %};
+  {%- if media_width != blank -%}--media-width: {{ media_width }};{%- endif -%}
+  {%- if media_width_mobile != blank -%}--media-width-mobile: {{ media_width_mobile }};{%- endif -%}
+  {%- if mode == 'vertical' or mode_mobile == 'vertical' -%}
+    --content-alignment: {{ settings.pcard_content_alignment }};
+    --content-text-align: {{ settings.pcard_content_alignment | replace: 'flex-start', 'left' | replace: 'flex-end', 'right' }};
+  {%- endif -%}
+{%- endcapture -%}
+
+<product-card
+  class="{{ classes }}"
+  {{ block.shopify_attributes }}
+  style="{{ card_style | strip | strip_newlines }}"
+>
+  {%- comment -%} Full-card link overlay (screen readers) {%- endcomment -%}
+  <a
+    {% unless onboarding %}
+      href="{{ variant_to_link.url }}"
+    {% else %}
+      role="link"
+    {% endunless %}
+    class="product-card__link focus-visible--inset absolute inset-0"
+    ref="productCardLink"
+    aria-label="{{ product_title | escape }}"
+  ></a>
+
+  <div class="product-card__wrapper">
+    {%- comment -%} ── MEDIA ──────────────────────────────────────────────── {%- endcomment -%}
+    <div
+      class="{{ media_class }}"
+      style="--ratio: {{ image_ratio }};"
+    >
+      {%- unless view_event_context == 'none' -%}
+        {% render 'standard-view-event', resource: product, context: view_event_context, trigger: 'intersect' %}
+      {%- endunless -%}
+      <a
+        {% unless onboarding %}
+          href="{{ variant_to_link.url }}"
+        {% else %}
+          role="link"
+        {% endunless %}
+        ref="cardGalleryLink"
+        aria-label="{{ product_title | escape }}"
+        tabindex="-1"
+      >
+        {%- if featured_image -%}
+          {%- if media_sizes != blank -%}
+            {% render 'responsive-image',
+              mode: 'liquid',
+              sizes: media_sizes,
+              widths: media_widths,
+              image: featured_image,
+              default_alt: featured_image_alt,
+              image_ratio: image_ratio,
+              class: 'product-card__image product-card__image--first',
+              loading: loading,
+              fetchpriority: fetchpriority,
+              img_class: 'w-full product-card-main-image',
+              ref: 'mainImage'
+            %}
+          {%- else -%}
+            {% render 'responsive-image',
+              mode: 'js',
+              image: featured_image,
+              default_alt: featured_image_alt,
+              image_ratio: image_ratio,
+              class: 'product-card__image product-card__image--first',
+              loading: loading,
+              fetchpriority: fetchpriority,
+              img_class: 'w-full product-card-main-image',
+              ref: 'mainImage'
+            %}
+          {%- endif -%}
+
+          {%- if second_image != blank -%}
+            {%- if media_sizes != blank -%}
+              {% render 'responsive-image',
+                mode: 'liquid',
+                sizes: media_sizes,
+                widths: media_widths,
+                image: second_image,
+                image_ratio: image_ratio,
+                class: 'product-card__image product-card__image--second',
+                img_class: 'w-full'
+              %}
+            {%- else -%}
+              {% render 'responsive-image',
+                mode: 'js',
+                image: second_image,
+                image_ratio: image_ratio,
+                class: 'product-card__image product-card__image--second',
+                img_class: 'w-full'
+              %}
+            {%- endif -%}
+          {%- endif -%}
+        {%- else -%}
+          <div class="media media--placeholder">
+            {{ 'product-1' | placeholder_svg_tag: 'placeholder' }}
+          </div>
+        {%- endif -%}
+      </a>
+
+      {%- comment -%}
+        Badges ON MEDIA — rendered when badge_placement is 'auto' or 'on-media'.
+        CSS shows/hides per mode via --badges-d.
+      {%- endcomment -%}
+      {%- if has_badges and badge_placement != 'on-content' -%}
+        <product-badge
+          data-product-id="{{ product.id }}"
+          class="product-card__badges product-card__badges--on-media"
+        >
+          {% render 'product-badges',
+            product: product,
+            use_variant: false,
+            show_soldout_badge: settings.pcard_show_sold_out_badge,
+            show_sale_badge: show_sale_badge_on_media,
+            sale_badge_type: settings.pcard_sale_badge_type,
+            show_custom_badges: settings.pcard_show_custom_badges,
+            badge_layout: settings.pcard_badge_layout
+          %}
+        </product-badge>
+      {%- endif -%}
+
+      {%- comment -%}
+        Media overlay — quick-view and/or on-media quick-add. Always rendered when
+        enabled so the editor toggle works; CSS hides quick-view in horizontal mode.
+      {%- endcomment -%}
+      {%- if has_quick_view or quick_add_on_media -%}
+        <div class="product-card__media-actions product-card__actions flex flex-col items-end justify-end gap-1 absolute pointer-events-none">
+          {%- if has_quick_view -%}
+            {% render 'quick-view', product: product, color_scheme: settings.pcard_quick_view_color_scheme %}
+          {%- endif -%}
+          {%- if quick_add_on_media -%}
+            {% render 'quick-add',
+              product: product,
+              section_id: section.id,
+              block: block,
+              button_layout: 'icon-only',
+              color_scheme: settings.pcard_quick_add_color_scheme,
+              form_id_suffix: form_id_suffix,
+              class: 'product-card__quick-add--on-media'
+            %}
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+
+      {%- if show_compare_checkbox and settings.compare_enabled -%}
+        {%- render 'compare-checkbox', product: product -%}
+      {%- endif -%}
+    </div>
+    {%- comment -%} ── END MEDIA ──────────────────────────────────────────── {%- endcomment -%}
+
+    {%- comment -%} ── CONTENT ────────────────────────────────────────────── {%- endcomment -%}
+    <div class="product-card__content pointer-pass-through flex flex-col">
+      {%- comment -%}
+        Badges IN CONTENT — rendered when badge_placement is 'auto' or 'on-content'.
+        CSS shows/hides per mode via --badges-d. Layout always horizontal, no padding.
+      {%- endcomment -%}
+      {%- if has_badges and badge_placement != 'on-media' -%}
+        <product-badge
+          data-product-id="{{ product.id }}"
+          class="product-card__badges product-card__badges--on-content"
+        >
+          {% render 'product-badges',
+            product: product,
+            use_variant: false,
+            show_soldout_badge: settings.pcard_show_sold_out_badge,
+            show_sale_badge: show_sale_badge_on_content,
+            sale_badge_type: settings.pcard_sale_badge_type,
+            show_custom_badges: settings.pcard_show_custom_badges,
+            badge_layout: 'horizontal'
+          %}
+        </product-badge>
+      {%- endif -%}
+
+      {% render 'product-card-metas',
+        product: product,
+        show_vendor: show_vendor,
+        show_vendor_mobile: show_vendor_mobile,
+        show_type: show_type,
+        show_type_mobile: show_type_mobile
+      %}
+
+      {%- comment -%} Title — always visible {%- endcomment -%}
+      {%- if product != blank -%}
+        <a
+          class="product-card__title text-wrap reversed-link text-limit-{{ product_title_line_limit }}"
+          href="{% render 'product-card-variant-url', product: product %}"
+          ref="productTitleLink"
+          aria-label="{{ product_title | escape }}"
+        >
+          <span class="reversed-link__text">{{ product_title }}</span>
+        </a>
+      {%- else -%}
+        <p class="product-card__title text-wrap">
+          <span>{{ product_title }}</span>
+        </p>
+      {%- endif -%}
+
+      {%- comment -%} Swatches — visibility via --swatch-d/m CSS vars {%- endcomment -%}
+      {%- if show_swatch or show_swatch_mobile -%}
+        {% liquid
+          assign product_has_swatches = false
+          for product_option in product.options_with_values
+            assign swatch_count = product_option.values | map: 'swatch' | compact | size
+            if swatch_count > 0 and settings.pcard_show_swatches
+              assign product_has_swatches = true
+            endif
+          endfor
+        %}
+        {% if product_has_swatches %}
+          <product-swatches
+            class="product-card__swatches"
+            data-product-id="{{ product.id }}"
+            data-product-url="{{ product.url }}"
+            style="--swatch-width: {{ settings.pcard_swatch_width }}px;"
+          >
+            {% render 'variant-swatches',
+              product_resource: product,
+              show_variant_image: settings.pcard_show_variant_image,
+              swatch_shape: 'circle',
+              swatch_width: settings.pcard_swatch_width,
+              context: 'card'
+            %}
+          </product-swatches>
+        {% endif %}
+      {%- endif -%}
+
+      {%- comment -%} Price — visibility via --price-d/m CSS vars {%- endcomment -%}
+      {%- if show_price or show_price_mobile -%}
+        <product-price class="product-card__price">
+          {% render 'price',
+            show_unit_price: true,
+            product_resource: product,
+            use_variant: false,
+            show_sale_badge: show_sale_badge_on_content,
+            sale_badge_type: settings.pcard_sale_badge_type
+          %}
+        </product-price>
+      {%- endif -%}
+
+      {{ children }}
+    </div>
+    {%- comment -%} ── END CONTENT ────────────────────────────────────────── {%- endcomment -%}
+
+    {%- comment -%}
+      ACTIONS — unified element for both vertical (below content) and horizontal
+      (right column). CSS Grid positions it via grid-area: actions.
+      Contains: quick-add button + optional view-details link.
+      Always a grid sibling of media and content — no duplicate forms.
+    {%- endcomment -%}
+    {%- if need_actions -%}
+      <div class="product-card__actions">
+        {%- if quick_add_in_actions or quick_add_h_fallback -%}
+          {%- assign qa_class = 'flex-1' -%}
+          {%- if quick_add_h_fallback -%}
+            {%- assign qa_class = 'flex-1 product-card__quick-add--h-fallback' -%}
+          {%- endif -%}
+          {% render 'quick-add',
+            product: product,
+            section_id: section.id,
+            block: block,
+            button_layout: quick_add_button_layout,
+            color_scheme: settings.pcard_quick_add_color_scheme,
+            form_id_suffix: form_id_suffix,
+            class: qa_class
+          %}
+        {%- endif -%}
+        {%- if show_view_details and product != blank -%}
+          <a
+            href="{{ variant_to_link.url }}"
+            class="product-card__view-details btn btn--secondary flex-1"
+          >
+            <span class="btn__text text-ellipsis" data-label="{{ 'actions.view_details' | t | escape }}">{{ 'actions.view_details' | t }}</span>
+          </a>
+        {%- endif -%}
+      </div>
+    {%- endif -%}
+  </div>
+</product-card>

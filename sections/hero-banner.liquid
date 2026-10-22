@@ -1,0 +1,446 @@
+{{ 'scoped-hero-banner.css' | asset_url | stylesheet_tag }}
+{%- liquid
+  assign container = section.settings.container
+  assign height = section.settings.height
+  assign height_mobile = section.settings.height_mobile
+  assign content_position = section.settings.content_position
+  assign color_scheme = section.settings.color_scheme
+
+  assign classes = 'section__container inherit-color-scheme section-grid section-grid--' | append: container
+  assign classes_wrapper = 'section__wrapper section-grid border-style overflow-hidden color-' | append: color_scheme
+
+  if height == 'auto'
+    assign classes_wrapper = classes_wrapper | append: ' media--adapt'
+  endif
+
+  if height_mobile == 'auto'
+    assign classes_wrapper = classes_wrapper | append: ' media-mobile--adapt'
+  endif
+
+  if container == 'full'
+    assign classes_wrapper = classes_wrapper | append: ' hero-banner--content-' | append: content_position
+  endif
+-%}
+
+{%- capture wrapper_style -%}
+  {%- comment -%} Height floor: both custom → one clamp (desktop var + mobile var); one side custom → its fixed var; auto sides emit nothing → 0 floor → media adapts. {%- endcomment -%}
+  {%- if height == 'custom' and height_mobile == 'custom' -%}
+    {%- render 'clamp-calculate-style', property_name: 'height', min_value: section.settings.height_custom_mobile, max_value: section.settings.height_custom, max_breakpoint: 1455 -%}
+  {%- elsif height == 'custom' -%}
+    --height: {{ section.settings.height_custom }}px;
+  {%- elsif height_mobile == 'custom' -%}
+    --height-mobile: {{ section.settings.height_custom_mobile }}px;
+  {%- endif -%}
+  {%- comment -%} Content padding → the .edge-gap consumer on the content block. {%- endcomment -%}
+  {%- render 'clamp-calculate-style', property_name: 'edge-padding-inline', min_value: section.settings.content_padding_inline_mobile, max_value: section.settings.content_padding_inline, max_breakpoint: 1455 -%}
+  {%- render 'clamp-calculate-style', property_name: 'edge-padding-block', min_value: section.settings.content_padding_block_mobile, max_value: section.settings.content_padding_block, max_breakpoint: 1455 -%}
+  {%- if container == 'fixed' -%}
+    {%- render 'border-style', settings: section.settings -%}
+  {%- endif -%}
+{%- endcapture -%}
+
+<div
+  id="section-{{ section.id }}"
+  class="hero-banner spacing-style"
+  style="{% render 'spacing-style', settings: section.settings %}"
+>
+  <div class="{{ classes | strip_newlines }}">
+    <div
+      class="{{ classes_wrapper | strip_newlines }}"
+      style="{{ wrapper_style | strip | strip_newlines }}"
+    >
+      <div
+        class="hero-banner__media col-span-full row-span-full relative overflow-hidden z-0"
+      >
+        {% content_for 'block', type: '_hero-banner-media', id: 'hero-banner-media' %}
+      </div>
+      <div class="hero-banner__body flex flex-col col-span-full row-span-full">
+        <div class="hero-banner__wrapper section-grid flex-1">
+          {% content_for 'block', type: '_hero-banner-content', id: 'hero-banner-content' %}
+        </div>
+        {% content_for 'blocks' %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.hero_banner",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        { "value": "full", "label": "t:options.full" },
+        { "value": "fixed", "label": "t:options.fixed" }
+      ],
+      "default": "fixed"
+    },
+    {
+      "type": "select",
+      "id": "height",
+      "label": "t:settings.height",
+      "options": [
+        { "value": "auto", "label": "t:options.auto" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "custom"
+    },
+    {
+      "type": "range",
+      "id": "height_custom",
+      "label": "t:settings.height_custom",
+      "min": 200,
+      "max": 1000,
+      "step": 10,
+      "unit": "px",
+      "default": 520,
+      "visible_if": "{{ section.settings.height == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "content_position",
+      "options": [
+        {
+          "value": "inside",
+          "label": "t:options.inside"
+        },
+        {
+          "value": "outside",
+          "label": "t:options.outside"
+        }
+      ],
+      "default": "inside",
+      "label": "t:settings.content_position",
+      "visible_if": "{{ section.settings.container == 'full' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_settings"
+    },
+    {
+      "type": "select",
+      "id": "height_mobile",
+      "label": "t:settings.height",
+      "options": [
+        { "value": "auto", "label": "t:options.auto" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "custom"
+    },
+    {
+      "type": "range",
+      "id": "height_custom_mobile",
+      "label": "t:settings.height_custom",
+      "min": 200,
+      "max": 600,
+      "step": 4,
+      "unit": "px",
+      "default": 400,
+      "visible_if": "{{ section.settings.height_mobile == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 20,
+      "visible_if": "{{ section.settings.container == 'fixed' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.content_padding"
+    },
+    {
+      "type": "select",
+      "id": "content_padding_device",
+      "label": "t:settings.devices",
+      "options": [
+        { "value": "desktop", "label": "t:options.desktop" },
+        { "value": "mobile", "label": "t:options.mobile" }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "content_padding_inline",
+      "label": "t:options.horizontal",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.content_padding_device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "content_padding_block",
+      "label": "t:options.vertical",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 40,
+      "visible_if": "{{ section.settings.content_padding_device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "content_padding_inline_mobile",
+      "label": "t:options.horizontal",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.content_padding_device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "content_padding_block_mobile",
+      "label": "t:options.vertical",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 20,
+      "visible_if": "{{ section.settings.content_padding_device == 'mobile' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:options.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:options.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_hero-banner-marquee"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.hero_banner_marquee",
+      "category": "t:categories.banners",
+      "blocks": {
+        "hero-banner-content": {
+          "type": "_hero-banner-content",
+          "static": true,
+          "blocks": {
+            "text": {
+              "type": "text",
+              "settings": {
+                "text": "<p>Subheading</p>",
+                "type_preset": "text-subheading",
+                "animation_type": "none",
+                "animation_delay": 100
+              }
+            },
+            "spacer_1": {
+              "type": "_spacer",
+              "settings": {
+                "gap": 20,
+                "gap_mobile": 16
+              }
+            },
+            "heading": {
+              "type": "text",
+              "settings": {
+                "text": "<h2>Hero banner</h2>",
+                "type_preset": "h1",
+                "animation_type": "fade-up",
+                "animation_split": "words",
+                "animation_delay": 200
+              }
+            },
+            "spacer_2": {
+              "type": "_spacer",
+              "settings": {
+                "gap": 32,
+                "gap_mobile": 24
+              }
+            },
+            "button": {
+              "type": "button",
+              "settings": {
+                "label": "Button label",
+                "link": "shopify://collections/all",
+                "style": "primary",
+                "size": "large",
+                "icon": "caret-right",
+                "animation_type": "none",
+                "animation_delay": 300
+              }
+            }
+          },
+          "block_order": ["text", "spacer_1", "heading", "spacer_2", "button"]
+        },
+        "hero-banner-marquee": {
+          "type": "_hero-banner-marquee",
+          "settings": {
+            "marquee_postion": "top",
+            "angle": 5,
+            "padding-block-start": 16,
+            "padding-block-end": 16
+          },
+          "blocks": {
+            "item_1": {
+              "type": "text",
+              "settings": {
+                "text": "<p>WELCOME TO OUR STORE</p>",
+                "type_preset": "h3"
+              }
+            },
+            "item_2": {
+              "type": "text",
+              "settings": {
+                "text": "<p>WELCOME TO OUR STORE</p>",
+                "type_preset": "h3"
+              }
+            }
+          },
+          "block_order": ["item_1", "item_2"]
+        }
+      },
+      "block_order": ["hero-banner-marquee"]
+    },
+    {
+      "name": "t:names.hero_banner",
+      "category": "t:categories.banners",
+      "blocks": {
+        "hero-banner-content": {
+          "type": "_hero-banner-content",
+          "static": true,
+          "blocks": {
+            "text": {
+              "type": "text",
+              "settings": {
+                "text": "<p>Subheading</p>",
+                "type_preset": "text-subheading",
+                "animation_type": "none",
+                "animation_delay": 100
+              }
+            },
+            "spacer_1": {
+              "type": "_spacer",
+              "settings": {
+                "gap": 20,
+                "gap_mobile": 16
+              }
+            },
+            "heading": {
+              "type": "text",
+              "settings": {
+                "text": "<h2>Hero banner</h2>",
+                "type_preset": "h1",
+                "animation_type": "fade-up",
+                "animation_split": "words",
+                "animation_delay": 200
+              }
+            },
+            "spacer_2": {
+              "type": "_spacer",
+              "settings": {
+                "gap": 32,
+                "gap_mobile": 24
+              }
+            },
+            "button": {
+              "type": "button",
+              "settings": {
+                "label": "Button label",
+                "link": "shopify://collections/all",
+                "style": "primary",
+                "size": "large",
+                "icon": "caret-right",
+                "animation_type": "none",
+                "animation_delay": 300
+              }
+            }
+          },
+          "block_order": ["text", "spacer_1", "heading", "spacer_2", "button"]
+        }
+      },
+      "block_order": []
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,334 @@
+{%- if block.blocks.size > 0 -%}
+  {%- liquid
+    # Built here, not in the markup snippet: there `settings` is the block
+    # settings param, so a `settings.animations_enabled` guard would read nil.
+    assign list_motion = ''
+    assign list_sequence = false
+    if settings.animations_enabled
+      assign animation_type = block.settings.animation_type
+      if animation_type != 'none' and animation_type != blank
+        assign list_motion = animation_type
+        if block.settings.animation_sequence
+          assign list_sequence = true
+        endif
+      endif
+    endif
+    capture motion_attrs
+      if list_motion != blank
+        echo ' is="motion-group"'
+        render 'motion-attributes', type: list_motion, delay: block.settings.animation_delay, sequence: list_sequence
+      endif
+    endcapture
+  -%}
+  {%- capture list_items_html -%}
+    {% content_for 'blocks' %}
+  {%- endcapture -%}
+  {% render 'icon-list-markup',
+    settings: block.settings,
+    shopify_attributes: block.shopify_attributes,
+    list_items_html: list_items_html,
+    motion_attrs: motion_attrs
+  %}
+{%- endif -%}
+{% schema %}
+{
+  "name": "t:names.icon_list",
+  "tag": null,
+  "blocks": [
+    {
+      "type": "_list-item"
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "range",
+      "id": "row_gap",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_settings"
+    },
+    {
+      "type": "range",
+      "id": "row_gap_mobile",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "t:content.list_items"
+    },
+    {
+      "type": "select",
+      "id": "item_icon_style",
+      "label": "t:settings.style",
+      "options": [
+        {
+          "value": "standard",
+          "label": "t:options.standard"
+        },
+        {
+          "value": "circle",
+          "label": "t:options.circle"
+        }
+      ],
+      "default": "standard"
+    },
+    {
+      "type": "select",
+      "id": "item_vertical_alignment",
+      "label": "t:settings.position",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.top"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.bottom"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start-mobile",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end-mobile",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.animation",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_type",
+      "label": "t:settings.type",
+      "options": [
+        { "value": "none", "label": "t:options.none" },
+        { "value": "fade-in", "label": "t:options.fade_in" },
+        { "value": "fade-up", "label": "t:options.fade_up" },
+        { "value": "fade-down", "label": "t:options.fade_down" },
+        { "value": "slide-in-start", "label": "t:options.slide_in_start" },
+        { "value": "slide-in-end", "label": "t:options.slide_in_end" }
+      ],
+      "default": "none",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "animation_sequence",
+      "label": "t:settings.content_animation_sequence",
+      "info": "t:info.content_animation_sequence",
+      "default": true,
+      "visible_if": "{{ block.settings.animation_type != 'none' and settings.animations_enabled == true }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_delay",
+      "label": "t:settings.delay",
+      "min": 0,
+      "max": 2000,
+      "step": 50,
+      "default": 250,
+      "visible_if": "{{ block.settings.animation_type != 'none' and settings.animations_enabled == true }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.icon_list",
+      "category": "t:categories.basic",
+      "settings": {
+        "row_gap": 12,
+        "row_gap_mobile": 12,
+        "item_icon_style": "circle",
+        "item_vertical_alignment": "center"
+      },
+      "blocks": {
+        "list_item_1": {
+          "type": "_list-item",
+          "name": "t:names.list_item",
+          "settings": {
+            "icon": "check",
+            "icon_size": "small",
+            "icon_width": 24,
+            "icon_width_mobile": 24,
+            "text": "Talk about your brand",
+            "type_preset": "rte",
+            "font": "var(--font-body--family)",
+            "font_weight": "",
+            "font_size": 15,
+            "font_size_mobile": 15,
+            "line_height": "normal",
+            "text_color": "text",
+            "text_color_gradient": ""
+          },
+          "blocks": {}
+        },
+        "list_item_2": {
+          "type": "_list-item",
+          "name": "t:names.list_item",
+          "settings": {
+            "icon": "check",
+            "icon_size": "small",
+            "icon_width": 24,
+            "icon_width_mobile": 24,
+            "text": "Talk about your brand",
+            "type_preset": "rte",
+            "font": "var(--font-body--family)",
+            "font_weight": "",
+            "font_size": 15,
+            "font_size_mobile": 15,
+            "line_height": "normal",
+            "text_color": "text",
+            "text_color_gradient": ""
+          },
+          "blocks": {}
+        },
+        "list_item_3": {
+          "type": "_list-item",
+          "name": "t:names.list_item",
+          "settings": {
+            "icon": "check",
+            "icon_size": "small",
+            "icon_width": 24,
+            "icon_width_mobile": 24,
+            "text": "Talk about your brand",
+            "type_preset": "rte",
+            "font": "var(--font-body--family)",
+            "font_weight": "",
+            "font_size": 15,
+            "font_size_mobile": 15,
+            "line_height": "normal",
+            "text_color": "text",
+            "text_color_gradient": ""
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": ["list_item_1", "list_item_2", "list_item_3"]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,217 @@
+{% doc %}
+  Internal submit button for `product-finder` (STATIC — rendered by the parent via
+  `{% content_for 'block', type: '_product-finder-button', id: 'product-finder-button' %}`).
+
+  Renders the finder's SUBMIT control as a typed `<button type="submit">` (NOT an `<a>`), composing
+  the `.btn` classes like `button-markup`. Carries `ref="submit"` so `<product-finder>` can put it in a
+  loading state during the Section-Rendering cascade fetch. Has its own preset so it's addable from the
+  parent only — never placed globally.
+
+  @example
+  {% content_for 'block', type: '_product-finder-button', id: 'product-finder-button' %}
+{% enddoc %}
+
+{%- liquid
+  assign settings = block.settings
+  assign label = settings.label | default: 'Find products'
+  assign style = settings.style | default: 'primary'
+  assign size = settings.size | default: 'medium'
+  assign icon = settings.icon | default: 'none'
+  assign icon_end = settings.icon_end | default: false, allow_false: true
+
+  assign btn_class = 'product-finder__submit btn btn--' | append: style | append: ' btn--' | append: size
+  if icon != 'none'
+    if label != blank
+      assign btn_class = btn_class | append: ' btn--icon'
+      if icon_end
+        assign btn_class = btn_class | append: ' btn--icon-end'
+      endif
+    else
+      assign btn_class = btn_class | append: ' btn--icon-only'
+    endif
+  endif
+-%}
+
+{%- capture button_style -%}
+  {% render 'spacing-style', settings: settings %}
+{%- endcapture -%}
+
+<button
+  type="submit"
+  class="{{ btn_class | strip | strip_newlines }} spacing-style"
+  style="{{ button_style | strip | strip_newlines }}"
+  ref="submit"
+  {{ block.shopify_attributes }}
+>
+  {%- if icon != 'none' and icon_end == false -%}
+    {% render 'icon', icon: icon %}
+  {%- endif -%}
+  {%- if label != blank -%}
+    <span class="btn__text" data-label="{{ label | escape }}">{{ label }}</span>
+  {%- endif -%}
+  {%- if icon != 'none' and icon_end -%}
+    {% render 'icon', icon: icon %}
+  {%- endif -%}
+  {% render 'loading-spinner', size: 'small', class: 'product-finder__spinner' %}
+</button>
+
+{% schema %}
+{
+  "name": "t:names.product_finder_button",
+  "tag": null,
+  "settings": [
+    { "type": "header", "content": "t:content.content" },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "t:settings.label",
+      "default": "Find products"
+    },
+    {
+      "type": "select",
+      "id": "style",
+      "label": "t:settings.style",
+      "options": [
+        { "value": "primary", "label": "t:options.primary" },
+        { "value": "secondary", "label": "t:options.secondary" },
+        { "value": "outline", "label": "t:options.outline" },
+        { "value": "plain", "label": "t:options.plain" }
+      ],
+      "default": "primary"
+    },
+    {
+      "type": "select",
+      "id": "size",
+      "label": "t:settings.size",
+      "options": [
+        { "value": "extra-small", "label": "t:options.extra_small" },
+        { "value": "small", "label": "t:options.small" },
+        { "value": "medium", "label": "t:options.medium" },
+        { "value": "large", "label": "t:options.large" }
+      ],
+      "default": "medium",
+      "visible_if": "{{ block.settings.style != 'plain' }}"
+    },
+    {
+      "type": "select",
+      "id": "icon",
+      "label": "t:settings.icon",
+      "options": [
+        { "value": "none", "label": "t:options.none" },
+        { "value": "caret-down", "label": "t:options.caret_down" },
+        { "value": "cart", "label": "t:options.cart" },
+        { "value": "account", "label": "t:options.account" },
+        { "value": "shopping-bag", "label": "t:options.shopping_bag" },
+        { "value": "heart-beat", "label": "t:options.heart_beat" },
+        { "value": "baby-carriage", "label": "t:options.baby_carriage" },
+        { "value": "search", "label": "t:options.search" },
+        { "value": "caret-right", "label": "t:options.caret_right" },
+        { "value": "caret-left", "label": "t:options.caret_left" },
+        { "value": "plus", "label": "t:options.plus" },
+        { "value": "close", "label": "t:options.close" },
+        { "value": "minus", "label": "t:options.minus" },
+        { "value": "tag", "label": "t:options.tag" },
+        { "value": "tiktok", "label": "t:options.tiktok" },
+        { "value": "instagram", "label": "t:options.instagram" },
+        { "value": "pinterest", "label": "t:options.pinterest" },
+        { "value": "x", "label": "t:options.x" },
+        { "value": "facebook", "label": "t:options.facebook" },
+        { "value": "telegram", "label": "t:options.telegram" },
+        { "value": "whatsapp", "label": "t:options.whatsapp" },
+        { "value": "email", "label": "t:options.email" },
+        { "value": "linkedin", "label": "t:options.linkedin" },
+        { "value": "snapchat", "label": "t:options.snapchat" },
+        { "value": "tumblr", "label": "t:options.tumblr" },
+        { "value": "threads", "label": "t:options.threads" },
+        { "value": "chat-teardrop", "label": "t:options.chat_teardrop" },
+        { "value": "credit-card", "label": "t:options.credit_card" },
+        { "value": "package", "label": "t:options.package" },
+        { "value": "magic-wand", "label": "t:options.magic_wand" },
+        { "value": "funnel", "label": "t:options.funnel" },
+        { "value": "phone", "label": "t:options.phone" },
+        { "value": "map-pin", "label": "t:options.map_pin" },
+        { "value": "clock", "label": "t:options.clock" },
+        { "value": "lightning", "label": "t:options.lightning" },
+        { "value": "heart", "label": "t:options.heart" },
+        { "value": "gift", "label": "t:options.gift" },
+        { "value": "globe", "label": "t:options.globe" },
+        { "value": "check", "label": "t:options.check" },
+        { "value": "arrow-up-left", "label": "t:options.arrow_up_left" },
+        { "value": "car-simple", "label": "t:options.car_simple" },
+        { "value": "arrow-up-left-down", "label": "t:options.arrow_up_left_down" },
+        { "value": "calendar-blank", "label": "t:options.calendar_blank" },
+        { "value": "truck", "label": "t:options.truck" },
+        { "value": "paper-plane", "label": "t:options.paper_plane" },
+        { "value": "waves", "label": "t:options.waves" },
+        { "value": "umbrella", "label": "t:options.umbrella" },
+        { "value": "circle-half", "label": "t:options.circle_half" },
+        { "value": "bell-ringing", "label": "t:options.bell_ringing" }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "checkbox",
+      "id": "icon_end",
+      "label": "t:settings.icon_end",
+      "info": "t:info.icon_end",
+      "default": false,
+      "visible_if": "{{ block.settings.icon != 'none' }}"
+    },
+    { "type": "header", "content": "t:content.margin" },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        { "value": "desktop", "label": "t:options.desktop" },
+        { "value": "mobile", "label": "t:options.mobile" }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    }
+  ]
+}
+{% endschema %}

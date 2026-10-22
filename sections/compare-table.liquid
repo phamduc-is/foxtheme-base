@@ -1,0 +1,430 @@
+{{ 'compare-table.css' | asset_url | stylesheet_tag }}
+{%- if settings.compare_enabled -%}
+  {%- liquid
+    assign use_padding_inline = true
+    assign bleed = false
+    if section.settings.container != 'full'
+      assign use_padding_inline = false
+      assign bleed = true
+    endif
+
+    # Mobile alignment falls back to the desktop value when left on Inherit.
+    assign heading_alignment = section.settings.heading_alignment
+    assign heading_alignment_mobile = section.settings.heading_alignment_mobile
+    if heading_alignment_mobile == blank
+      assign heading_alignment_mobile = heading_alignment
+    endif
+
+    # The text-* utilities are named left/center/right, the flex ones start/center/end.
+    assign heading_text_align = heading_alignment | replace: 'start', 'left' | replace: 'end', 'right'
+    assign heading_text_align_mobile = heading_alignment_mobile | replace: 'start', 'left' | replace: 'end', 'right'
+  -%}
+  {%- capture section_style -%}
+    {% render 'border-style', settings: section.settings %}
+    {% render 'spacing-style', settings: section.settings, use_padding_inline: use_padding_inline %}
+  {%- endcapture -%}
+  <div
+    class="section spacing-style border-style color-{{ section.settings.color_scheme }}"
+    style="{{ section_style | strip_newlines | strip }}"
+  >
+    <div class="section__container section-grid section-grid--{{ section.settings.container }}"{% if section.settings.container == 'custom' %} style="--page-width-custom: {{ section.settings.container_custom_width | divided_by: 10.0 }}rem;"{% endif %}>
+      <div class="section__content">
+        {%- if section.settings.heading != blank or section.settings.show_clear_button -%}
+          <div class="compare-table__header flex flex-col items-{{ heading_alignment_mobile }} md:items-{{ heading_alignment }} gap-2">
+            {%- if section.settings.heading != blank -%}
+              <h2 class="compare-table__title {{ section.settings.heading_size }} text-{{ heading_text_align_mobile }} md:text-{{ heading_text_align }}">
+                {{- section.settings.heading -}}
+              </h2>
+            {%- endif -%}
+            {%- if section.settings.show_clear_button -%}
+              <button
+                is="compare-clear"
+                type="button"
+                disabled
+                data-hide-on-empty
+                class="compare-table__clear text-capitalize button-unstyled reversed-link reversed-link--underline"
+              >
+                <span class="reversed-link__text">{{- 'actions.remove_all' | t -}}</span>
+              </button>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+        {% render 'compare-table', section: section, product: product, bleed: bleed, gap_start: bleed, fluid: true %}
+      </div>
+    </div>
+  </div>
+{%- endif -%}
+{% schema %}
+{
+  "name": "t:names.compare_table",
+  "blocks": [
+    {
+      "type": "info",
+      "limit": 1,
+      "name": "t:names.product_information",
+      "settings": [
+        {
+          "type": "checkbox",
+          "id": "enable_view_details_button",
+          "label": "t:settings.enable_view_details_button",
+          "default": true
+        },
+        {
+          "type": "header",
+          "content": "t:content.media"
+        },
+        {
+          "type": "range",
+          "id": "image_border_radius",
+          "label": "t:settings.border_radius",
+          "min": 0,
+          "max": 32,
+          "step": 1,
+          "unit": "px",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "type": "description",
+      "limit": 1,
+      "name": "t:names.description",
+      "settings": [
+        {
+          "type": "select",
+          "id": "text_line_limit",
+          "label": "t:settings.text_line_limit",
+          "options": [
+            {
+              "value": "none",
+              "label": "t:options.no_limit"
+            },
+            {
+              "value": "1-line",
+              "label": "t:options.1_line"
+            },
+            {
+              "value": "2-lines",
+              "label": "t:options.2_lines"
+            },
+            {
+              "value": "3-lines",
+              "label": "t:options.3_lines"
+            },
+            {
+              "value": "4-lines",
+              "label": "t:options.4_lines"
+            },
+            {
+              "value": "5-lines",
+              "label": "t:options.5_lines"
+            }
+          ],
+          "default": "3-lines"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_view_more_button",
+          "label": "t:settings.show_view_more_button",
+          "default": false,
+          "visible_if": "{{ block.settings.text_line_limit != 'none' }}"
+        }
+      ]
+    },
+    {
+      "type": "price",
+      "limit": 1,
+      "name": "t:names.product_price"
+    },
+    {
+      "type": "vendor",
+      "limit": 1,
+      "name": "t:names.product_vendor"
+    },
+    {
+      "type": "type",
+      "limit": 1,
+      "name": "t:names.product_type"
+    },
+    {
+      "type": "variants",
+      "limit": 1,
+      "name": "t:names.product_variants"
+    },
+    {
+      "type": "metafield",
+      "name": "t:names.product_metafield",
+      "settings": [
+        {
+          "type": "paragraph",
+          "content": "t:info.product_metafield"
+        },
+        {
+          "type": "text",
+          "id": "metafield_key",
+          "label": "t:settings.metafield_key",
+          "info": "t:info.metafield_key"
+        },
+        {
+          "type": "header",
+          "content": "t:content.compare_settings"
+        },
+        {
+          "type": "text",
+          "id": "row_label",
+          "label": "t:settings.label"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:content.compare_table"
+    },
+    {
+      "type": "header",
+      "content": "t:content.heading"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "t:settings.heading",
+      "default": "Compare products"
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "t:settings.heading_size",
+      "options": [
+        { "value": "h1", "label": "t:options.h1" },
+        { "value": "h2", "label": "t:options.h2" },
+        { "value": "h3", "label": "t:options.h3" },
+        { "value": "h4", "label": "t:options.h4" }
+      ],
+      "default": "h2"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        { "value": "start", "label": "t:options.left" },
+        { "value": "center", "label": "t:options.center" },
+        { "value": "end", "label": "t:options.right" }
+      ],
+      "default": "start"
+    },
+    {
+      "type": "select",
+      "id": "heading_alignment_mobile",
+      "label": "t:settings.alignment_mobile",
+      "options": [
+        { "value": "", "label": "t:options.inherit" },
+        { "value": "start", "label": "t:options.left" },
+        { "value": "center", "label": "t:options.center" },
+        { "value": "end", "label": "t:options.right" }
+      ],
+      "default": ""
+    },
+    {
+      "type": "checkbox",
+      "id": "show_clear_button",
+      "label": "t:settings.show_clear_button",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        { "value": "full", "label": "t:options.full" },
+        { "value": "fixed", "label": "t:options.fixed" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "fixed"
+    },
+    {
+      "type": "range",
+      "id": "container_custom_width",
+      "label": "t:settings.custom_width",
+      "min": 800,
+      "max": 1800,
+      "step": 10,
+      "unit": "px",
+      "default": 1240,
+      "visible_if": "{{ section.settings.container == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "t:settings.borders",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "solid",
+          "label": "t:options.solid"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "px",
+      "label": "t:settings.border_width",
+      "default": 1,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "t:settings.border_opacity",
+      "default": 100,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'full' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'full' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start-mobile",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'full' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end-mobile",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'full' }}"
+    }
+  ]
+}
+{% endschema %}

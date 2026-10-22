@@ -1,0 +1,35 @@
+@use "../mixins" as *;
+
+// ─── Product recommendations ──────────────────────────────────────────────────
+
+.block-product-recommendations {
+  // Controls below the carousel need air, and less of it than the theme-wide 3.2rem — this
+  // block sits in the product information column, not in a full-width section.
+  .carousel__controls--group {
+    --carousel-controls-margin-top: 2rem;
+  }
+
+  // …but in the heading row none at all: that row spaces itself. This zero used to sit on
+  // the rule above, back when the heading was the only place controls could go. Once
+  // `carousel_controls_position: below` existed it reached the row under the carousel too
+  // and flattened its gap. Both rules are 0-2-0, so this one wins on source order — keep it
+  // second, and keep it keyed on the heading rather than on a `>` chain, which the edge-fade
+  // wrappers between the carousel and its strip would otherwise break.
+  &__heading .carousel__controls--group {
+    --carousel-controls-margin-top: 0;
+  }
+
+  &:has([data-has-recommendations="false"]) {
+    display: none;
+  }
+
+  &__heading {
+    padding-bottom: 1.6rem;
+  }
+
+  @include media-breakpoint-up(md) {
+    &__heading {
+      padding-bottom: 2rem;
+    }
+  }
+}

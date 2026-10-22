@@ -1,0 +1,51 @@
+{% doc %}
+  Renders the cart count bubble showing the number of items in the cart.
+  Automatically hides when cart is empty and switches to compact style when count exceeds 99.
+
+  @param {string} [class] - Additional CSS classes applied to the cart-count element
+  @param {string} [style] - 'bubble' (round badge) or 'plain' (count wrapped in parentheses). Defaults to 'plain'.
+  @param {boolean} [in_drawer] - Whether rendered inside the cart drawer (adds data-context="drawer")
+  @param {boolean} [show_zero] - Keep the count visible at 0 (adds data-show-zero) — a label like "Cart (0)" 
+
+  @example
+  {% render 'cart-count' %}
+  @example
+  {% render 'cart-count', style: 'bubble', class: 'cart-count--absolute' %}
+{% enddoc %}
+
+{% liquid
+  assign style = style | default: 'plain'
+%}
+{%- capture classes -%}
+  cart-count cart-count--{{ style }}
+  {%- if cart.item_count > 99 %} cart-count--small-medium{%- endif -%}
+  {%- if cart.empty? and show_zero != true %} hidden{%- endif -%}
+  {%- if class != blank %} {{ class }}{%- endif -%}
+{%- endcapture -%}
+
+<cart-count
+  class="{{ classes | strip_newlines | strip }}"
+  {% if in_drawer %}
+    data-context="drawer"
+  {% endif %}
+  {% if show_zero %}
+    data-show-zero
+  {% endif %}
+>
+  <span class="visually-hidden">
+    {{- 'accessibility.cart_count' | t -}}
+    : {{ cart.item_count }}
+  </span>
+  <span
+    class="cart-bubble__text-count"
+    ref="cartBubbleCount"
+    data-cart-bubble-count
+    aria-hidden="true"
+  >
+    {%- if cart.item_count < 100 -%}
+      {{- cart.item_count -}}
+    {%- else -%}
+      99+
+    {%- endif -%}
+  </span>
+</cart-count>

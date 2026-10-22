@@ -1,0 +1,101 @@
+{% comment %}
+  GENERATED FILE — do not edit.
+
+  Source: src/js/modules/motion-presets.js
+  Rebuild: yarn motion:build
+
+  The start state of every motion preset, as CSS, so content is already hidden
+  at first paint instead of flashing once the runtime arrives. Rendered inside
+  critical-css.liquid's <style>.
+
+  Every rule is gated on `data-motion-armed`, which motion-boot.liquid sets and
+  takes back if the runtime never reports in — hiding content is only safe while
+  something is guaranteed to un-hide it.
+{% endcomment %}
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion-disabled] motion-component:not([data-initialized]),
+  [data-motion-disabled] [data-motion-from],
+  motion-component[data-motion-off]:not([data-initialized]) {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+    will-change: auto !important;
+  }
+  [data-motion-disabled] div[is='motion-group'],
+  div[is='motion-group'][data-motion-off] {
+    opacity: 1 !important;
+  }
+  [data-motion-off] [data-motion-from],
+  [data-motion-from][data-motion-off] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  [data-motion-armed][data-motion-builtins] div[is='motion-group']:not([data-motion-ready]) {
+    opacity: 0;
+  }
+  [data-motion-armed] motion-component:not([data-initialized]):not([data-motion-hold]) {
+    will-change: transform, opacity;
+  }
+  motion-component[data-initialized] {
+    will-change: auto;
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='fade-in'],
+  [data-motion-armed] [data-motion-from='fade-in'] {
+    opacity: 0;
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='fade-up'],
+  [data-motion-armed] [data-motion-from='fade-up'] {
+    opacity: 0;
+    transform: translateY(min(var(--motion-distance), 90%));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='fade-down'],
+  [data-motion-armed] [data-motion-from='fade-down'] {
+    opacity: 0;
+    transform: translateY(calc(min(var(--motion-distance), 90%) * -1));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='slide-in-start'],
+  [data-motion-armed] [data-motion-from='slide-in-start'] {
+    opacity: 0;
+    transform: translateX(calc(var(--motion-distance) * -1 * var(--flip-x-factor, 1)));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='slide-in-end'],
+  [data-motion-armed] [data-motion-from='slide-in-end'] {
+    opacity: 0;
+    transform: translateX(calc(var(--motion-distance) * var(--flip-x-factor, 1)));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='zoom-in'],
+  [data-motion-armed] [data-motion-from='zoom-in'] {
+    opacity: var(--motion-zoom-in-opacity, 0);
+    transform: scale(var(--motion-zoom-in-scale, 0.8));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='zoom-out'],
+  [data-motion-armed] [data-motion-from='zoom-out'] {
+    transform: scale(var(--motion-zoom-out-scale, 1.15));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='fade-in--swap'],
+  [data-motion-armed] [data-motion-from='fade-in--swap'] {
+    opacity: 0;
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='fade-up--swap'],
+  [data-motion-armed] [data-motion-from='fade-up--swap'] {
+    opacity: 0;
+    transform: translateY(min(var(--motion-distance), 90%));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='slide-in-left'],
+  [data-motion-armed] [data-motion-from='slide-in-left'] {
+    opacity: 0;
+    transform: translateX(calc(var(--motion-distance) * -1 * var(--flip-x-factor, 1)));
+  }
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='slide-in-right'],
+  [data-motion-armed] [data-motion-from='slide-in-right'] {
+    opacity: 0;
+    transform: translateX(calc(var(--motion-distance) * var(--flip-x-factor, 1)));
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (max-width: 767.98px) {
+  [data-motion-armed] motion-component:not([data-initialized])[data-motion='zoom-in'] {
+    transform: none;
+    opacity: 0;
+  }
+}

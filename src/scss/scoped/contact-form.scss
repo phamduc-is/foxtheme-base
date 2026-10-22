@@ -1,0 +1,41 @@
+@use "../mixins" as *;
+
+// ─── Contact form ─────────────────────────────────────────────────────────────
+
+.contact-form {
+  .form-status-list,
+  .form-error {
+    margin-block-end: 2.4rem;
+  }
+
+  .contact__fields {
+    grid-template-columns: repeat(2, 1fr);
+
+    .form-field--full {
+      grid-column: 1/3;
+    }
+
+    // Mobile defaults to one field per row; `width_mobile: half` opts a field
+    // out. All three selectors sit at the same specificity, so source order
+    // decides — these must stay below `--full` to override it on mobile.
+    @include media-breakpoint-down(md) {
+      .form-field {
+        grid-column: 1/3;
+      }
+
+      .form-field--half-mobile {
+        grid-column: span 1;
+      }
+    }
+  }
+}
+
+// Sits outside `.contact__fields`, so the grid gap no longer separates it — the
+// merchant's own desktop/mobile gap does, through `clamp-calculate-style`.
+.contact__button {
+  margin-block-start: var(--contact-button-gap-mobile, var(--contact-button-gap, 0));
+
+  @include media-breakpoint-up(md) {
+    margin-block-start: var(--contact-button-gap, 0);
+  }
+}

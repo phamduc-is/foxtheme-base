@@ -1,0 +1,178 @@
+<link
+  rel="stylesheet"
+  href="{{ 'quick-view.css' | asset_url }}"
+  media="print"
+  onload="this.media='all'"
+>
+
+{% liquid
+  assign product = closest.product
+  if product == blank and request.design_mode
+    assign collection_all = collections.all
+    assign product = collection_all.products | first
+  endif
+%}
+
+{% liquid
+  assign quick_view_style = section.settings.quick_view_style | default: 'modal'
+%}
+{%- capture content -%}
+  <div
+    class="quick-view__content v-scrollable flex flex-col flex-1"
+    data-quick-view-content
+    data-product-url="{{ product.url }}"
+  >
+    {%- comment -%}
+      `manual`: this section renders hidden on every page (product pages
+      included), so it must not fire on connect. QuickViewDialog dispatches it
+      each time the dialog opens on the loaded product.
+    {%- endcomment -%}
+    {%- if product != blank -%}
+      {% render 'standard-view-event', resource: product, context: 'dialog', trigger: 'manual' %}
+    {%- endif -%}
+    {% content_for 'blocks', closest.product: product %}
+  </div>
+  {%- if quick_view_style == 'drawer' -%}
+    <div class="quick-view__footer">
+      <a href="{{ product.url }}" class="quick-view__footer-link flex items-center justify-center gap-2 reversed-link">
+        <span class="reversed-link__text">{{ 'actions.view_more_details' | t }}</span>
+        {% render 'icon', icon: 'caret-right', size: 'extra-small' %}
+      </a>
+    </div>
+  {%- endif -%}
+{%- endcapture -%}
+
+<div class="quick-view" id="quick-view-drawer" data-section-id="{{ section.id }}" hidden>
+  <div class="quick-view__inner" data-quick-view-content>
+    {{ content }}
+  </div>
+</div>
+{%- comment -%}
+  The dialog is shared: quick view opens it, and quick add's "Choose options"
+  path (multi-variant products, snippets/quick-add.liquid) opens it too. Gate it
+  on the union of all four card settings — gating on the desktop quick-add
+  checkbox alone left the dialog unrendered whenever a merchant turned quick add
+  off but kept quick view on (or enabled either one on mobile only), and every
+  trigger then fetched the product and silently opened nothing.
+{%- endcomment -%}
+{% liquid
+  assign needs_quick_view_dialog = false
+  if settings.pcard_show_quick_view or settings.pcard_show_quick_view_mobile
+    assign needs_quick_view_dialog = true
+  endif
+  if settings.pcard_show_quick_add or settings.pcard_show_quick_add_mobile
+    assign needs_quick_view_dialog = true
+  endif
+%}
+{% if needs_quick_view_dialog %}
+  {% if quick_view_style == 'modal' %}
+    <quick-view-dialog id="quick-view-modal-dialog" shopify-design-mode>
+      <dialog
+        ref="dialog"
+        aria-label="{{ 'actions.quick_view' | t }}"
+        class="dialog dialog--modal dialog--drawer-mobile-right overflow-hidden{% unless settings.dialog_color_scheme_inherit %} color-{{ settings.dialog_color_scheme }}{% endunless %}"
+        scroll-lock
+      >
+        <button
+          class="dialog__close dialog__close--absolute"
+          on:click="/closeDialog"
+          aria-label="{{ 'accessibility.close_dialog' | t }}"
+        >
+          {% render 'icon', icon: 'close', size: 'large' %}
+        </button>
+        <div class="quick-view-modal__inner flex flex-col" id="quick-view-modal-content">
+          {% if request.design_mode %}
+            {{ content }}
+          {% endif %}
+        </div>
+      </dialog>
+    </quick-view-dialog>
+  {% else %}
+    <quick-view-dialog id="quick-view-dialog" shopify-design-mode>
+      <dialog
+        ref="dialog"
+        aria-label="{{ 'actions.quick_view' | t }}"
+        class="dialog dialog--drawer dialog--quick-view-drawer dialog--drawer-right dialog--drawer-mobile-bottom overflow-hidden{% unless settings.dialog_color_scheme_inherit %} color-{{ settings.dialog_color_scheme }}{% endunless %}"
+        scroll-lock
+      >
+        <button
+          class="dialog__close dialog__close--absolute"
+          on:click="/closeDialog"
+          aria-label="{{ 'accessibility.close_dialog' | t }}"
+        >
+          {% render 'icon', icon: 'close', size: 'large' %}
+        </button>
+        <div class="quick-view-dialog__inner flex flex-col h-full" id="quick-view-drawer-content">
+          {% if request.design_mode %}
+            {{ content }}
+          {% endif %}
+        </div>
+      </dialog>
+    </quick-view-dialog>
+  {% endif %}
+{% endif %}
+{% schema %}
+{
+  "name": "t:names.quick_view",
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "quick_view_style",
+      "label": "t:settings.style",
+      "options": [
+        { "value": "modal", "label": "t:options.modal" },
+        { "value": "drawer", "label": "t:options.drawer" }
+      ],
+      "default": "modal"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "@app"
+    },
+    {
+      "type": "_product-review-stars"
+    },
+    {
+      "type": "_product-badges"
+    },
+    {
+      "type": "_quick-view-media"
+    },
+    {
+      "type": "_product-title"
+    },
+    {
+      "type": "_product-price"
+    },
+    {
+      "type": "_qv-promotion-alert"
+    },
+    {
+      "type": "_product-description"
+    },
+    {
+      "type": "_product-share"
+    },
+    {
+      "type": "_variant-picker"
+    },
+    {
+      "type": "_product-inventory"
+    },
+    {
+      "type": "_buy-buttons"
+    },
+    {
+      "type": "_product-info-group"
+    }
+  ]
+}
+{% endschema %}

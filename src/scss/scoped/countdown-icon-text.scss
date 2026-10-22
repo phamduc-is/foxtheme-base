@@ -1,0 +1,36 @@
+@use "../mixins" as *;
+
+// ─── Countdown icon-with-text ─────────────────────────────────────────────────
+
+.coundown-timer-iwt--card {
+  padding: var(--content-padding, 1.2rem);
+}
+
+.coundown-timer-iwt {
+  gap: var(--iwt-gap, 1.2rem);
+}
+
+.coundown-timer-iwt .countdown-timer {
+  flex-shrink: 0;
+}
+
+@include media-breakpoint-down(md) {
+  .coundown-timer-iwt--mobile-center,
+  .coundown-timer-iwt--mobile-right {
+    flex-direction: column;
+  }
+
+  .coundown-timer-iwt--mobile-center {
+    align-items: center;
+  }
+
+  .coundown-timer-iwt--mobile-right {
+    align-items: flex-end;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .coundown-timer-iwt {
+    --content-padding: 1.2rem 1.6rem;
+  }
+}

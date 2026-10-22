@@ -1,0 +1,164 @@
+{% doc %}
+  Results screen of the product quiz (STATIC, always rendered by `sections/finder-quiz.liquid` and
+  `sections/recommendation-quiz.liquid`). A thin wrapper: all markup lives in
+  `snippets/product-quiz-results-markup.liquid`, which the shell also renders BARE (no block) when
+  the merchant hides this block. The result rows are box product cards painted with this block's
+  own row colour scheme and radius (never the theme's global box card scheme).
+
+  @example
+  {% content_for 'block', type: '_product-quiz-results', id: 'product-quiz-results' %}
+{% enddoc %}
+
+{%- render 'product-quiz-results-markup', section: section, block: block -%}
+
+{% schema %}
+{
+  "name": "t:names.product_quiz_results",
+  "tag": null,
+  "settings": [
+    { "type": "header", "content": "t:content.results" },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "t:settings.heading",
+      "info": "t:info.product_quiz_tokens",
+      "default": "Your top picks"
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "t:settings.heading_size",
+      "options": [
+        { "value": "h1", "label": "t:options.h1" },
+        { "value": "h2", "label": "t:options.h2" },
+        { "value": "h3", "label": "t:options.h3" },
+        { "value": "h4", "label": "t:options.h4" }
+      ],
+      "default": "h1"
+    },
+    {
+      "type": "richtext",
+      "id": "description",
+      "label": "t:settings.description",
+      "info": "t:info.product_quiz_tokens",
+      "default": "<p>Based on your answers, these are the products we recommend.</p>"
+    },
+    {
+      "type": "select",
+      "id": "description_color",
+      "label": "t:settings.description_color",
+      "options": [
+        {
+          "value": "text",
+          "label": "t:options.text"
+        },
+        {
+          "value": "subtext",
+          "label": "t:options.subtext"
+        }
+      ],
+      "default": "text"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_summary",
+      "label": "t:settings.show_summary",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "retake_button_style",
+      "label": "t:settings.retake_button_style",
+      "options": [
+        { "value": "primary", "label": "t:options.primary" },
+        { "value": "secondary", "label": "t:options.secondary" },
+        { "value": "outline", "label": "t:options.outline" }
+      ],
+      "default": "secondary"
+    },
+    { "type": "header", "content": "t:content.fallback" },
+    {
+      "type": "inline_richtext",
+      "id": "fallback_heading",
+      "label": "t:settings.fallback_heading",
+      "default": "No exact match"
+    },
+    {
+      "type": "richtext",
+      "id": "fallback_description",
+      "label": "t:settings.fallback_description",
+      "default": "<p>Here are our most popular picks.</p>"
+    },
+    {
+      "type": "product_list",
+      "id": "fallback_products",
+      "label": "t:settings.fallback_products"
+    },
+    { "type": "header", "content": "t:content.product_row" },
+    {
+      "type": "checkbox",
+      "id": "show_vendor",
+      "label": "t:settings.show_product_vendor",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "title_line_limit",
+      "label": "t:settings.product_title_line_limit",
+      "options": [
+        { "value": "1-line", "label": "t:options.1_line" },
+        { "value": "2-lines", "label": "t:options.2_lines" },
+        { "value": "none", "label": "t:options.no_limit" }
+      ],
+      "default": "1-line"
+    },
+    {
+      "type": "color_scheme",
+      "id": "row_color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "range",
+      "id": "row_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    { "type": "header", "content": "t:content.image" },
+    {
+      "type": "range",
+      "id": "image_width",
+      "label": "t:settings.image_width",
+      "min": 50,
+      "max": 150,
+      "step": 2,
+      "unit": "px",
+      "default": 90
+    },
+    {
+      "type": "range",
+      "id": "image_width_mobile",
+      "label": "t:settings.image_width_mobile",
+      "min": 50,
+      "max": 150,
+      "step": 2,
+      "unit": "px",
+      "default": 70
+    },
+    {
+      "type": "range",
+      "id": "image_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,337 @@
+// @capability Full theme button system — color variants (primary/secondary/outline/plain/white), size variants, icon-only round buttons, sliding hover-fill overlay (::before), loading-spinner state, animated underline for plain links, and full-width mobile/desktop modifiers.
+// @when ANY button or CTA anywhere in the theme; never write new button CSS — compose .btn with existing modifiers (or .button-unstyled to reset a native button). No pairing JS.
+// @contract .btn + .btn--primary/--secondary/--outline/--plain/--white, sizes .btn--medium/--small/--extra-small, .btn--icon/--icon-only/--icon-end, .btn__text, .btn--loading with .loading-spinner, .btn--full-mobile/--full-desktop, reset class .button-unstyled.
+// @keywords button, CTA, primary button, outline button, link button, icon button, hover fill, loading state, disabled state, full width button
+
+@use "../mixins" as *;
+
+// ─── Base ─────────────────────────────────────────────────────────────────────
+
+.btn {
+  --button-padding-inline: 2.4rem;
+  --icon-size: 1.6rem;
+  --button-icon-gap: 0.8rem;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--button-icon-gap);
+  height: var(--button-height);
+  width: var(--button-width, auto);
+  padding: var(--button-padding-block, 1rem)
+    max(0px, calc(var(--button-padding-inline) - var(--button-border-thickness)));
+  line-height: var(--button-line-height, var(--font-paragraph--line-height, 1.6));
+  border-radius: var(--button-corner-radius, 0);
+  border-width: var(--button-border-thickness);
+  border-style: var(--button-border-style, solid);
+  transition-property: background-color, color, border-color, opacity, transform;
+  transition-duration: var(--motion-ui);
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  font-size: var(--font-size--paragraph);
+  cursor: pointer;
+  font-family: var(--font-button--family);
+  font-weight: var(--font-button--weight);
+  font-style: var(--font-button--style);
+  letter-spacing: var(--font-button--letter-spacing);
+  text-transform: var(--font-button--transform);
+
+  .loading-spinner {
+    position: absolute;
+    display: none;
+    opacity: 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  &--loading {
+    > *:not(.loading-spinner) {
+      opacity: 0;
+    }
+
+    .loading-spinner {
+      display: inline-flex !important;
+      opacity: 1;
+    }
+  }
+}
+
+.btn__text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.btn .icon {
+  flex-shrink: 0;
+}
+
+// ─── Size variants ────────────────────────────────────────────────────────────
+// Size tokens are defined in css-variables.liquid — change values there per project.
+// All of them derive from the merchant's Button height setting — medium maps
+// straight onto it, the rest sit at offsets each theme tunes for itself — so
+// UI/system buttons keep in step with the CTAs next to them.
+
+.btn--large {
+  --button-padding-block: 0.8rem;
+
+  height: var(--button-height-large);
+}
+
+.btn--medium {
+  --button-padding-block: 0.8rem;
+
+  height: var(--button-height);
+}
+
+.btn--small {
+  --button-padding-block: 0.6rem;
+  --button-padding-inline: 2rem;
+
+  height: var(--button-height-small);
+}
+
+.btn--extra-small {
+  --button-padding-block: 0.4rem;
+  --button-padding-inline: 1.6rem;
+
+  height: var(--button-height-extra-small);
+}
+
+// ─── Icon padding overrides ───────────────────────────────────────────────────
+
+.btn.btn--icon {
+  --button-padding-inline: 1.2rem;
+}
+
+// ─── Icon position ────────────────────────────────────────────────────────────
+
+.btn--icon-end .btn__text {
+  order: -1;
+}
+
+// ─── Color variants ───────────────────────────────────────────────────────────
+
+.btn--primary {
+  background-color: rgb(var(--color-primary-button-background));
+  color: rgb(var(--color-primary-button-text));
+  border-color: rgb(var(--color-primary-button-background));
+}
+
+// No ring. `overflow: hidden` clips the hover fill at the PADDING box, so the
+// border is the one part of the button the fill can never reach — it had to be
+// repainted separately and changed colour out of step with the fill arriving
+// behind it. Primary never had the problem because its border role is mapped
+// onto its own background; secondary now matches, and the thickness goes with it.
+// Size-neutral: `.btn` subtracts the thickness it is given from its inline padding.
+.btn--secondary {
+  --button-border-thickness: 0rem;
+
+  background-color: rgb(var(--color-secondary-button-background));
+  color: rgb(var(--color-secondary-button-text));
+  border-color: transparent;
+}
+
+.btn--outline {
+  background-color: transparent;
+  border-color: rgb(var(--color-primary-button-background));
+  color: rgb(var(--color-foreground));
+
+  .icon {
+    color: rgb(var(--color-primary-button-background));
+    transition: color var(--motion-ui);
+  }
+}
+
+.btn--plain {
+  height: auto;
+  padding: 0;
+  background-color: transparent;
+  border: 0;
+  border-radius: 0;
+
+  // Themeable link colour (the color scheme's "Button link" role); falls back to
+  // the foreground when a scheme leaves it blank.
+  color: rgb(var(--color-button-link, var(--color-foreground)));
+
+  .btn__text {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      width: 0;
+      height: 1px;
+      inset-inline-end: 0;
+      bottom: 0;
+      transition-property: width;
+      transition-duration: var(--motion-ui);
+      background-color: rgb(var(--color-button-link, var(--color-foreground)));
+    }
+  }
+}
+
+.btn--white {
+  background-color: rgb(var(--color-white));
+  color: rgb(var(--color-black));
+  border-color: rgb(var(--color-white));
+}
+
+// ─── Icon-only ────────────────────────────────────────────────────────────────
+// Square button — width mirrors height via --button-width
+
+// `btn--icon-only` below says two things at once: this button shows only an
+// icon, AND give it round, square-sided geometry. `btn--no-label` says only the
+// first, and deliberately declares nothing — it is a marker, not a ruleset.
+
+// A button effect that needs to know whether there is anything to read — a
+// label that slides, a surface that answers a word rather than a glyph — can
+// test for it, and a button that already owns its size opts in without being
+// resized. The compare table's remove control is exactly that: its own 2.4rem
+// circle, which `btn--icon-only` would fight.
+.btn--icon-only {
+  --button-padding-inline: 0;
+  --button-padding-block: 0;
+  --button-corner-radius: 50%;
+  --button-width: var(--button-height);
+
+  justify-content: center;
+}
+
+.btn--icon-only.btn--large {
+  --button-width: var(--button-height-large);
+}
+
+.btn--icon-only.btn--medium {
+  --button-width: var(--button-height);
+}
+
+.btn--icon-only.btn--small {
+  --button-width: var(--button-height-small);
+}
+
+.btn--icon-only.btn--extra-small {
+  --button-width: var(--button-height-extra-small);
+}
+
+// ─── Hover fill overlay (::before) ────────────────────────────────────────────
+// Slides in from the left on hover; excluded from plain and unstyled buttons
+
+:is(.btn--primary, .btn--secondary, .btn--outline, .btn--white):not(.button-unstyled)::before {
+  content: "";
+  position: absolute;
+  width: 0;
+  inset-block: calc(var(--button-border-thickness) * -1);
+  inset-inline-start: calc(var(--button-border-thickness) * -1);
+  z-index: -1;
+  transition: width var(--motion-ui);
+  border-radius: var(--button-corner-radius, 0);
+  background-color: rgb(var(--color-primary-button-background));
+}
+
+.btn--primary:not(.button-unstyled)::before {
+  background-color: rgb(var(--color-primary-button-text));
+}
+
+// ─── Unstyled reset ───────────────────────────────────────────────────────────
+
+.button-unstyled {
+  display: block;
+  padding: 0;
+  background-color: inherit;
+  color: inherit;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  box-shadow: none;
+  height: auto;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+.btn[hidden] {
+  display: none;
+}
+
+button:disabled,
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .button-block:has(> .btn--full-mobile) {
+    width: 100%;
+  }
+
+  .btn--full-mobile {
+    width: 100%;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .button-block:has(> .btn--full-desktop) {
+    width: 100%;
+  }
+
+  .btn--full-desktop {
+    width: 100%;
+  }
+}
+
+// ─── Hover interactions ───────────────────────────────────────────────────────
+// A disabled button (`disabled` or `aria-disabled="true"`) is excluded from every
+// hover rule: the State block already dims it and swaps the cursor, but without
+// the guard the fill still swept in and the label recoloured under the dimming —
+// an onboarding placeholder "View details" read as live on hover.
+
+@media (hover: hover) and (pointer: fine) {
+  :is(.btn--primary, .btn--secondary, .btn--outline, .btn--white):not(
+      .button-unstyled,
+      :disabled,
+      [aria-disabled="true"]
+    ):hover::before {
+    width: calc(100% + var(--button-border-thickness) * 2);
+  }
+
+  .btn--primary:not(.button-unstyled, :disabled, [aria-disabled="true"]):hover {
+    color: rgb(var(--color-primary-button-background));
+  }
+
+  // The fill that sweeps in is `--color-primary-button-background` — this variant
+  // does not override the shared ::before — so the text has to be that
+  // background's designated foreground, the same pairing --secondary and
+  // --outline use below. A hardcoded white only read correctly while the
+  // merchant's primary button happened to be dark; on a pale one the label
+  // disappeared into the fill.
+  .btn--white:not(.button-unstyled, :disabled, [aria-disabled="true"]):hover {
+    color: rgb(var(--color-primary-button-text));
+  }
+
+  .btn--secondary:not(.button-unstyled, :disabled, [aria-disabled="true"]):hover {
+    color: rgb(var(--color-primary-button-text));
+  }
+
+  .btn--outline:not(.button-unstyled, :disabled, [aria-disabled="true"]):hover {
+    color: rgb(var(--color-primary-button-text));
+
+    .icon {
+      color: rgb(var(--color-primary-button-text));
+    }
+  }
+
+  .btn--plain:not(:disabled, [aria-disabled="true"]):hover .btn__text::after {
+    inset-inline: 0 auto;
+    width: 100%;
+  }
+}

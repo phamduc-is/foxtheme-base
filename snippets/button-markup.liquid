@@ -1,0 +1,134 @@
+{% doc %}
+  Renders a button or motion-animated button element.
+  Renders nothing if both label is blank and icon is 'none'.
+  Supports optional animation wrapper (motion-component) when animations are enabled.
+
+  @param {string} [label] - Button label text
+  @param {string} [link] - Button URL; renders an <a> tag when provided, otherwise <button>
+  @param {string} [icon] - Icon name (see icon snippet); pass 'none' to omit
+  @param {boolean} [icon_only] - Show icon without label (default: false)
+  @param {boolean} [icon_end] - Place icon at the end. Default: false
+  @param {string} [icon_size] - Icon size modifier: 'auto' | 'extra-small' | 'small' | 'medium' | 'large' | 'extra-large' (default: 'auto')
+  @param {string} style - Button style variant: 'primary' | 'secondary' | 'outline' | 'white' | 'plain'
+  @param {string} [size] - Button size: 'small' | 'medium' | 'large' (default: 'medium')
+  @param {string} [width] - Desktop width: 'fit-content' | 'fill' (default: 'fit-content')
+  @param {string} [width_mobile] - Mobile width: 'fit-content' | 'fill' (default: 'fit-content')
+  @param {string} [animation_type] - Animation type for motion-component wrapper (default: 'none')
+  @param {number} [animation_delay] - Animation delay in ms (default: 250)
+  @param {boolean} [with_wrapper] - Wrap in div.button-block (default: true)
+  @param {string} [tag] - The BUTTON element's tag (default: 'a'; a `link` forces 'a', no link + no override renders 'button')
+  @param {string} [attributes] - Raw HTML attributes string applied to the button element
+  @param {string} [content_after] - HTML string injected inside the button before the closing tag
+  @param {object} [block] - Shopify block (for shopify_attributes)
+  @param {string} [button_class] - Custom class(es) added to the button element
+  @param {string} [wrapper_class] - Custom class(es) added to the button wrapper
+
+  @example
+  {% render 'button-markup', label: 'Shop now', link: collection.url, style: 'primary' %}
+{% enddoc %}
+{%- unless label == blank and icon == 'none' -%}
+  {%- liquid
+    assign animation_type = animation_type | default: 'none'
+    assign animation_delay = animation_delay | default: 250
+
+    assign size = size | default: 'medium'
+
+    assign icon = icon | default: 'none'
+    assign icon_only = icon_only | default: false, allow_false: true
+    assign icon_end = icon_end | default: false, allow_false: true
+    assign icon_size = icon_size | default: 'auto'
+
+    assign element = 'div'
+    if animation_type != 'none' and settings.animations_enabled
+      assign element = 'motion-component'
+    endif
+
+    assign with_wrapper = with_wrapper | default: true, allow_false: true
+    assign tag = tag | default: 'a'
+
+    assign full_mobile = false
+    assign full_desktop = false
+
+    if icon == 'none' or icon_only == false
+      if width_mobile == 'fill'
+        assign full_mobile = true
+      endif
+      if width == 'fill'
+        assign full_desktop = true
+      endif
+    endif
+  -%}
+  {%- capture class -%}
+    btn btn--{{ style }} btn--{{ size }}{% if full_mobile %} btn--full-mobile{% endif %}{% if full_desktop %} btn--full-desktop{% endif %}
+    {%- if icon != 'none' -%}
+      {%- if icon_only %}
+        btn--icon-only
+      {%- elsif label != blank %}
+        btn--icon{% if icon_end %} btn--icon-end{% endif %}
+      {%- endif -%}
+    {%- endif -%}
+    {%- if button_class != blank %} {{ button_class }}{%- endif -%}
+  {%- endcapture -%}
+  {%- capture wrap_attributes -%}
+    class="button-block block{% if wrapper_class != blank %} {{ wrapper_class }}{% endif %}"
+    {% if animation_type != 'none' %}
+      data-motion="{{ animation_type }}"
+      data-motion-delay="{{ animation_delay }}"
+    {% endif %}
+    {% if block != blank %}
+      {{ block.shopify_attributes }}
+    {% endif %}
+  {%- endcapture -%}
+  {%- capture button -%}
+    <{{ tag }}
+      {% if tag == 'a' %}
+        {% if link == blank %}
+          role="link"
+          aria-disabled="true"
+        {% else %}
+          href="{{ link }}"
+        {% endif %}
+      {% endif %}
+      {% if attributes %}
+        {{ attributes -}}
+      {% endif %}
+      {%- comment -%}
+        With no wrapper to carry them, the block's attributes belong on the button
+        itself, or the Theme Editor loses track of the block.
+      {%- endcomment -%}
+      {% if with_wrapper == false and block != blank %}
+        {{ block.shopify_attributes }}
+      {% endif %}
+      {% if icon_only and label != blank %}
+        aria-label="{{ label | escape_once }}"
+      {% endif %}
+      class="{{ class | strip | strip_newlines }}"
+    >
+      {%- if icon != 'none' -%}
+        {% if icon_size == 'auto' %}
+          {% render 'icon', icon: icon %}
+        {% else %}
+          {% render 'icon', icon: icon, size: icon_size %}
+        {% endif %}
+      {%- endif -%}
+      {%- if label != blank -%}
+        {% if icon == 'none' or icon_only == false  %}
+          <span class="btn__text" data-label="{{ label | escape }}">{{ label }}</span>
+        {% endif %}
+      {%- endif -%}
+      {{ content_after }}
+    </{{ tag }}>
+  {%- endcapture -%}
+  {%- comment -%}
+    `with_wrapper` alone decides this. It was `with_wrapper or block != blank`, but
+    `block` is ambient inside a theme block's render tree, so every button rendered
+    from a block got a wrapper even when the caller passed `with_wrapper: false` —
+    and a caller that styles the button as a flex/grid child then targets the wrong
+    element. Defaulting to true keeps blocks wrapped unless they opt out.
+  {%- endcomment -%}
+  {%- if with_wrapper -%}
+    <{{ element }} {{ wrap_attributes }}>{{ button }}</{{ element }}>
+  {%- else -%}
+    {{ button }}
+  {%- endif -%}
+{%- endunless -%}

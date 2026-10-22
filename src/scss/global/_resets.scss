@@ -1,0 +1,107 @@
+// Reset styles inspired by https://www.joshwcomeau.com/css/custom-css-reset/
+
+// ─── Box model ────────────────────────────────────────────────────────────────
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+// ─── Document ─────────────────────────────────────────────────────────────────
+
+html {
+  font-size: 62.5%;
+  scroll-behavior: smooth;
+
+  // The scrollbar's width is reserved PERMANENTLY, so locking the page for a
+  // modal is no longer a resize. This replaces the previous approach of giving
+  // the locked page `padding-right: var(--scrollbar-width)`, which only ever
+  // held the document's own content still: everything laid out against the
+  // VIEWPORT — fixed elements, 100vw, media queries — still moved by the
+  // scrollbar's width the instant `overflow: hidden` took it away. Measured on
+  // a real classic-scrollbar machine, that was a visible sideways jump on every
+  // drawer open; with the gutter reserved the viewport width never changes
+  // (clientWidth 1617 before and during the lock).
+  // This also settles a fight rather than joining it. `ceddd96d` had to write
+  // `scrollbar-gutter: unset !important` on the locked page to undo what
+  // Shopify's <shopify-account> component sets, because the theme was
+  // compensating with padding at the same time and the two stacked. Both sides
+  // now use the same mechanism, so there is nothing to undo.
+  scrollbar-gutter: stable;
+}
+
+html.scroll-locked,
+html:has(.dropdown-open, .search-open) {
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+// ─── Media ────────────────────────────────────────────────────────────────────
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+svg * {
+  vector-effect: non-scaling-stroke;
+}
+
+// ─── Typography ───────────────────────────────────────────────────────────────
+
+p {
+  text-wrap: pretty;
+}
+
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  overflow-wrap: break-word;
+}
+
+p:empty {
+  display: none;
+}
+
+:is(p, h1, h2, h3, h4, h5, h6):first-child,
+:empty:first-child + :where(p, h1, h2, h3, h4, h5, h6) {
+  margin-block-start: 0;
+}
+
+:is(p, h1, h2, h3, h4, h5, h6):last-child,
+:where(p, h1, h2, h3, h4, h5, h6) + :has(+ :empty:last-child) {
+  margin-block-end: 0;
+}
+
+// ─── Interactive elements ─────────────────────────────────────────────────────
+
+details > * {
+  box-sizing: border-box;
+}
+
+summary {
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}

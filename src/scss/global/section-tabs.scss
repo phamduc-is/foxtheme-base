@@ -1,0 +1,35 @@
+@use "../mixins" as *;
+
+// ─── Tab Buttons ──────────────────────────────────────────────────────────────
+
+.section-tabs .tabs__button {
+  color: rgb(var(--color-secondary-button-text));
+  background: rgb(var(--color-secondary-button-background));
+}
+
+.section-tabs .tabs__button::before {
+  background: rgb(var(--color-primary-button-background));
+}
+
+.section-tabs .tabs__button[aria-selected="true"] {
+  color: rgb(var(--color-primary-button-text));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .section-tabs .tabs__button:hover {
+    color: rgb(var(--color-primary-button-text));
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(md) {
+  .section-tabs .tabs--vertical .tabs__button {
+    color: rgb(var(--color-foreground));
+    background: transparent;
+  }
+
+  .section-tabs .tabs--vertical .tabs__button::before {
+    background: rgb(var(--color-secondary-button-background));
+  }
+}

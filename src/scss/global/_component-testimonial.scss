@@ -1,0 +1,169 @@
+// @capability Testimonial/review card — stacked and inline (media beside content) layouts, image-away-edge padding variant, image-stretch ratio fill, author avatar sizing, and a bordered linked-product footer row.
+// @when Testimonial/review sections and blocks; reuse via snippets/testimonial-markup.liquid instead of a new quote-card layout. No dedicated JS (the testimonial-parallax element only gets layout containment here).
+// @contract .testimonial (--stacked/--inline/--image-stretch/--image-away-edge) > .testimonial__media (.media, [style*="--ratio"]) + .testimonial__content + .testimonial__product (+ .testimonial__product-media); .author-info__avatar sized by --width / --width-mobile.
+// @keywords testimonial, review card, quote, customer review, avatar, stacked layout, inline layout, product link
+
+@use "sass:math";
+@use "../mixins" as *;
+
+// ─── Testimonial ──────────────────────────────────────────────────────────────
+
+.author-info__avatar {
+  width: var(--width);
+}
+
+testimonial-parallax {
+  contain: layout;
+}
+
+.testimonial {
+  align-items: flex-start;
+
+  .media {
+    height: auto;
+  }
+
+  &__product {
+    a {
+      border-top: 1px solid rgb(var(--color-border) / var(--color-border-alpha));
+      padding-block-start: var(--testimonial-product-pt, 1.2rem);
+      margin-block-start: 1.2rem;
+    }
+
+    &-media {
+      flex: 0 0 var(--product-media-width, 4rem);
+      border-radius: min(0.6rem, var(--product-card-media-radius));
+    }
+  }
+
+  &--stacked {
+    .testimonial__content {
+      padding: 2rem 1.6rem;
+    }
+
+    &.testimonial--image-away-edge {
+      padding: 1.6rem 1.6rem 2rem;
+
+      .testimonial__content {
+        padding: 2.4rem 0 0;
+      }
+    }
+  }
+
+  &--inline {
+    --testimonial-product-pt: 2rem;
+
+    .testimonial__content {
+      padding: 3.2rem 3.2rem 2rem;
+    }
+
+    .testimonial__product a {
+      margin-block-start: 3.2rem;
+    }
+
+    &.testimonial--image-away-edge {
+      padding-block: 1.6rem;
+      padding-inline: 1.6rem 2.4rem;
+
+      .testimonial__content {
+        padding-block: 0;
+        padding-inline: 2.4rem 0;
+      }
+    }
+  }
+
+  &--image-stretch {
+    align-items: stretch !important;
+
+    .testimonial__media {
+      .media {
+        aspect-ratio: unset;
+        height: 100%;
+      }
+
+      [style*="--ratio"] {
+        position: relative;
+        overflow: hidden;
+
+        &::before {
+          display: block;
+          width: 100%;
+          content: "";
+          height: 0;
+          padding-block-start: calc(100% / (0.0001 + var(--ratio, #{math.div(16, 9)})));
+        }
+
+        > *:first-child,
+        .media__image {
+          inset-block-start: 0;
+          inset-inline: 0;
+          position: absolute !important;
+          object-fit: cover;
+          width: 100%;
+          height: 100%;
+        }
+      }
+    }
+  }
+
+  &.color-inherit {
+    gap: 2.4rem;
+    padding: 0 !important;
+
+    .testimonial__content {
+      padding: 0 !important;
+    }
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(md) {
+  .testimonial {
+    &--inline {
+      .testimonial__media {
+        flex: 0 0 40%;
+      }
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .author-info__avatar {
+    width: var(--width-mobile, var(--width));
+  }
+
+  .testimonial {
+    &--stacked {
+      .testimonial__content {
+        padding: 2.4rem 1.2rem 1.6rem;
+      }
+
+      &.testimonial--image-away-edge {
+        padding: 1.2rem 1.2rem 1.6rem;
+      }
+    }
+
+    &--inline {
+      .testimonial__media {
+        [style*="--ratio"] {
+          &::before {
+            padding-block-start: calc(100% / (0.0001 + var(--ratio-mobile, var(--ratio, #{math.div(16, 9)}))));
+          }
+        }
+      }
+
+      .testimonial__content {
+        padding: 2.4rem 1.2rem 1.6rem;
+      }
+
+      &.testimonial--image-away-edge {
+        padding: 1.2rem 1.2rem 1.6rem;
+
+        .testimonial__content {
+          padding: 2.4rem 0 0;
+        }
+      }
+    }
+  }
+}

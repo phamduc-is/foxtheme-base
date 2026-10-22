@@ -1,0 +1,328 @@
+{% doc %}
+  Image card: dynamic (theme block `image-card` with `settings` + captured slots) or static (e.g. mega menu). Inlined from former `snippets/image-card.liquid`.
+
+  **Theme block:** pass `settings`, `attributes`, `card_label_html`, `subheading`, `heading`, `text`, `button` (captures from `blocks/image-card.liquid`). Omits `mode` (defaults to `dynamic`).
+
+  **Static:** pass `mode: 'static'`, `image`, `overlay`, `card_link`, etc. Omit `settings` unless needed for defaults.
+
+  @param {string} [mode] - `static` \| `dynamic` (default).
+  @param {object} [settings] - Block settings for dynamic mode (shadows global only when passed).
+  @param {string} [attributes]
+  @param {string} [card_image] - Pre-built media HTML for dynamic mode (optional).
+  @param {string} [card_label_html]
+  @param {string} [subheading]
+  @param {string} [heading]
+  @param {string} [text]
+  @param {string} [button]
+  @param {string} [badge_html] - Captured `_image-card-badge` static block (theme block only). Overlays the media corner, inset by the Content padding.
+  @param {string} [card_link]
+  @param {string} [image] - Static: HTML for image area.
+  @param {string} [overlay]
+  @param {string} [color_scheme]
+  @param {string} [card_label]
+  @param {boolean} [card_label_in_content]
+  @param {string} [heading_tag]
+  @param {string} [edge_gap] - Static only: preset content padding. The theme block emits `--edge-padding-*` from its own ranges instead.
+  @param {string} [content_direction]
+  @param {string} [h_alignment]
+  @param {string} [h_alignment_mobile]
+  @param {string} [v_alignment]
+  @param {string} [v_alignment_mobile]
+  @param {number} [gap]
+  @param {number} [gap_mobile]
+  @param {number} [column_gap]
+  @param {number} [column_gap_mobile]
+  @param {number} [row_gap]
+  @param {number} [row_gap_mobile]
+  @param {number} [border_width]
+  @param {string} [border]
+  @param {number} [border_opacity]
+  @param {number} [border_radius]
+  @param {boolean} [show_content_below]
+  @param {string} [classes]
+  @param {boolean} [build_media_from_settings] - Set true from `blocks/image-card.liquid` so media HTML is built from `settings` (avoids treating global `settings` as block settings).
+{% enddoc %}
+{%- liquid
+  assign mode = mode | default: 'dynamic'
+-%}
+{%- if mode == 'dynamic' and build_media_from_settings -%}
+  {% liquid
+    assign loading = 'lazy'
+    assign fetchpriority = 'low'
+    if settings.enable_preload_image
+      assign loading = 'eager'
+      assign fetchpriority = 'high'
+    endif
+  %}
+  {% capture card_image %}
+    <div
+      class="image-card__media-wrapper relative w-full h-full{% if settings.show_content_below %} border-style{% endif %}"
+      {% if settings.show_content_below %}
+        style="{% render 'border-style', border: settings.image_border, border_width: settings.image_border_width, border_opacity: settings.image_border_opacity, border_radius: settings.image_border_radius %}"
+      {% endif %}
+    >
+      {% render 'responsive-image',
+        mode: 'js',
+        image: settings.image,
+        image_mobile: settings.image_mobile,
+        image_ratio: settings.image_ratio,
+        image_ratio_mobile: settings.image_ratio_mobile,
+        default_alt: shop.name,
+        loading: loading,
+        fetchpriority: fetchpriority
+      %}
+      {%- if settings.toggle_overlay -%}
+        {% render 'overlay',
+          overlay_type: settings.overlay_type,
+          overlay_color: settings.overlay_color,
+          overlay_gradient: settings.overlay_gradient
+        %}
+      {%- endif -%}
+    </div>
+  {% endcapture %}
+{%- endif -%}
+{%- liquid
+  if card_link == blank and build_media_from_settings
+    assign card_link = settings.card_link
+  endif
+  assign show_content_below = show_content_below | default: settings.show_content_below | default: false
+
+  assign card_label_html = card_label_html | default: '' | strip
+  assign card_label_slot = 'media'
+  if card_label_html != blank
+    if card_label_html contains 'data-card-label-slot="content"'
+      assign card_label_slot = 'content'
+    endif
+  endif
+
+  assign card_label_media_text = ''
+  assign card_label_content_text = ''
+  if card_label_html == blank
+    assign legacy_label = card_label | default: settings.card_label
+    if legacy_label != blank
+      assign legacy_in_content = card_label_in_content | default: settings.card_label_in_content | default: false
+      if legacy_in_content
+        assign card_label_content_text = legacy_label
+      else
+        assign card_label_media_text = legacy_label
+      endif
+    endif
+  endif
+  assign edge_gap = edge_gap | default: 'md'
+  assign gap = gap | default: settings.gap
+  assign gap_mobile = gap_mobile | default: settings.gap_mobile
+  assign heading_tag = heading_tag | default: 'div'
+  assign card_radius = border_radius
+
+  if content_direction == blank
+    assign content_direction = settings.content_direction
+  endif
+
+  assign content_direction = content_direction | default: 'column'
+
+  assign card_classes = ''
+  assign card_inner_classes = 'image-card__inner layout-panel-flex layout-panel-flex--[contentDirection] gap-style' | replace: '[contentDirection]', content_direction
+
+  # Content padding: the theme block emits explicit `--edge-padding-*` from its four
+  # ranges (see `content_padding_style` below). Static callers have no such settings,
+  # so they keep the preset `edge-gap--*` class.
+  unless build_media_from_settings
+    if edge_gap != 'none'
+      assign card_classes = card_classes | append: ' edge-gap--' | append: edge_gap
+    endif
+  endunless
+
+  if show_content_below
+    assign card_classes = card_classes | append: ' image-card--content-outside'
+  else
+    assign card_classes = card_classes | append: ' image-card--content-inside media-hover--scale !bg-transparent-20'
+  endif
+
+  if settings.width != blank
+    assign card_classes = card_classes | append: ' size-style'
+  endif
+
+  if settings.enable_full_height == true
+    assign card_classes = card_classes | append: ' self-stretch'
+  endif
+
+  if mode == 'dynamic'
+    if settings.vertical_on_mobile
+      assign card_inner_classes = card_inner_classes | append: ' layout-panel-flex--column-mobile'
+    endif
+
+    if settings.inherit_color_scheme == false
+      assign card_classes = card_classes | append: ' color-' | append: settings.color_scheme
+    endif
+  else
+    if gap == blank
+      assign gap = 20
+    endif
+    if row_gap == blank
+      assign row_gap = 32
+    endif
+    if color_scheme != blank
+      assign card_classes = card_classes | append: ' color-' | append: color_scheme
+    endif
+    if show_content_below
+      assign card_radius = 0
+    endif
+  endif
+
+  assign image_wrap_tag = 'div'
+
+  if card_link != blank
+    assign image_wrap_tag = 'a'
+  endif
+-%}
+{%- comment -%}
+  Where `--edge-padding-*` lands decides whether `.label--media` follows the Content
+  padding, because that label reads the same two vars (with its own 2rem fallback).
+
+  - Content OVERLAYS the media → put it on the card. Label and text share one surface,
+    so they should share one inset; that is what the old `edge-gap--*` class did.
+  - Content sits BELOW the media → put it on `.image-card__content` only. The label
+    floats over a different box, and these cards legitimately use 0 padding, which
+    would otherwise pin the label to the image corner.
+{%- endcomment -%}
+{%- capture content_padding_style -%}
+  {%- if build_media_from_settings -%}
+    {%- render 'clamp-calculate-style',
+      property_name: 'edge-padding-inline',
+      min_value: settings.content_padding_inline_mobile,
+      max_value: settings.content_padding_inline,
+      max_breakpoint: 1455
+    -%}
+    {%- render 'clamp-calculate-style',
+      property_name: 'edge-padding-block',
+      min_value: settings.content_padding_block_mobile,
+      max_value: settings.content_padding_block,
+      max_breakpoint: 1455
+    -%}
+  {%- endif -%}
+{%- endcapture -%}
+{%- assign content_padding_style = content_padding_style | strip | strip_newlines -%}
+{% capture card_style %}
+  {% render 'border-style',
+    settings: settings,
+    border_width: border_width,
+    border: border,
+    border_opacity: border_opacity,
+    border_radius: card_radius
+  %}
+  {% if show_content_below %}
+    --gap: {{ gap }}px;
+    --gap-mobile: {{ gap_mobile }}px;
+  {% else %}
+    {{ content_padding_style }}
+  {% endif %}
+  {% if settings.width != blank %}
+    {% render 'size-style', settings: settings %}
+  {% endif %}
+{% endcapture %}
+
+{%- capture content_inner_style -%}
+  {%- render 'gap-style',
+    settings: settings,
+    column_gap: column_gap,
+    column_gap_mobile: column_gap_mobile,
+    row_gap: row_gap,
+    row_gap_mobile: row_gap_mobile
+  -%}
+  {%- render 'layout-panel-style',
+    settings: settings,
+    content_direction: content_direction,
+    h_alignment: h_alignment,
+    h_alignment_mobile: h_alignment_mobile,
+    v_alignment: v_alignment,
+    v_alignment_mobile: v_alignment_mobile,
+    type: 'flex'
+  -%}
+{%- endcapture -%}
+
+<div
+  class="swiper-slide-custom image-card image-card--{{ mode }} relative grid border-style{{ card_classes }}{% if classes != blank %} {{ classes }}{% endif %}"
+  style="{{ card_style | strip | strip_newlines }}"
+  {{- attributes -}}
+>
+  {%- if card_link != blank -%}
+    {%- liquid
+      # Nameless stretched link (axe link-name): borrow the card heading.
+      assign card_link_label = heading | default: subheading | strip_html | strip | truncatewords: 12, ''
+    -%}
+    <a
+      class="absolute inset-0 focus-visible--absolute"
+      href="{{ card_link }}"
+      {% if card_link_label != blank %}aria-label="{{ card_link_label | escape }}"{% endif %}
+    ></a>
+  {%- endif -%}
+  <{{ image_wrap_tag }}
+    class="image-card__media{% unless show_content_below %} col-span-full row-span-full{% else %} media-hover--scale{% endunless %} relative z-0 block overflow-hidden"
+    {% if card_link != blank %}
+      href="{{ card_link }}"
+    {% endif %}
+    tabindex="-1"
+    aria-hidden="true"
+  >
+    {% if mode == 'dynamic' %}
+      {{ card_image }}
+    {% else %}
+      <div
+        class="image-card__media-wrapper relative w-full h-full{% if show_content_below %} border-style{% endif %}"
+        {% if show_content_below %}
+          style="{% render 'border-style', border_radius: border_radius %}"
+        {% endif %}
+      >
+        {{ image }}
+        {{ overlay }}
+      </div>
+    {% endif %}
+
+    {% if card_label_html != blank and card_label_slot == 'media' %}
+      {{ card_label_html }}
+    {% elsif card_label_media_text != blank %}
+      {% render 'label', text: card_label_media_text, placement: 'media', class: '', shopify_attributes: '' %}
+    {% endif %}
+  </{{ image_wrap_tag }}>
+  <div
+    class="image-card__content pointer-events-none edge-gap relative{% unless show_content_below %} col-span-full row-span-full{% endunless %}"
+    {% if show_content_below and content_padding_style != blank %}
+      style="{{ content_padding_style }}"
+    {% endif %}
+  >
+    <div
+      class="{{ card_inner_classes | strip | strip_newlines }}"
+      style="{{ content_inner_style | strip | strip_newlines }}"
+    >
+      <div class="image-card__texts flex flex-col">
+        {% if card_label_html != blank and card_label_slot == 'content' %}
+          {{ card_label_html }}
+        {% elsif card_label_content_text != blank %}
+          {% render 'label', text: card_label_content_text, placement: 'content', class: '', shopify_attributes: '' %}
+        {% endif %}
+        {% if subheading != blank %}
+          <div class="image-card__subheading">
+            {{ subheading }}
+          </div>
+        {% endif %}
+        {% if heading != blank %}
+          <{{ heading_tag }} class="image-card__heading">
+            {{ heading }}
+          </{{ heading_tag }}>
+        {% endif %}
+        {% if text != blank %}
+          <div class="image-card__text">
+            {{ text }}
+          </div>
+        {% endif %}
+      </div>
+      {% if button != blank %}
+        {{ button }}
+      {% endif %}
+    </div>
+  </div>
+  {%- assign badge_html = badge_html | strip -%}
+  {%- if badge_html != blank -%}
+    {{ badge_html }}
+  {%- endif -%}
+</div>

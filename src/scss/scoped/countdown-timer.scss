@@ -1,0 +1,111 @@
+@use "../mixins" as *;
+
+// ─── Countdown timer ──────────────────────────────────────────────────────────
+
+.countdown-timer {
+  --item-gap: var(--item-gap-x, 1.2rem);
+
+  &__inner {
+    gap: var(--item-gap);
+  }
+
+  // The separator `:` is `--separator-scale` × the number size (Separator size, default
+  // 50%). Half its advance (0.24375em at 1×) is added to the gap on each side, so a larger
+  // colon pushes the boxes apart instead of overlapping them.
+  --separator-offset: calc(0.24375em * var(--separator-scale, 0.5));
+
+  &__block {
+    margin-inline-end: calc(var(--item-gap) + var(--separator-offset));
+
+    &:last-child {
+      margin-inline-end: 0;
+    }
+
+    &:last-child .countdown-timer__number::after {
+      display: none;
+    }
+  }
+
+  &__number {
+    min-width: 1.3em;
+    color: rgb(var(--number-color, var(--color-foreground)));
+    line-height: 1;
+  }
+
+  // The span is a line box at the NUMBER's size (line-height 1, centred like the digits),
+  // so the colon sits on the digits' baseline. It is then lifted until its dots' centre
+  // (½ its own x-height) meets the digits' centre (½ the number's cap height). Centring
+  // the small colon's own box instead let it sit low (up to ~0.2em on a condensed face).
+  &__separator {
+    top: 50%;
+    inset-inline-end: calc((var(--item-gap) + var(--separator-offset)) * -1);
+    transform: translateY(-50%);
+    line-height: 1;
+
+    &::after {
+      content: ":";
+      display: inline-block;
+      font-size: calc(1em * var(--separator-scale, 0.5));
+      transform: translateY(calc(0.5ex - 0.5cap / var(--separator-scale, 0.5)));
+    }
+  }
+
+  &__text {
+    font-family: var(--font-body--family);
+    font-style: var(--font-body--style);
+    font-weight: var(--font-body--weight);
+    font-size: var(--font-size--paragraph);
+  }
+
+  &--card {
+    .countdown-timer {
+      &__number {
+        min-width: clamp(var(--number-min-size, 5rem), 2.1875em, 10rem);
+        aspect-ratio: 1;
+        border-radius: var(--number-radius, 1rem);
+        padding: 1rem;
+        background: linear-gradient(
+          111.49deg,
+          rgb(var(--number-background, var(--color-foreground)) / 40%) -8.95%,
+          rgb(var(--number-background, var(--color-foreground)) / 1%) 114%
+        );
+        backdrop-filter: blur(50px);
+
+        &::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: -1;
+          padding: 0.1rem;
+          border-radius: inherit;
+          background: linear-gradient(
+            -45deg,
+            rgb(var(--number-background, var(--color-foreground)) / 50%) 0%,
+            rgb(var(--number-background, var(--color-foreground)) / 10%) 50%,
+            rgb(var(--number-background, var(--color-foreground)) / 50%) 100%
+          );
+          mask:
+            linear-gradient(#000 0 0) exclude,
+            linear-gradient(#000 0 0) content-box;
+        }
+      }
+    }
+  }
+
+  // Solid: one flat fill instead of the frosted gradient and its gradient rim. The merchant's
+  // number background when the timer has its own colours; otherwise a faint wash of the
+  // scheme's text colour, which reads on any scheme (the gradient's 40% start, flattened).
+  &--card#{&}--solid .countdown-timer__number {
+    background: rgb(var(--number-background, var(--color-foreground) / 10%));
+    backdrop-filter: none;
+
+    &::before {
+      content: none;
+    }
+  }
+
+  @include media-breakpoint-down(md) {
+    --item-gap: var(--item-gap-x-mobile, var(--item-gap-x));
+    --number-min-size: 4rem;
+  }
+}

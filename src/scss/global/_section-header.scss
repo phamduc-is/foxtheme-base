@@ -1,0 +1,476 @@
+@use "../mixins" as *;
+
+// ─── Variables and base styles ───────────────────────────────────────────────────
+
+.header {
+  --header-nav-delay: 0.1s;
+  --header-logo-opacity: 1;
+  --header-button-size: 3.6rem;
+  --header-button-icon-size: 2.4rem;
+  --header-grid-template: "icons-left logo icons" / 1fr auto 1fr;
+  --cart-count-offset-x: -0.5rem;
+  --dropdown-offset-top: 3rem;
+  --dropdown-offset-bottom: 4rem;
+  --menu-item-gap: 2.4rem;
+
+  z-index: var(--layer-header-menu);
+  background-color: transparent !important;
+
+  &[is="sticky-header"] {
+    transition: transform var(--motion-ui-fast) var(--motion-ease);
+
+    // Only set will-change when transform is actually used (when header is scrolled but not pinned)
+    body:not(.header-pinned) .header-scrolled & {
+      will-change: transform;
+    }
+  }
+
+  &__background {
+    transition: padding var(--motion-ui-fast) var(--motion-ease);
+  }
+
+  &__background-inner {
+    width: 100%;
+    height: 100%;
+    transition:
+      border-radius 0.1s var(--motion-ease),
+      box-shadow var(--motion-ui-fast) var(--motion-ease);
+
+    &::before {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 1px;
+      background: rgb(var(--color-border) / var(--color-border-alpha));
+      opacity: 0;
+      transition-property: opacity;
+      transition-duration: var(--motion-ui-fast);
+      transition-timing-function: var(--motion-ease-fade);
+    }
+  }
+
+  &__main {
+    display: grid;
+    align-items: center;
+    column-gap: 1.2rem;
+    grid-template: var(--header-grid-template);
+    position: relative;
+    z-index: 1;
+    pointer-events: all;
+    padding-block: var(--padding-block-start) var(--padding-block-end);
+    transition: padding var(--motion-ui-fast) var(--motion-ease);
+  }
+
+  &__logo--text,
+  &__navigation,
+  &__icons {
+    transition: color var(--motion-ui-fast) var(--motion-ease);
+  }
+
+  &__logo {
+    grid-area: logo;
+    max-width: max-content;
+
+    // The mobile/desktop images swap at `lg` (`lg:hidden` / `lg:block hidden` in
+    // snippets/header-logo.liquid) — the width must flip at the same breakpoint.
+    &--image {
+      max-width: var(--logo-width-mobile);
+
+      @include media-breakpoint-up(lg) {
+        max-width: var(--logo-width);
+      }
+    }
+
+    &--transparent {
+      opacity: calc(1 - var(--header-logo-opacity));
+    }
+
+    .logo {
+      transition: opacity var(--motion-ui-fast) var(--motion-ease-fade);
+
+      &:not(.header__logo--transparent) {
+        opacity: var(--header-logo-opacity);
+      }
+    }
+  }
+
+  &__navigation {
+    grid-area: nav;
+  }
+
+  &__icons {
+    grid-area: icons;
+  }
+
+  &__icons--left {
+    grid-area: icons-left;
+  }
+
+  &__buttons {
+    margin-inline: -1rem;
+  }
+
+  &__button {
+    width: var(--header-button-size);
+    height: var(--header-button-size);
+  }
+
+  &__button .icon {
+    --icon-size: var(--header-button-icon-size);
+  }
+}
+
+// ─── Header section ───────────────────────────────────────────────────────────
+
+.header-section {
+  position: relative;
+  z-index: 2;
+}
+
+.header__backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  transition: var(--motion-swap) var(--motion-ease-overlay);
+  transition-property: opacity, visibility;
+  opacity: 0;
+  visibility: hidden;
+  background-color: rgb(0 0 0 / var(--dialog-backdrop-opacity));
+}
+
+// ─── Sticky header ────────────────────────────────────────────────────────────
+
+.header-sticky {
+  z-index: 30;
+  position: sticky;
+  top: 0;
+  pointer-events: none;
+
+  &.header-scrolled {
+    .header__background-inner {
+      box-shadow: 0 4px 18px rgb(var(--color-foreground) / 10%);
+
+      &::before {
+        opacity: 0 !important;
+      }
+    }
+  }
+}
+
+body:not(.header-pinned) {
+  .header-scrolled {
+    pointer-events: none;
+
+    .header {
+      transform: translateY(-100%) !important;
+    }
+  }
+}
+
+// ─── Top bar & Announcement bar ───────────────────────────────────────────────────
+
+.shopify-section-group-header-group:has(~ .shopify-section-group-header-group .header) {
+  position: relative;
+  z-index: 31; // Greater than header sticky.
+}
+
+// ─── Cart icon ────────────────────────────────────────────────────────────────
+
+.cart-has-items {
+  .header__buttons:has(.cart-icon) {
+    margin-inline-end: 0;
+  }
+
+  .cart-icon {
+    margin-inline-end: calc(var(--cart-count-offset-x) * -1);
+  }
+}
+
+// ─── Icon labels (Show icon labels) ──────────────────────────────────────────
+// From lg up the header's own icons (search, account, cart) carry a label in the menu's type:
+// the square icon box gives way to icon + 0.8rem + label, and each labelled control pads
+// 1.2rem a side so two of them sit 2.4rem apart. The cart count moves into its label ("Cart (0)"), so the
+// bubble and the room it reserved go. Below lg the label is not rendered at all.
+
+.header__icon-label {
+  display: none;
+}
+
+@include media-breakpoint-up(lg) {
+  .header--icon-labels {
+    .header__icon-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-navigation--family);
+      font-weight: var(--font-navigation--weight);
+      font-style: var(--font-navigation--style);
+      text-transform: var(--font-navigation--transform);
+      letter-spacing: var(--font-navigation--letter-spacing);
+      line-height: 1.2;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .header__account,
+    .search-drawer-button,
+    .cart-icon {
+      column-gap: 0.8rem;
+      align-items: center;
+      padding-inline: 1.2rem;
+    }
+
+    // Shopify injects a zero-width <shopify-store> into <header-account>, which still takes
+    // a gap slot — the account's icon-to-label space is the label's own margin instead.
+    .header__account {
+      column-gap: 0;
+    }
+
+    .header__account .header__icon-label {
+      margin-inline-start: 0.8rem;
+    }
+
+    .header__account .header__button,
+    .search-drawer-button,
+    .cart-icon {
+      width: auto;
+    }
+
+    .cart-icon .cart-count--absolute {
+      display: none;
+    }
+
+    .header__buttons:has(.cart-icon),
+    .cart-icon {
+      margin-inline-end: 0;
+    }
+  }
+}
+
+// ─── Menu item ────────────────────────────────────────────────────────────────
+
+.header__menu {
+  list-style: none;
+  padding: 0;
+  margin-block: 0;
+  margin-inline: calc(var(--menu-item-gap) / -2);
+}
+
+.header__menu details[level="top"] > summary {
+  &::before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: var(--header-row-height, var(--header-height, 5.6rem));
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  &:hover::before {
+    pointer-events: auto;
+  }
+}
+
+.menu__item {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  padding-block: 0.8rem;
+  padding-inline: calc(var(--menu-item-gap) / 2);
+  column-gap: 0.6rem;
+  font-family: var(--font-navigation--family);
+  font-weight: var(--font-navigation--weight);
+  font-style: var(--font-navigation--style);
+  text-transform: var(--font-navigation--transform);
+  letter-spacing: var(--font-navigation--letter-spacing);
+  line-height: 2rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+// ─── Shopify account ───────────────────────────────────────────────────────────
+
+shopify-account {
+  --shopify-account-font-heading: var(--font-heading--family);
+  --shopify-account-font-heading-weight: var(--font-heading--weight);
+  --shopify-account-font-body: var(--font-body--family);
+  --shopify-account-font-body-weight: var(--font-body--weight);
+  --shopify-account-color-background: rgb(var(--color-background));
+  --shopify-account-color-background-subdued: rgb(var(--color-background-secondary));
+  --shopify-account-color-border: rgb(var(--color-border) / var(--color-border-alpha));
+  --shopify-account-color-text: rgb(var(--color-foreground));
+  --shopify-account-color-text-subdued: rgb(var(--color-foreground));
+  --shopify-account-color-accent: rgb(var(--color-foreground));
+  --shopify-account-radius-dialog: var(--dialog-radius);
+  --shopify-account-radius-button: var(--button-corner-radius);
+  --shopify-account-radius-button-small: var(--button-corner-radius);
+  --shopify-account-radius-input: var(--input-border-radius);
+  --shopify-account-signed-in-avatar-size: 20px;
+  --shopify-account-avatar-size: 100%;
+
+  // The signed-out label lives in our light DOM, but the component slots it into a
+  // native <button> inside its shadow root — which resets font-* and does not inherit
+  // from the host. So a `.btn` host hands `.btn__text` Arial 13px instead of the theme's
+  // button typography. The class cannot be moved onto that button (shadow DOM, and a
+  // global `.btn__text` rule would not cross the boundary anyway) — restore the
+  // inheritance chain through the part the component exports.
+  &::part(signed-out-avatar) {
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    max-width: 100%; // lets .btn__text's ellipsis engage on a long label
+  }
+
+  &::part(dialog) {
+    &::backdrop {
+      background-color: rgb(0 0 0 / var(--dialog-backdrop-opacity));
+    }
+
+    @media (min-width: 751px) {
+      inset: 0;
+      margin: auto;
+      opacity: unset;
+      height: 100svh;
+      background-color: transparent;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+  }
+}
+
+// ─── Search form ──────────────────────────────────────────────────────────────────
+
+.header__search {
+  &:has(.search__form--transparent) {
+    margin-inline-end: calc((var(--header-button-size) - var(--header-button-icon-size)) / 2);
+  }
+
+  .search__form--transparent {
+    --input-height: 4rem;
+
+    .search__field:has(:not(:focus)) {
+      color: rgb(var(--color-foreground));
+      box-shadow: inset 0 -2px 0 0 rgb(var(--color-foreground) / 20%);
+      background: transparent;
+    }
+
+    .search__input::placeholder {
+      color: rgb(var(--color-foreground) / 70%);
+    }
+
+    .search__types select {
+      padding-inline-start: 0;
+    }
+
+    &:not(:has(.search__types)) .search__input {
+      padding-inline-start: 0;
+    }
+
+    :is(.search__close, .search__submit) {
+      justify-content: end;
+      inset-inline-end: 0;
+      width: var(--input-height);
+    }
+
+    .search__spinner {
+      inset-inline-end: 0;
+    }
+  }
+
+  @include media-breakpoint-up(lg) {
+    .search__form {
+      min-width: var(--search-form-width, 60rem);
+      max-width: var(--search-form-width, 50%);
+    }
+  }
+}
+
+:is(.header--logo-left, .header--logo-center) {
+  @include media-breakpoint-down(xl) {
+    .header__search {
+      display: none !important;
+    }
+  }
+}
+
+// ─── Mega menu ────────────────────────────────────────────────────────────────
+
+.mega-menu-open {
+  .header {
+    &__background-inner {
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+      transition:
+        border-radius 0.1s var(--motion-ease),
+        box-shadow var(--motion-ui) var(--motion-ease-out);
+    }
+  }
+}
+
+.mega-menu-closing {
+  .header {
+    &__background-inner {
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+
+      // Delay border-radius until mega menu closes
+      transition:
+        border-radius 0.6s var(--motion-ease) var(--mega-menu-close-delay, 0.4s),
+        box-shadow var(--motion-ui-fast) var(--motion-ease);
+    }
+  }
+}
+
+// ─── Responsive styles ────────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .header {
+    &__main {
+      padding-block: 1rem;
+    }
+
+    &--show-separator-line {
+      .header__background-inner {
+        &::before {
+          opacity: 1;
+        }
+      }
+    }
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .header {
+    --cart-count-offset-x: -0.9rem;
+  }
+}
+
+@include media-breakpoint-up(lg) {
+  .header {
+    --header-button-size: 4rem;
+    --header-button-icon-size: 2rem;
+    --search-form-width: 30rem;
+
+    &:has(.search__types) {
+      --search-form-width: 36rem;
+    }
+
+    // ─── Logo layout ──────────────────────────────────────────────────────────
+    &--logo-left {
+      --header-grid-template: "logo nav icons" / auto auto 1fr;
+
+      .header__navigation {
+        margin-inline-start: 2.8rem;
+      }
+    }
+
+    &--logo-center {
+      --header-grid-template: "nav logo icons" / 1fr auto 1fr;
+    }
+  }
+}

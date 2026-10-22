@@ -1,0 +1,17 @@
+{%- comment -%}
+  Option list for the search product-type <select>, fetched on demand by search-type-select.js.
+
+  It lives in its own section instead of inline in `predictive-search.liquid` because that
+  snippet renders on every page twice (header search + search drawer) — a store with many
+  product types would ship the whole list, in DOM, on every page, and again inside every
+  predictive-search section render.
+
+  Emits bare <option> elements; the caller appends them to its own <select>.
+{%- endcomment -%}
+{%- liquid
+  assign shop_types = shop.types
+  if shop_types.first == blank
+    assign shop_types = shop_types | slice: 1, shop_types.size
+  endif
+-%}
+{%- for type in shop_types -%}<option value="{{ type | escape }}">{{- type -}}</option>{%- endfor -%}

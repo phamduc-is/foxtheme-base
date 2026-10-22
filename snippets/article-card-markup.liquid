@@ -1,0 +1,120 @@
+{% doc %}
+  Single article card markup. One `render` replaces the former `article-card` nested chain (snippet `article-card-markup`).
+
+  **Theme block** (`blocks/article-card.liquid`): pass only `block` — omit `layout`; settings are read from `block.settings`.
+
+  **Explicit** (e.g. `_article-card`, `_article-related-post`): pass `article`, `block`, `layout`, flags, ratios, optional `image_sizes`.
+
+  @param {object} [article] - Blog article (optional if deriving from theme `block`).
+  @param {object} [block] - Block for `shopify_attributes` and/or theme article-card settings.
+  @param {string} [layout] - `row` \| `column`. Blank + `block` ⇒ `block.settings.layout_type`.
+  @param {string} [tag_html] - Tag markup from the `_article-card-tag` static block, slotted by its `data-card-label-slot`.
+  @param {string} [meta_html] - Meta (date/author) markup from the `_article-card-meta` static block.
+  @param {string} [title_html] - Title markup from the `_article-card-title` static block (falls back to a default `<h3>`).
+  @param {string} [children] - Dynamic blocks (excerpt, button, …) rendered by the card via `content_for 'blocks'`.
+  @param {string} [alignment]
+  @param {string} [image_ratio]
+  @param {string} [image_ratio_mobile]
+  @param {string} [image_sizes] - `sizes` for `responsive-image`.
+
+  @example
+  {% render 'article-card-markup', block: block %}
+  @example
+  {%- render 'article-card-markup',
+    article: article,
+    block: block,
+    layout: 'column',
+    alignment: 'left'
+  -%}
+{% enddoc %}
+{%- liquid
+  if layout == blank and block != blank
+    assign article = block.settings.article
+    assign layout = block.settings.layout_type
+    assign alignment = block.settings.text_alignment
+    assign image_ratio = block.settings.image_ratio
+    assign image_ratio_mobile = block.settings.image_ratio_mobile
+  endif
+
+  if article == blank
+    assign article = null
+  endif
+-%}
+{%- liquid
+  assign classes = 'article-card article-card--content-outside relative z-0 w-full h-full flex flex-col gap-y-4 md:gap-y-5 article-card--' | append: layout
+  assign classes_media = 'article-card__media media-mask-clip relative z-0 border-style media-hover--scale'
+  assign classes_content = 'article-card__content flex flex-col flex-1 z-1 edge-gap'
+
+  if layout == 'row'
+    assign classes = classes | append: ' md:flex-row gap-x-6'
+    assign classes_media = classes_media | append: ' shrink-0'
+    assign classes_content = classes_content | append: ' md:justify-center'
+  endif
+-%}
+{%- liquid
+  assign tag_html = tag_html | default: '' | strip
+  assign tag_slot = 'media'
+  if tag_html contains 'data-card-label-slot="content"'
+    assign tag_slot = 'content'
+  endif
+  assign title_html = title_html | default: '' | strip
+  assign meta_html = meta_html | default: '' | strip
+  assign children = children | default: '' | strip
+-%}
+{%- comment -%}
+  Accessible name of the media link: the image alt, falling back to the article title (an article
+  saved without alt otherwise leaves the link nameless — axe `aria-command-name`). A placeholder
+  card has no article and no destination, so its media is decorative: aria-hidden + tabindex=-1
+  instead of a fake `role="link"` that screen readers would announce with no name.
+{%- endcomment -%}
+{%- capture media_inner -%}
+  {% render 'responsive-image',
+    mode: 'liquid',
+    image: article.image,
+    default_alt: article.title,
+    image_ratio: image_ratio,
+    image_ratio_mobile: image_ratio_mobile,
+    sizes: image_sizes
+  %}
+{%- endcapture -%}
+
+<div
+  class="{{ classes }}"
+  {% if block %}
+    {{ block.shopify_attributes }}
+  {% endif %}
+>
+  <a
+    class="{{ classes_media }} focus-visible--absolute"
+    style="{% render 'border-style', border_radius: settings.blog_card_media_radius %}"
+    {% if article %}
+      href="{{ article.url }}"
+    {% else %}
+      aria-hidden="true" tabindex="-1"
+    {% endif %}
+  >
+    {{ media_inner }}
+    {%- if tag_html != blank and tag_slot == 'media' -%}
+      {{ tag_html }}
+    {%- endif -%}
+  </a>
+  <div class="{{ classes_content }}">
+    <div class="article-card__content-inner flex flex-col gap-2 text-{{ alignment }}">
+      {%- if tag_html != blank and tag_slot == 'content' -%}
+        {{ tag_html }}
+      {%- endif -%}
+
+      {%- if title_html != blank -%}
+        {{ title_html }}
+      {%- endif -%}
+
+      {%- if meta_html != blank -%}
+        {{ meta_html }}
+      {%- endif -%}
+
+      {%- if children != blank -%}
+        {{ children }}
+      {%- endif -%}
+    </div>
+  </div>
+</div>

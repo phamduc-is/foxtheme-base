@@ -1,0 +1,455 @@
+{%- liquid
+  assign content_direction = section.settings.content_direction
+  assign vertical_on_mobile = section.settings.vertical_on_mobile
+
+  assign container = section.settings.container
+  assign use_color_scheme_in_container = section.settings.use_color_scheme_in_container
+  assign use_padding_inline = true
+  if container != 'page-width--full' and use_color_scheme_in_container == false
+    assign use_padding_inline = false
+  endif
+
+  # Custom = Fixed capped at a merchant width: `.page-width--custom` centres the
+  # `.page-width__inner` content at --page-width-custom (see _layout.scss).
+  assign container_class = container
+  if container == 'page-width--custom'
+    assign container_class = 'page-width page-width--custom'
+  endif
+-%}
+{%- capture inline_style -%}
+  {%- if container == 'page-width--custom' -%}
+    --page-width-custom: {{ section.settings.container_custom_width | divided_by: 10.0 }}rem;
+  {%- endif -%}
+  {%- unless use_color_scheme_in_container -%}
+  {% render 'border-style', settings: section.settings %}
+  {%- endunless -%}
+{%- endcapture -%}
+{%- capture content_wrapper_class -%}
+  custom-section__content spacing-style gap-style{% if container == 'page-width--custom' %} page-width__inner{% endif %}
+  layout-panel-flex
+  layout-panel-flex--{{ content_direction | default: 'column' }}
+  {% if content_direction == 'row' and vertical_on_mobile %}layout-panel-flex--column-mobile{% endif %}
+  grid-column-gap--{{ section.settings.column_gap }}
+  grid-row-gap--{{ section.settings.row_gap }}
+  {% if use_color_scheme_in_container %}border-style color-{{ section.settings.color_scheme }}{% endif %}
+{%- endcapture -%}
+{%- capture content_wrapper_style -%}
+  {%- render 'layout-panel-style', settings: section.settings, type: 'flex' -%}
+  {%- render 'spacing-style', settings: section.settings, use_padding_inline: use_padding_inline -%}
+  {%- render 'gap-style', settings: section.settings -%}
+  {%- if use_color_scheme_in_container -%}
+    {% render 'border-style', settings: section.settings %}
+  {%- endif -%}
+{%- endcapture -%}
+<div
+  class="section custom-section {{ container_class }}{% unless use_color_scheme_in_container %} border-style color-{{ section.settings.color_scheme }}{% else %} inherit-color-scheme{% endunless %}"
+  style="{{ inline_style | replace: '  ', ' ' | strip | strip_newlines }}"
+>
+  <div
+    class="{{ content_wrapper_class | replace: '  ', ' ' | strip | strip_newlines }}"
+    style="{{ content_wrapper_style | replace: '  ', ' ' | strip | strip_newlines }}"
+  >
+    {% content_for 'blocks' %}
+  </div>
+</div>
+{% schema %}
+{
+  "name": "t:names.custom_section",
+  "blocks": [
+    {
+      "type": "@theme"
+    },
+    {
+      "type": "_marquee"
+    },
+    {
+      "type": "@app"
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        {
+          "value": "page-width--full",
+          "label": "t:options.full"
+        },
+        {
+          "value": "page-width",
+          "label": "t:options.fixed"
+        },
+        {
+          "value": "page-width--custom",
+          "label": "t:options.custom"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "range",
+      "id": "container_custom_width",
+      "label": "t:settings.custom_width",
+      "min": 800,
+      "max": 1800,
+      "step": 10,
+      "unit": "px",
+      "default": 1240,
+      "visible_if": "{{ section.settings.container == 'page-width--custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "content_direction",
+      "label": "t:settings.direction",
+      "options": [
+        {
+          "value": "column",
+          "label": "t:options.vertical"
+        },
+        {
+          "value": "row",
+          "label": "t:options.horizontal"
+        }
+      ],
+      "default": "column"
+    },
+    {
+      "type": "checkbox",
+      "id": "vertical_on_mobile",
+      "label": "t:settings.vertical_on_mobile",
+      "default": true,
+      "visible_if": "{{ section.settings.content_direction == 'row' }}"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.right"
+        },
+        {
+          "value": "space-between",
+          "label": "t:options.space_between"
+        }
+      ],
+      "default": "flex-start",
+      "visible_if": "{{ section.settings.content_direction == 'row' }}"
+    },
+    {
+      "type": "select",
+      "id": "vertical_alignment",
+      "label": "t:settings.position",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.top"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.bottom"
+        }
+      ],
+      "default": "center",
+      "visible_if": "{{ section.settings.content_direction == 'row' }}"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment_flex_direction_column",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "flex-start",
+      "visible_if": "{{ section.settings.content_direction != 'row' }}"
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "row_gap",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_layout"
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "row_gap_mobile",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_color_scheme_in_container",
+      "label": "t:settings.use_color_scheme_in_container",
+      "default": false,
+      "visible_if": "{{ section.settings.container != 'page-width--full' }}"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "t:settings.borders",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "solid",
+          "label": "t:options.solid"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "px",
+      "label": "t:settings.border_width",
+      "default": 1,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "t:settings.border_opacity",
+      "default": 100,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 15,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'page-width--full' or section.settings.container != 'page-width--full' and section.settings.use_color_scheme_in_container }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 15,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'page-width--full' or section.settings.container != 'page-width--full' and section.settings.use_color_scheme_in_container }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start-mobile",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'page-width--full' or section.settings.container != 'page-width--full' and section.settings.use_color_scheme_in_container }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end-mobile",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'page-width--full' or section.settings.container != 'page-width--full' and section.settings.use_color_scheme_in_container }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.custom_section",
+      "category": "t:categories.custom"
+    },
+    {
+      "name": "t:names.marquee",
+      "category": "t:categories.basic",
+      "settings": {
+        "container": "page-width--full",
+        "content_direction": "row"
+      },
+      "blocks": {
+        "marquee": {
+          "type": "_marquee",
+          "settings": {
+            "padding-block-start": 16,
+            "padding-block-end": 16
+          },
+          "blocks": {
+            "item_1": {
+              "type": "text",
+              "settings": {
+                "text": "<p>WELCOME TO OUR STORE</p>",
+                "type_preset": "h3"
+              }
+            },
+            "item_2": {
+              "type": "text",
+              "settings": {
+                "text": "<p>WELCOME TO OUR STORE</p>",
+                "type_preset": "h3"
+              }
+            }
+          },
+          "block_order": ["item_1", "item_2"]
+        }
+      },
+      "block_order": ["marquee"]
+    }
+  ]
+}
+{% endschema %}

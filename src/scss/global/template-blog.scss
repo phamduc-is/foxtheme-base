@@ -1,0 +1,41 @@
+@use "../mixins" as *;
+
+// ─── Blog Tags ────────────────────────────────────────────────────────────────
+
+.blog-post__tags ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.blog-post__tag {
+  padding: 0.6rem 1.2rem;
+  border-radius: 6rem;
+  text-wrap-mode: nowrap;
+
+  &.active {
+    background: rgb(var(--color-secondary-button-background));
+  }
+}
+
+// ─── Blog Post ────────────────────────────────────────────────────────────────
+
+.blog-post {
+  .pagination {
+    margin-block-start: 2.4rem;
+  }
+
+  .section__header {
+    margin-block-end: 3.2rem;
+  }
+
+  @include media-breakpoint-up(md) {
+    .section__header {
+      margin-block-end: 6rem;
+    }
+
+    .pagination {
+      margin-block-start: 4rem;
+    }
+  }
+}

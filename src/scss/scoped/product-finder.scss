@@ -1,0 +1,265 @@
+@use "../mixins" as *;
+
+// ─── Product finder ("Shop By Vehicle") ───────────────────────────────────────
+// Structural gaps (24/16/12/10px) are fixed BEM values per layout modifier — they come from the
+// Figma spec, not from theme tokens (there is no spacing token scale to inherit). All colors are
+// scheme roles via the `color-{scheme}` / `.form-control` / `.btn` wrappers — no hardcoded colors.
+// Collapse is JS-driven (no native <details>): `<product-finder>` toggles `data-open` + animates the
+// panel height; `data-collapsible="true"` is set only on mobile when not open-by-default.
+
+.product-finder {
+  // Gap between fields, and between the fields and the submit button (single source of truth).
+  --product-finder-gap: 10px;
+
+  display: block;
+
+  // Card chrome (background + accent border) is scheme/border-setting driven — never literal hex.
+  background-color: rgb(var(--color-background));
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+
+    // No gap between header and panel — the header↔fields spacing lives INSIDE the panel
+    // (`&__panel-inner` padding-block-start) so it animates away with the collapse instead of
+    // snapping when the panel switches to `display:none`.
+    gap: 0;
+  }
+
+  // ── Header (heading slot + toggle) ───────────────────────────────────────
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 0;
+    background: none;
+    border: 0;
+    text-align: inherit;
+    color: inherit;
+    cursor: default; // inert by default; the collapsible mode makes it a real toggle button
+  }
+
+  &__heading-block {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: 10px;
+
+    // The heading's own text alignment governs (left/center) in BOTH parent layouts — the
+    // horizontal layout no longer force-centers it (see the horizontal modifier below).
+    &.text-center {
+      justify-content: center;
+    }
+  }
+
+  &__icon {
+    // Per-device visibility is driven by the heading block's show_icon_desktop / show_icon_mobile
+    // toggles (modifier classes below) — no hardcoded breakpoint rule.
+    flex-shrink: 0;
+    display: none;
+
+    // Icon color: the `icon_color` setting (via --pf-icon-color), falling back to the scheme foreground.
+    color: var(--pf-icon-color, rgb(var(--color-foreground)));
+  }
+
+  // Mobile icon: shown when show_icon_mobile is on (default), hidden from md up unless desktop is on too.
+  &__heading-block--icon-mobile &__icon {
+    display: inline-flex;
+  }
+
+  &__heading {
+    // Color comes from the `color-{text|subtext}` helper class the block always emits (default =
+    // text / foreground). Do NOT hardcode color here — it would override the Subtext option.
+    margin: 0;
+  }
+
+  // Custom preset: consume the typography CSS vars emitted by `typography-style`
+  // (named presets style themselves via the global `.h3`… class instead).
+  &__heading--custom {
+    font-family: var(--font-family);
+    font-weight: var(--font-weight);
+    font-size: var(--font-size);
+    line-height: var(--line-height);
+
+    // The heading is a `<div>`, so nothing else cases it — `inherit` is the current look.
+    text-transform: var(--text-transform, inherit);
+  }
+
+  // ── Toggle (plus/minus) ──────────────────────────────────────────────────
+  &__toggle {
+    flex-shrink: 0;
+    display: none; // shown only in the collapsible (mobile, not-open-by-default) mode
+    align-items: center;
+    color: rgb(var(--color-foreground));
+  }
+
+  // Arrow morph (mirrors accordion): the plus's vertical line rotates 270° on open → becomes a minus.
+  &__toggle-icon {
+    path {
+      transform-origin: center;
+      transition: transform var(--motion-ui-fast) var(--motion-ease);
+    }
+  }
+
+  &[data-open="true"] &__toggle-icon .icon--plus-line-2 {
+    transform: rotate(270deg);
+  }
+
+  &[data-collapsible="true"] &__header {
+    cursor: pointer;
+  }
+
+  &[data-collapsible="true"] &__toggle {
+    display: inline-flex;
+  }
+
+  // ── Panel (fields + submit) ──────────────────────────────────────────────
+  &__panel {
+    // height is animated inline by JS; overflow hidden so the height clip works.
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  &__panel-inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--product-finder-gap);
+
+    // Top/bottom padding lives HERE (inside the animated panel) so the collapse stays smooth.
+    // Driven by the "Panel padding" settings via `clamp-calculate-style` — mobile-first
+    // (the `-mobile` var), desktop uses the fluid clamp at md+.
+    padding-block: var(--pf-panel-pt-mobile, var(--pf-panel-pt)) var(--pf-panel-pb-mobile, var(--pf-panel-pb));
+  }
+
+  &__fields {
+    display: flex;
+    flex-direction: column;
+    gap: var(--product-finder-gap);
+  }
+
+  &__field.select {
+    width: 100%;
+
+    .product-finder__select {
+      width: 100%;
+    }
+  }
+
+  // Disabled selects: dimmed + not-allowed (native `disabled` attr drives the gating).
+  &__select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  // Loading state is the theme's `.btn--loading` (toggled in JS) — it hides the label/icon and reveals
+  // the `.loading-spinner` child automatically (see _component-button.scss). No custom rule needed.
+  &__submit {
+    width: 100%;
+  }
+
+  // No-JS fallback: a plain link to the collection (selects can't populate without JS).
+  &__fallback {
+    color: rgb(var(--color-foreground));
+    text-decoration: underline;
+  }
+
+  // ── First paint without a jump ───────────────────────────────────────────
+  // The panel is server-rendered OPEN so the form works without JS. On a phone
+  // with `mobile_collapsible` the component's first act was `panel.hidden = true`,
+  // ~280px vanished the moment JS was ready (2 s on Slow 4G) and every section
+  // below jumped up — CLS 0.10 on the Motrix demo home, every mobile load.
+  // Hide it from the first frame instead. Keyed on `data-collapsible` being
+  // ABSENT: the component sets it (true/false) in its first sync, and in the same
+  // task calls `#setClosed(false)` which sets `hidden` — so hidden hands over to
+  // hidden with no paint in between. Once the attribute exists this rule is
+  // inert, and the open/close height animations run exactly as before. The
+  // `<noscript>` in product-finder-markup re-opens the panel when no JS will.
+  &[data-mobile-collapsible="true"]:not([data-collapsible]) &__panel {
+    @include media-breakpoint-down(md) {
+      display: none;
+    }
+  }
+
+  // ── Per-device border hiding ─────────────────────────────────────────────
+  // Mobile-first: hide on mobile here; desktop hide is re-scoped in the md block below.
+  &--no-border-mobile {
+    @include media-breakpoint-down(md) {
+      border: none;
+    }
+  }
+}
+
+// ─── Desktop ──────────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(md) {
+  .product-finder {
+    // Desktop icon: shown only when show_icon_desktop is on; the mobile toggle alone does not show it here.
+    &__heading-block--icon-mobile:not(.product-finder__heading-block--icon-desktop) .product-finder__icon {
+      display: none;
+    }
+
+    &__heading-block--icon-desktop &__icon {
+      display: inline-flex;
+    }
+
+    // Desktop: the panel is always expanded; the toggle never shows.
+    &__toggle {
+      display: none !important;
+    }
+
+    &__panel[hidden] {
+      display: block;
+    }
+
+    // Desktop panel padding (the fluid clamp; the `-mobile` base is above).
+    &__panel-inner {
+      padding-block: var(--pf-panel-pt) var(--pf-panel-pb);
+    }
+
+    &--no-border-desktop {
+      border: none;
+    }
+
+    // Vertical (sidebar): heading above, stacked fields, full-width button.
+    &--vertical {
+      .product-finder__header {
+        margin-block-end: 8px;
+      }
+    }
+
+    // Horizontal (banner): heading centered, fields + inline submit in one row.
+    &--horizontal {
+      // Do NOT force-center the header in horizontal mode — the heading block's own text_align
+      // (left default / center) governs via `&__heading-block.text-center`. Keep the heading at the
+      // row start so left-aligned headings stay left.
+      .product-finder__header {
+        justify-content: flex-start;
+      }
+
+      .product-finder__panel-inner {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--product-finder-gap);
+      }
+
+      .product-finder__fields {
+        flex-flow: row wrap;
+        flex: 1 1 auto;
+        gap: var(--product-finder-gap);
+      }
+
+      .product-finder__field.select {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+
+      .product-finder__submit {
+        width: auto;
+        flex-shrink: 0;
+      }
+    }
+  }
+}

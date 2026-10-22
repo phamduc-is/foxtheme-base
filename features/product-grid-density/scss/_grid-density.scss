@@ -1,0 +1,40 @@
+// CSS for product-grid-view density control.
+// Paste vào template-collection.scss khi bật lại feature này.
+
+@use "../mixins" as *;
+
+@include media-breakpoint-up(lg) {
+  [show-filtering="true"] .product-grid[product-grid-view="default"] {
+    --f-columns-lg: 2;
+  }
+
+  [show-filtering="true"] .product-grid[product-grid-view="zoom-out"] {
+    --f-columns-lg: 3;
+  }
+
+  [show-filtering="false"] .product-grid[product-grid-view="default"] {
+    --f-columns-lg: 3;
+  }
+
+  [show-filtering="false"] .product-grid[product-grid-view="zoom-out"] {
+    --f-columns-lg: 4;
+  }
+}
+
+@include media-breakpoint-up(xl) {
+  [show-filtering="true"] .product-grid[product-grid-view="default"] {
+    --f-columns-xl: 3;
+  }
+
+  [show-filtering="true"] .product-grid[product-grid-view="zoom-out"] {
+    --f-columns-xl: 4;
+  }
+
+  [show-filtering="false"] .product-grid[product-grid-view="default"] {
+    --f-columns-xl: 4;
+  }
+
+  [show-filtering="false"] .product-grid[product-grid-view="zoom-out"] {
+    --f-columns-xl: 5;
+  }
+}

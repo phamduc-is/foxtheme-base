@@ -1,0 +1,28 @@
+{% doc %}
+  @param {string} text - Label text (plain)
+  @param {string} placement - `media` (on image) or `content` (inside text column)
+  @param {string} [class] - Extra CSS classes
+  @param {object} [settings] - Settings from nested block
+  @param {string} [shopify_attributes] - Editor attributes from nested block
+{% enddoc %}
+{%- liquid
+  assign placement = placement | default: 'media'
+  if placement != 'media' and placement != 'content'
+    assign placement = 'media'
+  endif
+-%}
+{% capture styles %}
+  {% render 'spacing-style', settings: settings %}
+{% endcapture %}
+{%- if text != blank -%}
+  <span
+    class="label label--{{ placement }} {% if class != blank %} {{ class }}{% endif %}{% if placement == 'content' %} spacing-style{% endif %}"
+    data-card-label-slot="{{ placement }}"
+    {% if placement == 'content' %}
+      style="{{ styles | strip | strip_newlines }}"
+    {% endif %}
+    {{- shopify_attributes -}}
+  >
+    {{- text | escape -}}
+  </span>
+{%- endif -%}

@@ -1,0 +1,36 @@
+#!/bin/sh
+# Validate commit message follows Conventional Commits format
+# Valid types: feat, fix, refactor, chore, docs
+# Breaking changes: dùng `BREAKING CHANGE:` footer (xem FORK-WORKFLOW.md section 6)
+
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# Bỏ qua merge commits và release commits
+if echo "$COMMIT_MSG" | grep -qE "^(Merge |chore\(release\))"; then
+  exit 0
+fi
+
+PATTERN="^(feat|fix|refactor|chore|docs)(\([a-z0-9_-]+\))?: .{1,}"
+
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+  echo ""
+  echo "  ✗ Commit message không đúng format."
+  echo ""
+  echo "  Format yêu cầu: <type>(<scope>): <subject>"
+  echo ""
+  echo "  Type hợp lệ: feat, fix, refactor, chore, docs"
+  echo ""
+  echo "  Breaking change: thêm footer 'BREAKING CHANGE: <mô tả>' vào commit body."
+  echo "    git commit -m \"feat(price): rename sale amount\" \\"
+  echo "               -m \"BREAKING CHANGE: data-sale-amount renamed to data-sale-value\""
+  echo ""
+  echo "  Ví dụ:"
+  echo "    feat(search): add recent searches dropdown"
+  echo "    fix(cart): handle empty cart on checkout"
+  echo "    docs(fork-workflow): update merge guide"
+  echo ""
+  echo "  Commit của bạn: \"$COMMIT_MSG\""
+  echo ""
+  exit 1
+fi

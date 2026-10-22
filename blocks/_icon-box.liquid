@@ -1,0 +1,303 @@
+{%- liquid
+  comment
+    `sections/icon-boxes.liquid` splits this output: part 0 goes in the grid,
+    part 1 into the quick-view dialog. Both markers must stay.
+
+    `inherit_color_scheme == false` is exactly the case that owns `color_scheme`
+    and `border_radius` (see their `visible_if`), which is what `icon-box-markup`
+    calls the `card` style — so the two map onto each other directly.
+  endcomment
+  assign style = 'card'
+  if block.settings.inherit_color_scheme
+    assign style = 'standard'
+  endif
+
+  # Card padding is merchant-driven; emit the spacing-style vars the card CSS reads.
+  assign padding_style = ''
+  if style == 'card'
+    capture padding_style
+      render 'spacing-style', settings: block.settings
+    endcapture
+  endif
+-%}
+{%- capture icon_html -%}
+  {% content_for 'block', type: '_icon', id: 'icon' %}
+{%- endcapture -%}
+{%- capture content_html -%}
+  {% content_for 'block', type: '_text-plain', id: 'heading', text_class: 'icon-box__heading' %}
+  {% content_for 'block', type: '_text-plain', id: 'description', text_class: 'icon-box__description' %}
+{%- endcapture -%}
+{% render 'icon-box-markup',
+  icon_html: icon_html,
+  content_html: content_html,
+  padding_style: padding_style,
+  shopify_attributes: block.shopify_attributes,
+  content_direction: 'column',
+  horizontal_alignment: block.settings.horizontal_alignment,
+  content_direction_mobile: 'column',
+  horizontal_alignment_mobile: block.settings.horizontal_alignment,
+  column_gap: 10,
+  row_gap: 10,
+  column_gap_mobile: 10,
+  row_gap_mobile: 10,
+  content_row_gap: 12,
+  link: block.settings.link,
+  style: style,
+  inherit_color_scheme: block.settings.inherit_color_scheme,
+  color_scheme: block.settings.color_scheme,
+  border_hover: block.settings.border_hover,
+  border_color_hover: block.settings.border_color_hover,
+  border_radius: block.settings.border_radius
+%}
+<!-- @iconBoxInner/split -->
+{% render 'icon-box-markup',
+  icon_html: icon_html,
+  content_html: content_html,
+  content_direction: 'row',
+  vertical_alignment: 'flex-start',
+  content_direction_mobile: 'row',
+  vertical_alignment_mobile: 'flex-start',
+  column_gap: 16,
+  row_gap: 16,
+  column_gap_mobile: 16,
+  row_gap_mobile: 16,
+  content_row_gap: 12,
+  link: block.settings.link,
+  style: 'standard'
+%}
+<!-- @iconBox/split -->
+{% schema %}
+{
+  "name": "t:names.icon_box",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "flex-end",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "flex-start"
+    },
+    {
+      "type": "header",
+      "content": "t:content.content"
+    },
+    {
+      "type": "url",
+      "id": "link",
+      "label": "t:settings.link"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "checkbox",
+      "id": "inherit_color_scheme",
+      "label": "t:settings.inherit_color_scheme",
+      "default": false
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-2",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 10,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "border_hover",
+      "label": "t:settings.border_hover",
+      "default": false,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "color",
+      "id": "border_color_hover",
+      "label": "t:settings.border_color_hover",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.border_hover }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 32,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 32,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start-mobile",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end-mobile",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ block.settings.inherit_color_scheme == false and block.settings.device == 'mobile' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.icon_box",
+      "category": "t:categories.basic",
+      "settings": {
+        "horizontal_alignment": "center",
+        "color_scheme": "scheme-2",
+        "border_radius": 20
+      },
+      "blocks": {
+        "icon": {
+          "type": "_icon",
+          "static": true,
+          "settings": {
+            "icon": "tag",
+            "icon_size": "custom-size",
+            "width": 48,
+            "width_mobile": 48
+          }
+        },
+        "heading": {
+          "type": "_text-plain",
+          "name": "t:names.heading",
+          "static": true,
+          "settings": {
+            "text": "<p>Talk about your brand</p>",
+            "type_preset": "h5",
+            "text_color": "text"
+          }
+        },
+        "description": {
+          "type": "_text-plain",
+          "name": "t:names.description",
+          "static": true,
+          "settings": {
+            "text": "<p>Share information about your brand with your customers</p>",
+            "type_preset": "rte",
+            "text_color": "subtext"
+          }
+        }
+      }
+    }
+  ]
+}
+{% endschema %}

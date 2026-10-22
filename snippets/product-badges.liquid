@@ -1,0 +1,208 @@
+{% doc %}
+  Renders sale, sold-out, and custom (new/hot/popular) badge labels for a product or variant.
+  Badge visibility is controlled by theme settings (badge tags, show flags) and optional params.
+  When use_variant is true, availability and pricing are read from selected_or_first_available_variant;
+  otherwise they are read directly from the product object.
+
+  @param {object} product - The Shopify product object
+  @param {boolean} [use_variant] - Read stock/price from the selected variant instead of the product (default: false)
+  @param {boolean} [show_soldout_badge] - Show sold-out badge (default: true)
+  @param {boolean} [show_sale_badge] - Show sale badge (default: true)
+  @param {boolean} [show_custom_badges] - Show custom tag-based badges (default: true)
+  @param {string} [badge_layout] - Badge layout direction: 'horizontal' | 'vertical' (default: 'horizontal')
+  @param {string} [sale_badge_type] - Sale badge format: 'percentage' | 'fixed_amount' | 'on_sale' (default: 'on_sale')
+
+  @example
+  {% render 'product-badges', product: product, use_variant: true, badge_layout: 'vertical' %}
+{% enddoc %}
+
+{%- liquid
+  if use_variant
+    assign target = product.selected_or_first_available_variant
+  else
+    assign target = product
+  endif
+
+  assign in_stock = true
+  if target.available == false
+    assign in_stock = false
+  endif
+
+  if show_soldout_badge == null
+    assign show_soldout_badge = true
+  endif
+
+  if show_sale_badge == null
+    assign show_sale_badge = true
+  endif
+
+  if show_custom_badges == null
+    assign show_custom_badges = true
+  endif
+
+  assign badge_layout = badge_layout | default: 'horizontal'
+
+  assign compare_at_price = target.compare_at_price
+  assign price = target.price | default: 1999
+  assign on_sale = false
+  if compare_at_price > price
+    assign on_sale = true
+  endif
+
+  assign new_tags_list = settings.new_badge_tags | newline_to_br | strip_newlines | split: '<br />'
+  assign hot_tags_list = settings.hot_badge_tags | newline_to_br | strip_newlines | split: '<br />'
+  assign popular_tags_list = settings.popular_badge_tags | newline_to_br | strip_newlines | split: '<br />'
+
+  # badge_count for the initial product-badges--empty class (based on current in_stock state)
+  assign badge_count = 0
+
+  if in_stock
+    if on_sale and show_sale_badge
+      assign badge_count = badge_count | plus: 1
+    endif
+
+    if show_custom_badges
+      for tag in product.tags
+        assign tag_handle = tag | handle
+        assign badge_type = ''
+
+        for item in new_tags_list
+          assign item_handle = item | handle
+          if tag_handle == item_handle
+            assign badge_type = 'new'
+            break
+          endif
+        endfor
+
+        if badge_type == ''
+          for item in hot_tags_list
+            assign item_handle = item | handle
+            if tag_handle == item_handle
+              assign badge_type = 'hot'
+              break
+            endif
+          endfor
+        endif
+
+        if badge_type == ''
+          for item in popular_tags_list
+            assign item_handle = item | handle
+            if tag_handle == item_handle
+              assign badge_type = 'popular'
+              break
+            endif
+          endfor
+        endif
+
+        if badge_type != ''
+          assign badge_count = badge_count | plus: 1
+        endif
+      endfor
+    endif
+  else
+    if show_soldout_badge
+      assign badge_count = badge_count | plus: 1
+    endif
+  endif
+-%}
+<div
+  ref="badgesContainer"
+  class="product-badges product-badges--{{ badge_layout }}{% if badge_count == 0 %} product-badges--empty{% endif %}"
+  data-sale-badge-type="{{ sale_badge_type }}"
+  data-available="{{ in_stock }}"
+  data-on-sale="{{ on_sale }}"
+>
+  {%- if show_soldout_badge -%}
+    <span class="badge badge--sold-out" data-badge-type="sold-out">{{ 'products.product.sold_out' | t }}</span>
+  {%- endif -%}
+  {%- if show_sale_badge -%}
+    {%- comment -%}
+      Always render an inner [data-sale-value] wrapper, even when not on sale,
+      so JS can patch the value on variant switch. CSS hides the badge when
+      data-on-sale="false". A percentage discount smaller than 0.5% rounds to
+      0 — "Save 0" is meaningless, so it falls back to the plain "On sale"
+      text, without the "Save" prefix (product-badge.js mirrors this rule).
+    {%- endcomment -%}
+    {%- liquid
+      assign sale_badge = ''
+      assign sale_fallback = ''
+      assign use_sale_fallback = false
+      assign amount = 0
+
+      case sale_badge_type
+        when 'percentage'
+          assign sale_fallback = 'products.product.on_sale' | t
+          if on_sale
+            assign pct = compare_at_price | minus: price | times: 100.0 | divided_by: compare_at_price | round
+            if pct > 0
+              assign amount = pct | append: '%'
+            endif
+          endif
+          if amount == 0
+            assign use_sale_fallback = true
+          else
+            assign sale_badge = 'products.product.save_price_html' | t: amount: amount
+          endif
+        when 'fixed_amount'
+          if on_sale
+            assign amount = compare_at_price | minus: price | money
+          endif
+          assign sale_badge = 'products.product.save_price_html' | t: amount: amount
+        else
+          assign sale_badge = 'products.product.on_sale' | t
+      endcase
+    -%}
+    <span
+      class="badge badge--sale"
+      data-badge-type="sale"
+      {% if sale_fallback != blank %}data-sale-fallback="{{ sale_fallback | escape }}"{% endif %}
+    >
+      {%- if use_sale_fallback -%}
+        <span data-sale-value>{{ sale_fallback }}</span>
+      {%- else -%}
+        {{ sale_badge }}
+      {%- endif -%}
+    </span>
+  {%- endif -%}
+  {%- if show_custom_badges -%}
+    {%- for tag in product.tags -%}
+      {%- liquid
+        assign tag_handle = tag | handle
+        assign badge_type = ''
+
+        for item in new_tags_list
+          assign item_handle = item | handle
+          if tag_handle == item_handle
+            assign badge_type = 'new'
+            break
+          endif
+        endfor
+
+        if badge_type == ''
+          for item in hot_tags_list
+            assign item_handle = item | handle
+            if tag_handle == item_handle
+              assign badge_type = 'hot'
+              break
+            endif
+          endfor
+        endif
+
+        if badge_type == ''
+          for item in popular_tags_list
+            assign item_handle = item | handle
+            if tag_handle == item_handle
+              assign badge_type = 'popular'
+              break
+            endif
+          endfor
+        endif
+
+        if badge_type == blank
+          continue
+        endif
+      -%}
+      <span class="badge badge--{{ badge_type }}" data-badge-type="{{ badge_type }}">{{ tag }}</span>
+    {%- endfor -%}
+  {%- endif -%}
+</div>

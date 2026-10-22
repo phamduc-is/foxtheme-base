@@ -1,0 +1,84 @@
+{% doc %}
+  Below product media — PRIVATE container block, whitelisted only in `blocks/_product-details.liquid`.
+
+  Marks a POSITION, not a layout. Its only job is to carry
+  `data-show-below-product-media="true"`, so `product-information-below-media.js` relocates it —
+  and everything inside it — into the media-column slot (`.product-information__below-gallery`,
+  `sections/product-information.liquid`) at `min-width: 768px`, restoring it below that. This
+  replaces the per-block `show_below_product_media` toggle: whitelisted children need no setting
+  of their own.
+
+  It has NO settings and NO box: the `.contents` helper (`src/scss/global/_helpers.scss`) makes the
+  children direct children of whichever parent the container currently lives in — flex items of
+  `.group-block-content` on mobile (so they inherit the Product-details row gap) and children of
+  the slot on desktop (so spacing comes from each block's own `spacing-style`). Giving the
+  container its own gap/padding settings would only duplicate what the real parent already
+  provides.
+
+  It stays a CHILD of `_product-details` (rather than a static block in the media column) because
+  the relocation JS remembers the container's original sibling and restores it there on mobile —
+  so the merchant's mobile ordering inside the Product details list is preserved. As a consequence
+  the container moves as ONE node: on mobile all its children sit together at the container's
+  position. For two different mobile positions, add two containers; on desktop they stack in DOM
+  order inside the media column.
+
+  Only move-safe blocks may be whitelisted here — a fork adding its own types to the `blocks` array
+  must audit them first. `appendChild` MOVES a node, which fires `disconnectedCallback` then
+  `connectedCallback` on every custom element inside: a component that creates its
+  `AbortController` once per instance (rather than per connect) rebinds against an already-aborted
+  signal and dies silently, with no console error. See `src/js/modules/video-card.js` for the safe
+  idiom. `@theme` / `@app` are deliberately NOT accepted — the list is closed so every type in it
+  has been checked.
+
+  @example
+  {% content_for 'block', type: '_product-below-media', id: 'below-media' %}
+{% enddoc %}
+
+{% capture children %}
+  {% content_for 'blocks' %}
+{% endcapture %}
+{% assign children = children | strip %}
+
+{%- comment -%}
+  An empty container is still a child NODE of the slot, so `:empty` would stop matching there and
+  `section-product-information.scss` would add `4rem` of margin around nothing. Keep it rendered in
+  the editor so the block stays mapped while the merchant fills it.
+{%- endcomment -%}
+{%- if children != blank or request.design_mode -%}
+  <div
+    class="product-below-media contents"
+    data-show-below-product-media="true"
+    {{ block.shopify_attributes }}
+  >
+    {{ children }}
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:names.product_below_media",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:content.product_below_media_help"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_promotion-alert"
+    },
+    {
+      "type": "_product-recommendations"
+    },
+    {
+      "type": "accordion"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.product_below_media"
+    }
+  ]
+}
+{% endschema %}

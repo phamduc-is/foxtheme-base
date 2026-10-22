@@ -1,0 +1,61 @@
+@use "../mixins" as *;
+
+// ─── Sticky Add to Cart ───────────────────────────────────────────────────────
+
+.sticky-add-to-cart {
+  &__wrapper {
+    position: fixed;
+    z-index: 100;
+    bottom: 3rem;
+    inset-inline: auto 3rem;
+    padding-block: 1.2rem;
+    padding-inline: 1.2rem 2.4rem;
+    box-shadow: 0 0 10px 0 rgb(var(--color-foreground) / 7%);
+    border-radius: min(1rem, var(--dialog-radius));
+    transform: translateY(100%);
+    opacity: 0;
+    width: 42.5rem;
+    gap: 1.2rem;
+
+    @media (prefers-reduced-motion: no-preference) {
+      transition-property: transform, opacity;
+      transition-duration: var(--motion-ui);
+      transition-timing-function: var(--motion-ease), var(--motion-ease-fade);
+    }
+
+    &[data-sticky="true"] {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    @include media-breakpoint-down(md) {
+      bottom: 0;
+      inset-inline: 0 auto;
+      padding-inline: 1.6rem;
+      border-radius: min(2rem, var(--dialog-radius));
+      border-bottom-right-radius: 0;
+      border-bottom-left-radius: 0;
+      width: 100%;
+      box-shadow: 0 -10px 20px 0 rgb(var(--color-foreground) / 10%);
+    }
+  }
+
+  &__info {
+    gap: 1.6rem;
+  }
+
+  &__image {
+    width: 8rem;
+    overflow: hidden;
+    flex-shrink: 0;
+    border-radius: min(1rem, var(--product-card-media-radius));
+
+    @include media-breakpoint-down(md) {
+      width: 6rem;
+    }
+  }
+
+  &__content {
+    gap: 0.4rem;
+  }
+}

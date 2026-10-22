@@ -1,0 +1,1483 @@
+{%- liquid
+  assign columns_desktop = section.settings.columns
+  assign columns_mobile = section.settings.columns_mobile | plus: 0
+  assign enable_swipe_mobile = section.settings.enable_swipe_on_mobile
+  assign swipe_custom_width_column = section.settings.swipe_custom_width_column
+
+  # Every breakpoint starts at the single `columns` value — the behaviour before
+  # `custom_columns` existed — and only the pairs the merchant actually typed
+  # move. Parsed only in `columns` mode: an 'auto' track has no column count to
+  # override, which is why the setting is gated on the same condition.
+  assign columns_md = columns_desktop
+  assign columns_lg = columns_desktop
+  assign columns_xl = columns_desktop
+  assign columns_xxl = columns_desktop
+
+  # Only the DESKTOP track can be 'auto'. Below 768 Swiper is torn down
+  # (destroyBelow) and the row is a CSS grid, so `columns_mobile` is that grid's
+  # column count — the merchant's own `columns_mobile` choice — not a
+  # slidesPerView value. Passing 'auto' down here left --f-columns-mobile
+  # invalid and collapsed the grid to one implicit column.
+  if section.settings.slides_per_view == 'auto'
+    assign columns_desktop = 'auto'
+    assign columns_md = 'auto'
+    assign columns_lg = 'auto'
+    assign columns_xl = 'auto'
+    assign columns_xxl = 'auto'
+  elsif section.settings.custom_columns != blank
+    assign custom_columns_array = section.settings.custom_columns | split: ','
+    for custom_column in custom_columns_array
+      assign pair = custom_column | strip
+      if pair == ''
+        continue
+      endif
+
+      assign custom_column_key = pair | split: ':' | first | strip
+      assign value_str = pair | split: ':' | last | strip
+      if value_str == ''
+        continue
+      endif
+      assign custom_column_value = value_str | plus: 0
+
+      comment
+        Guard on the NUMBER: `split` drops a trailing empty field, so `"md:"` yields
+        `"md"` from `| last` — past the `value_str == ''` guard — and `| plus: 0` makes
+        it 0, collapsing that breakpoint to one column. See sections/collection-list.liquid.
+      endcomment
+      if custom_column_value < 1
+        continue
+      endif
+
+      case custom_column_key
+        when 'mb'
+          assign columns_mobile = custom_column_value
+        when 'md'
+          assign columns_md = custom_column_value
+        when 'lg'
+          assign columns_lg = custom_column_value
+        when 'xl'
+          assign columns_xl = custom_column_value
+        when 'xxl'
+          assign columns_xxl = custom_column_value
+      endcase
+    endfor
+  endif
+
+  assign column_gap = section.settings.column_gap
+  assign column_gap_mobile = section.settings.column_gap_mobile
+  assign row_gap_mobile = section.settings.row_gap_mobile
+
+  # The 768-1199 band owns neither knob the merchant sets, and used to be a
+  # hardcoded 16px that ignored both. 60% of the desktop gap, floored at the
+  # mobile gap so a tablet never reads tighter than the phone it sits above.
+  assign column_gap_tablet = column_gap | times: 0.6 | round | at_least: column_gap_mobile
+
+  # Swiper only needs to know whether a bullets element will exist; the layout itself is
+  # resolved inside `carousel-controls` from the same setting.
+  assign ctl = section.settings.carousel_controls
+  assign show_dots = false
+  if ctl == 'dots' or ctl == 'group' or ctl == 'float_dots'
+    assign show_dots = true
+  endif
+
+  assign swipe_mobile_classes = ''
+  assign swipe_mobile_inner_classes = ''
+  if enable_swipe_mobile
+    assign swipe_mobile_classes = ' swipe__element swipe-mobile swipe-mobile--[columns]-cols' | replace: '[columns]', columns_mobile
+    assign swipe_mobile_inner_classes = ' swipe__inner'
+
+    if swipe_custom_width_column
+      assign swipe_mobile_classes = swipe_mobile_classes | append: ' swipe-mobile--custom-width'
+    endif
+    if section.settings.swipe_rows_mobile > 1
+      assign swipe_mobile_classes = swipe_mobile_classes | append: ' swipe-mobile--rows-' | append: section.settings.swipe_rows_mobile
+    endif
+  endif
+
+  # The list entrance goes on the slide row, so the whole carousel arrives as one
+  # sequence instead of each card racing its neighbours into view. Every value
+  # except 'none' IS a preset name and passes straight through; motion-group
+  # validates it against the registry and falls back rather than hiding the row.
+  #
+  # Defaults to 'none' on purpose. The cards here carry blocks with their own
+  # animation settings, and a group takes those over — see #standDownForGroup in
+  # motion-component. Defaulting to an effect would therefore silently retire a
+  # per-block choice on every carousel already out there.
+  assign list_motion = ''
+  assign list_sequence = false
+  if settings.animations_enabled
+    assign content_animation = section.settings.content_animation
+    if content_animation != 'none' and content_animation != blank
+      assign list_motion = content_animation
+      if section.settings.content_animation_sequence
+        assign list_sequence = true
+      endif
+    endif
+  endif
+
+  capture section_header
+    content_for 'block', type: '_section-header-vertical', id: 'section-header-vertical'
+  endcapture
+-%}
+<div
+  class="spacing-style border-style color-{{ section.settings.color_scheme }}"
+  style="{% render 'spacing-style', settings: section.settings %}{% render 'border-style', settings: section.settings %}"
+>
+  <div class="{{ section.settings.container }}">
+    {{ section_header }}
+    {%- capture carousel_style -%}
+      {%- comment -%}
+        row_gap 0 on purpose: above 768 the wrapper is Swiper's nowrap flex row, where a
+        row gap is inert. It only exists for the mobile grid, so it is a mobile-only knob.
+      {%- endcomment -%}
+      {% render 'gap-style',
+        column_gap_mobile: column_gap_mobile,
+        column_gap: column_gap,
+        row_gap_mobile: row_gap_mobile,
+        row_gap: 0
+      %}
+      {%- unless columns_desktop == 'auto' -%}
+        {%- comment -%}
+          'auto' would poison --f-slide-width in the pre-init CLS rules. All four
+          are emitted rather than xxl alone: swiper.scss resolves --f-slide-width
+          through an md→lg→xl→xxl fallback chain, so a `custom_columns` override
+          that only exists in the Swiper config would leave the pre-init row
+          laid out at the WRONG count until init — the CLS these vars exist to
+          prevent.
+        {%- endcomment -%}
+        --f-columns-md: {{ columns_md }};
+        --f-columns-lg: {{ columns_lg }};
+        --f-columns-xl: {{ columns_xl }};
+        --f-columns-xxl: {{ columns_xxl }};
+      {%- endunless -%}
+      --f-columns-mobile: {{ columns_mobile }};
+      {%- comment -%}
+        Consumed by _section-flex-carousel.scss to hold the pre-init row at the
+        same tablet gap Swiper applies on init — --f-column-gap-max alone is the
+        full desktop gap, and the row visibly re-flowed the moment Swiper booted.
+      {%- endcomment -%}
+      --f-column-gap-tablet: {{ column_gap_tablet | divided_by: 10.0 }}rem;
+      {% if swipe_custom_width_column %}
+        --swipe-column-width: {{ section.settings.swipe_column_width | divided_by: 100.0 }};
+      {% endif %}
+    {%- endcapture -%}
+    <flex-carousel
+      data-section-id="{{ section.id }}"
+      class="block carousel carousel--grid{% if columns_desktop == 'auto' %} carousel--view-auto{% endif %} flex-carousel flex-carousel--{{ section.settings.slides_per_view }} {% render 'carousel-class', settings: section.settings %}"
+      style="{{ carousel_style }}"
+    >
+      <script type="application/json" ref="config">
+        {
+          "shopifyBlocks": true,
+          "loop": false,
+          "slideClass": "swiper-slide-custom",
+          "slidesPerView": {{ columns_mobile | json }},
+          "slidesPerGroup": {% render 'carousel-slides-per-group' %},
+          "spaceBetween": {{ column_gap_mobile }},
+          {%- comment -%}
+            EVERY entry repeats spaceBetween on purpose. Swiper's setBreakpoint
+            does `extend(swiper.params, breakpointParams)` with the ONE matching
+            breakpoint — it does not accumulate the entries below it — so a key
+            left out here resolves to whatever params already held: the base
+            (mobile) gap on a direct load at that width, but the previous
+            breakpoint's gap if the visitor resized up into it. Same width, two
+            different gaps, depending on how the viewport got there.
+          {%- endcomment -%}
+          "breakpoints": {
+            "768": {
+              "slidesPerView": {{ columns_md | json }},
+              "spaceBetween": {{ column_gap_tablet }}
+            },
+            "1024": {
+              "slidesPerView": {{ columns_lg | json }},
+              "spaceBetween": {{ column_gap_tablet }}
+            },
+            "1200": {
+              "slidesPerView": {{ columns_xl | json }},
+              "spaceBetween": {{ column_gap }}
+            },
+            "1440": {
+              "slidesPerView": {{ columns_xxl | json }},
+              "spaceBetween": {{ column_gap }}
+            }
+          },
+          "destroyBelow": 768,
+          "mousewheel": {
+            "enabled": true,
+            "forceToAxis": true,
+            "thresholdTime": 300,
+            "thresholdDelta": 10
+          },
+          "navigationPosition": {
+            "enabled": true,
+            "selector": ".media .media__image"
+          },
+          "counter": false,
+          "pagination": {% if show_dots %}{ "type": "bullets" }{% else %}false{% endif %}
+        }
+      </script>
+      <div
+        {% if section.settings.carousel_edge_fade_mobile %}
+          is="swipe-component"
+        {% endif -%}
+        class="{% render 'carousel-class', settings: section.settings, part: 'viewport-mobile' %}"
+      >
+        <div class="{% render 'carousel-class', settings: section.settings, part: 'viewport' %}">
+          <div
+            ref="container"
+            class="swiper{{ swipe_mobile_classes }}"
+          >
+            <div
+              {% if list_motion != blank %}
+                is="motion-group"
+                {% comment %}
+                  The cells are the block roots THEMSELVES. A group's default is
+                  each cell's first element child, which is right where a section
+                  wraps every card in its own positioning div — but here a block
+                  renders its own root, and for image-card that first child is
+                  the media box. Left on the default the entrance played on the
+                  picture while the heading, text and button under it sat still.
+
+                  These blocks ARE the slides (slideClass above), so the slide
+                  root is what gets animated, and NOTHING else may put a
+                  transform on it: the entrance's start state comes from a
+                  stylesheet rule now, and a stylesheet rule with more
+                  specificity simply wins — silently, with every check green.
+                  Swiper's core is fine (it writes its translate to the WRAPPER,
+                  and per-slide transforms only come from the effect modules,
+                  none of which this theme bundles), but the theme's own
+                  `_section-flex-carousel.scss` used to land a translateZ(0)
+                  here and that is exactly how it failed.
+                {% endcomment %}
+                data-motion-cells=":scope > *"
+                {% render 'motion-attributes', type: list_motion, sequence: list_sequence %}
+              {% endif %}
+              class="swiper-wrapper layout-panel-grid-mobile gap-style{{ swipe_mobile_inner_classes }}"
+            >
+              {%- for block in section.blocks -%}
+                {%- render block -%}
+              {%- endfor -%}
+            </div>
+          </div>
+        </div>
+      </div>
+      {%- if section.blocks.size > 1 -%}
+        {% render 'carousel-controls', ref: 'controls', settings: section.settings, class: 'hidden md:flex' %}
+      {%- endif -%}
+    </flex-carousel>
+  </div>
+</div>
+{% schema %}
+{
+  "name": "t:names.flex_carousel",
+  "disabled_on": {
+    "groups": ["header", "footer", "custom.overlay"]
+  },
+  "blocks": [
+    {
+      "type": "image-card"
+    },
+    {
+      "type": "_carousel-collection-card"
+    },
+    {
+      "type": "_collection-item"
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        {
+          "value": "page-width--full",
+          "label": "t:options.full"
+        },
+        {
+          "value": "page-width",
+          "label": "t:options.fixed"
+        }
+      ],
+      "default": "page-width"
+    },
+    {
+      "type": "header",
+      "content": "t:content.carousel_settings"
+    },
+    {
+      "type": "select",
+      "id": "carousel_controls",
+      "label": "t:settings.control_type",
+      "options": [
+        { "value": "none", "label": "t:options.none" },
+        { "value": "dots", "label": "t:options.dots" },
+        { "value": "group", "label": "t:options.arrows_dots" },
+        { "value": "float", "label": "t:options.float_arrows" },
+        { "value": "float_dots", "label": "t:options.float_arrows_dots" }
+      ],
+      "default": "group"
+    },
+    {
+      "type": "select",
+      "id": "carousel_controls_alignment",
+      "label": "t:settings.control_alignment",
+      "options": [
+        { "value": "start", "label": "t:options.left" },
+        { "value": "center", "label": "t:options.center" },
+        { "value": "end", "label": "t:options.right" }
+      ],
+      "default": "start",
+      "visible_if": "{{ section.settings.carousel_controls != 'none' }}"
+    },
+    {
+      "type": "select",
+      "id": "carousel_overflow",
+      "label": "t:settings.overflow_content",
+      "options": [
+        { "value": "hidden", "label": "t:options.hidden" },
+        { "value": "visible", "label": "t:options.visible" }
+      ],
+      "default": "visible"
+    },
+    {
+      "type": "checkbox",
+      "id": "carousel_edge_fade",
+      "label": "t:settings.show_edge_fade",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "slides_per_view",
+      "label": "t:settings.slides_per_view",
+      "options": [
+        {
+          "value": "auto",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "columns",
+          "label": "t:options.columns"
+        }
+      ],
+      "default": "columns"
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "t:settings.columns",
+      "min": 2,
+      "max": 4,
+      "step": 1,
+      "default": 3,
+      "visible_if": "{{ section.settings.slides_per_view == 'columns' }}"
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_layout"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_swipe_on_mobile",
+      "label": "t:settings.enable_swipe_on_mobile",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "carousel_edge_fade_mobile",
+      "label": "t:settings.show_edge_fade_mobile",
+      "default": false,
+      "visible_if": "{{ section.settings.enable_swipe_on_mobile == true }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "swipe_custom_width_column",
+      "label": "t:settings.swipe_custom_width_column",
+      "default": false,
+      "visible_if": "{{ section.settings.enable_swipe_on_mobile == true }}"
+    },
+    {
+      "type": "range",
+      "id": "swipe_column_width",
+      "label": "t:settings.custom_width",
+      "min": 20,
+      "max": 90,
+      "step": 1,
+      "unit": "%",
+      "default": 76,
+      "visible_if": "{{ section.settings.swipe_custom_width_column == true and section.settings.enable_swipe_on_mobile == true }}"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:settings.columns",
+      "options": [
+        {
+          "value": "1",
+          "label": "t:options.grid_1_column"
+        },
+        {
+          "value": "2",
+          "label": "t:options.grid_2_column"
+        }
+      ],
+      "default": "1",
+      "visible_if": "{{ section.settings.swipe_custom_width_column == false or section.settings.enable_swipe_on_mobile == false }}"
+    },
+    {
+      "type": "range",
+      "id": "swipe_rows_mobile",
+      "label": "t:settings.swipe_rows",
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "default": 1,
+      "visible_if": "{{ section.settings.enable_swipe_on_mobile == true }}"
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "row_gap_mobile",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ section.settings.swipe_rows_mobile > 1 or section.settings.enable_swipe_on_mobile == false }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "t:settings.borders",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "solid",
+          "label": "t:options.solid"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "px",
+      "label": "t:settings.border_width",
+      "default": 1,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "t:settings.border_opacity",
+      "default": 100,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.animation",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "select",
+      "id": "content_animation",
+      "label": "t:settings.animation_items",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "fade-in",
+          "label": "t:options.fade_in"
+        },
+        {
+          "value": "fade-up",
+          "label": "t:options.fade_up"
+        },
+        {
+          "value": "fade-down",
+          "label": "t:options.fade_down"
+        },
+        {
+          "value": "slide-in-start",
+          "label": "t:options.slide_in_start"
+        },
+        {
+          "value": "slide-in-end",
+          "label": "t:options.slide_in_end"
+        }
+      ],
+      "default": "none",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "content_animation_sequence",
+      "label": "t:settings.content_animation_sequence",
+      "info": "t:info.content_animation_sequence",
+      "default": false,
+      "visible_if": "{{ settings.animations_enabled == true and section.settings.content_animation != 'none' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.advanced",
+      "visible_if": "{{ section.settings.slides_per_view == 'columns' }}"
+    },
+    {
+      "type": "text",
+      "id": "custom_columns",
+      "label": "t:settings.custom_columns",
+      "info": "t:info.custom_columns",
+      "visible_if": "{{ section.settings.slides_per_view == 'columns' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.flex_carousel_collections",
+      "category": "t:categories.collections",
+      "settings": {
+        "container": "page-width",
+        "carousel_overflow": "hidden",
+        "carousel_edge_fade": true,
+        "slides_per_view": "auto",
+        "columns": 4,
+        "column_gap": 12,
+        "columns_mobile": "2",
+        "column_gap_mobile": 8,
+        "color_scheme": "scheme-1",
+        "border": "none",
+        "border_width": 1,
+        "border_opacity": 100,
+        "border_radius": 0,
+        "carousel_controls": "none",
+        "padding-block-start": 50,
+        "padding-block-end": 50
+      },
+      "blocks": {
+        "collection_item_9VmUHk": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_tj4MeQ": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_RgNJLD": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_ajcKQ4": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_rMq3tm": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_p8LUjx": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_xUGmUf": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_AdkETn": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_cnJEYq": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        },
+        "collection_item_zJMiCj": {
+          "type": "_collection-item",
+          "name": "t:names.collection_item",
+          "settings": {
+            "collection": "",
+            "image_ratio": "auto",
+            "title": "",
+            "width": 200,
+            "width_mobile": 150,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "solid",
+            "border_width": 1,
+            "border_opacity": 10,
+            "border_radius": 10
+          },
+          "blocks": {}
+        }
+      },
+      "block_order": [
+        "collection_item_9VmUHk",
+        "collection_item_tj4MeQ",
+        "collection_item_RgNJLD",
+        "collection_item_ajcKQ4",
+        "collection_item_rMq3tm",
+        "collection_item_p8LUjx",
+        "collection_item_xUGmUf",
+        "collection_item_AdkETn",
+        "collection_item_cnJEYq",
+        "collection_item_zJMiCj"
+      ]
+    },
+    {
+      "name": "t:names.flex_carousel_image_cards",
+      "category": "t:categories.basic",
+      "settings": {
+        "container": "page-width",
+        "carousel_overflow": "visible",
+        "carousel_edge_fade": false,
+        "slides_per_view": "columns",
+        "columns": 3,
+        "column_gap": 60,
+        "columns_mobile": "2",
+        "column_gap_mobile": 8,
+        "color_scheme": "scheme-1",
+        "border": "none",
+        "border_width": 1,
+        "border_opacity": 100,
+        "border_radius": 0,
+        "carousel_controls": "group",
+        "device": "desktop",
+        "padding-block-start": 100,
+        "padding-block-end": 100,
+        "padding-block-start-mobile": 48,
+        "padding-block-end-mobile": 48
+      },
+      "blocks": {
+        "section-header-vertical": {
+          "type": "_section-header-vertical",
+          "static": true,
+          "settings": {
+            "device": "desktop",
+            "padding-block-end": 60,
+            "padding-block-end-mobile": 24
+          },
+          "blocks": {
+            "subheading": {
+              "type": "text",
+              "name": "t:names.subheading",
+              "settings": {
+                "text": "<p>Add a tagline</p>",
+                "type_preset": "text-subheading",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "normal",
+                "text_color": "text",
+                "width": "100%",
+                "text_alignment": "center",
+                "width_mobile": "100%",
+                "text_alignment_mobile": "center",
+                "padding-block-start": 0,
+                "padding-block-end": 20,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "heading": {
+              "type": "text",
+              "name": "t:names.heading",
+              "settings": {
+                "text": "<p>Flex carousel</p>",
+                "type_preset": "h1",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "normal",
+                "text_color": "text",
+                "width": "100%",
+                "text_alignment": "center",
+                "width_mobile": "100%",
+                "text_alignment_mobile": "center",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "fade-up",
+                "animation_split": "words",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            }
+          },
+          "block_order": ["subheading", "heading"]
+        },
+        "image_card_FgjMWV": {
+          "type": "image-card",
+          "name": "t:names.image_card",
+          "settings": {
+            "show_content_below": true,
+            "gap": 20,
+            "gap_mobile": 16,
+            "toggle_overlay": false,
+            "overlay_color": "#00000026",
+            "image_ratio": "adapt",
+            "image_ratio_mobile": "adapt",
+            "image_border": "none",
+            "image_border_width": 1,
+            "image_border_opacity": 100,
+            "image_border_radius": 20,
+            "content_padding_device": "desktop",
+            "content_padding_inline": 0,
+            "content_padding_block": 0,
+            "content_padding_inline_mobile": 0,
+            "content_padding_block_mobile": 0,
+            "content_direction": "column",
+            "vertical_on_mobile": true,
+            "horizontal_alignment": "flex-start",
+            "vertical_alignment": "center",
+            "horizontal_alignment_flex_direction_column": "flex-start",
+            "vertical_alignment_flex_direction_column": "flex-end",
+            "column_gap": 12,
+            "column_gap_mobile": 12,
+            "row_gap": 32,
+            "row_gap_mobile": 24,
+            "width": "fill",
+            "custom_width": 100,
+            "width_mobile": "fill",
+            "custom_width_mobile": 100,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "none",
+            "border_width": 1,
+            "border_opacity": 100,
+            "border_radius": 0,
+            "enable_full_height": false,
+            "enable_preload_image": false
+          },
+          "blocks": {
+            "card-label": {
+              "type": "_label",
+              "name": "t:names.label",
+              "static": true,
+              "settings": {
+                "text": "Exclusive",
+                "placement": "media"
+              },
+              "blocks": {}
+            },
+            "subheading": {
+              "type": "_simple-text",
+              "name": "t:names.subheading",
+              "static": true,
+              "settings": {
+                "text": "<p></p>",
+                "type_preset": "text-subheading",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 20,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "heading": {
+              "type": "_simple-text",
+              "name": "t:names.heading",
+              "static": true,
+              "settings": {
+                "text": "<p>Talk about your brand</p>",
+                "type_preset": "h3",
+                "font": "var(--font-heading--family)",
+                "font_size": 48,
+                "font_size_mobile": 34,
+                "line_height": "tight",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "text": {
+              "type": "_simple-text",
+              "static": true,
+              "settings": {
+                "text": "<p>Share information about your brand with your customers. Describe a product, make announcements, or welcome customers to your store.</p>",
+                "type_preset": "rte",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 12,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "button": {
+              "type": "button",
+              "static": true,
+              "settings": {
+                "label": "",
+                "link": "",
+                "style": "secondary",
+                "size": "medium",
+                "icon": "none",
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            }
+          },
+          "block_order": []
+        },
+        "image_card_irbFwB": {
+          "type": "image-card",
+          "name": "t:names.image_card",
+          "settings": {
+            "show_content_below": true,
+            "gap": 20,
+            "gap_mobile": 16,
+            "toggle_overlay": false,
+            "overlay_color": "#00000026",
+            "image_ratio": "adapt",
+            "image_ratio_mobile": "adapt",
+            "image_border": "none",
+            "image_border_width": 1,
+            "image_border_opacity": 100,
+            "image_border_radius": 20,
+            "content_padding_device": "desktop",
+            "content_padding_inline": 0,
+            "content_padding_block": 0,
+            "content_padding_inline_mobile": 0,
+            "content_padding_block_mobile": 0,
+            "content_direction": "column",
+            "vertical_on_mobile": true,
+            "horizontal_alignment": "flex-start",
+            "vertical_alignment": "center",
+            "horizontal_alignment_flex_direction_column": "flex-start",
+            "vertical_alignment_flex_direction_column": "flex-end",
+            "column_gap": 12,
+            "column_gap_mobile": 12,
+            "row_gap": 32,
+            "row_gap_mobile": 24,
+            "width": "fill",
+            "custom_width": 100,
+            "width_mobile": "fill",
+            "custom_width_mobile": 100,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "none",
+            "border_width": 1,
+            "border_opacity": 100,
+            "border_radius": 0,
+            "enable_full_height": false,
+            "enable_preload_image": false
+          },
+          "blocks": {
+            "card-label": {
+              "type": "_label",
+              "name": "t:names.label",
+              "static": true,
+              "settings": {
+                "text": "Exclusive",
+                "placement": "media"
+              },
+              "blocks": {}
+            },
+            "subheading": {
+              "type": "_simple-text",
+              "name": "t:names.subheading",
+              "static": true,
+              "settings": {
+                "text": "<p></p>",
+                "type_preset": "text-subheading",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 20,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "heading": {
+              "type": "_simple-text",
+              "name": "t:names.heading",
+              "static": true,
+              "settings": {
+                "text": "<p>Talk about your brand</p>",
+                "type_preset": "h3",
+                "font": "var(--font-heading--family)",
+                "font_size": 48,
+                "font_size_mobile": 34,
+                "line_height": "tight",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "text": {
+              "type": "_simple-text",
+              "static": true,
+              "settings": {
+                "text": "<p>Share information about your brand with your customers. Describe a product, make announcements, or welcome customers to your store.</p>",
+                "type_preset": "rte",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 12,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "button": {
+              "type": "button",
+              "static": true,
+              "settings": {
+                "label": "",
+                "link": "",
+                "style": "secondary",
+                "size": "medium",
+                "icon": "none",
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            }
+          },
+          "block_order": []
+        },
+        "image_card_teY8pD": {
+          "type": "image-card",
+          "name": "t:names.image_card",
+          "settings": {
+            "show_content_below": true,
+            "gap": 20,
+            "gap_mobile": 16,
+            "toggle_overlay": false,
+            "overlay_color": "#00000026",
+            "image_ratio": "adapt",
+            "image_ratio_mobile": "adapt",
+            "image_border": "none",
+            "image_border_width": 1,
+            "image_border_opacity": 100,
+            "image_border_radius": 20,
+            "content_padding_device": "desktop",
+            "content_padding_inline": 0,
+            "content_padding_block": 0,
+            "content_padding_inline_mobile": 0,
+            "content_padding_block_mobile": 0,
+            "content_direction": "column",
+            "vertical_on_mobile": true,
+            "horizontal_alignment": "flex-start",
+            "vertical_alignment": "center",
+            "horizontal_alignment_flex_direction_column": "flex-start",
+            "vertical_alignment_flex_direction_column": "flex-end",
+            "column_gap": 12,
+            "column_gap_mobile": 12,
+            "row_gap": 32,
+            "row_gap_mobile": 24,
+            "width": "fill",
+            "custom_width": 100,
+            "width_mobile": "fill",
+            "custom_width_mobile": 100,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "none",
+            "border_width": 1,
+            "border_opacity": 100,
+            "border_radius": 0,
+            "enable_full_height": false,
+            "enable_preload_image": false
+          },
+          "blocks": {
+            "card-label": {
+              "type": "_label",
+              "name": "t:names.label",
+              "static": true,
+              "settings": {
+                "text": "Exclusive",
+                "placement": "media"
+              },
+              "blocks": {}
+            },
+            "subheading": {
+              "type": "_simple-text",
+              "name": "t:names.subheading",
+              "static": true,
+              "settings": {
+                "text": "<p></p>",
+                "type_preset": "text-subheading",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 20,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "heading": {
+              "type": "_simple-text",
+              "name": "t:names.heading",
+              "static": true,
+              "settings": {
+                "text": "<p>Talk about your brand</p>",
+                "type_preset": "h3",
+                "font": "var(--font-heading--family)",
+                "font_size": 48,
+                "font_size_mobile": 34,
+                "line_height": "tight",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "text": {
+              "type": "_simple-text",
+              "static": true,
+              "settings": {
+                "text": "<p>Share information about your brand with your customers. Describe a product, make announcements, or welcome customers to your store.</p>",
+                "type_preset": "rte",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 12,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "button": {
+              "type": "button",
+              "static": true,
+              "settings": {
+                "label": "",
+                "link": "",
+                "style": "secondary",
+                "size": "medium",
+                "icon": "none",
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            }
+          },
+          "block_order": []
+        },
+        "image_card_JgJpam": {
+          "type": "image-card",
+          "name": "t:names.image_card",
+          "settings": {
+            "show_content_below": true,
+            "gap": 20,
+            "gap_mobile": 16,
+            "toggle_overlay": false,
+            "overlay_color": "#00000026",
+            "image_ratio": "adapt",
+            "image_ratio_mobile": "adapt",
+            "image_border": "none",
+            "image_border_width": 1,
+            "image_border_opacity": 100,
+            "image_border_radius": 20,
+            "content_padding_device": "desktop",
+            "content_padding_inline": 0,
+            "content_padding_block": 0,
+            "content_padding_inline_mobile": 0,
+            "content_padding_block_mobile": 0,
+            "content_direction": "column",
+            "vertical_on_mobile": true,
+            "horizontal_alignment": "flex-start",
+            "vertical_alignment": "center",
+            "horizontal_alignment_flex_direction_column": "flex-start",
+            "vertical_alignment_flex_direction_column": "flex-end",
+            "column_gap": 12,
+            "column_gap_mobile": 12,
+            "row_gap": 32,
+            "row_gap_mobile": 24,
+            "width": "fill",
+            "custom_width": 100,
+            "width_mobile": "fill",
+            "custom_width_mobile": 100,
+            "inherit_color_scheme": true,
+            "color_scheme": "",
+            "border": "none",
+            "border_width": 1,
+            "border_opacity": 100,
+            "border_radius": 0,
+            "enable_full_height": false,
+            "enable_preload_image": false
+          },
+          "blocks": {
+            "card-label": {
+              "type": "_label",
+              "name": "t:names.label",
+              "static": true,
+              "settings": {
+                "text": "Exclusive",
+                "placement": "media"
+              },
+              "blocks": {}
+            },
+            "subheading": {
+              "type": "_simple-text",
+              "name": "t:names.subheading",
+              "static": true,
+              "settings": {
+                "text": "<p></p>",
+                "type_preset": "text-subheading",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 20,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "heading": {
+              "type": "_simple-text",
+              "name": "t:names.heading",
+              "static": true,
+              "settings": {
+                "text": "<p>Talk about your brand</p>",
+                "type_preset": "h3",
+                "font": "var(--font-heading--family)",
+                "font_size": 48,
+                "font_size_mobile": 34,
+                "line_height": "tight",
+                "text_color": "text",
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "text": {
+              "type": "_simple-text",
+              "static": true,
+              "settings": {
+                "text": "<p>Share information about your brand with your customers. Describe a product, make announcements, or welcome customers to your store.</p>",
+                "type_preset": "rte",
+                "font": "var(--font-body--family)",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "text_color": "text",
+                "padding-block-start": 12,
+                "padding-block-end": 0,
+                "mobile-padding-scale": 80,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            },
+            "button": {
+              "type": "button",
+              "static": true,
+              "settings": {
+                "label": "",
+                "link": "",
+                "style": "secondary",
+                "size": "medium",
+                "icon": "none",
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {}
+            }
+          },
+          "block_order": []
+        }
+      },
+      "block_order": ["image_card_FgjMWV", "image_card_irbFwB", "image_card_teY8pD", "image_card_JgJpam"]
+    }
+  ]
+}
+{% endschema %}

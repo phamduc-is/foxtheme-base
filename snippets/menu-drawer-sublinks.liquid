@@ -1,0 +1,131 @@
+{% doc %}
+  Renders the child-link list (`<ul class="menu-drawer__list">`) for a mobile menu-drawer panel.
+  Shared by the generic `menu-drawer-details` fallback and by each `_mega-menu-*` block's inline
+  mobile markup, so the sub-link scaffold lives in one place.
+
+  @param {object} link - The nav link whose `link.links` are rendered as the drawer sub-menu.
+  @param {string} [style] - Child rendering style:
+
+  'default' (accordion groups with a plain sub-list — used by banner layout), 'sidebar' (accordion groups with a collection-image sub-list — needs
+  `block`), 'links-only' (flat links, no accordion — used by text-with-banners layout).
+
+  @param {object} [block] - The mega-menu block; required for the 'sidebar' style image settings.
+
+  @example
+  {% render 'menu-drawer-sublinks', link: link, style: 'sidebar', block: block %}
+{% enddoc %}
+
+{%- liquid
+  assign style = style | default: 'default'
+-%}
+{%- if link.links != blank -%}
+  <ul
+    class="menu-drawer__list list-unstyled flex flex-col"
+    data-parent
+    role="list"
+  >
+    {%- for childlink in link.links -%}
+      <li
+        class="menu-drawer__item"
+        level="child"
+      >
+        {%- if style != 'links-only' and childlink.links != blank -%}
+          <menu-drawer-submenu class="accordion">
+            <details
+              ref="item[]"
+              class="accordion__details"
+            >
+              <summary
+                ref="summary[]"
+                class="menu-drawer__item-link menu-drawer__item-link--lv2 accordion__summary flex focus-visible--inset"
+                on:click="/onSummaryClick"
+                data-link-url="{{ childlink.url }}"
+              >
+                <span class="h3">{{ childlink.title | escape }}</span>
+                <button
+                  on:click="/onArrowClick"
+                  class="menu-drawer__item-link-arrow button-unstyled flex items-center justify-center cursor-pointer"
+                >
+                  {% render 'icon', icon: 'caret-down', class: 'flex accordion__summary-arrow icon--caret' %}
+                </button>
+              </summary>
+              <div ref="content[]" class="accordion__content">
+                <div class="accordion__inner">
+                  {%- if style == 'sidebar' -%}
+                    <ul class="menu-sidebar__collections list-unstyled grid gap-1">
+                      {%- for grandchildlink in childlink.links -%}
+                        {%- liquid
+                          assign is_collection_link = false
+                          assign default_alt = shop.name
+                          if grandchildlink.type == 'collection_link' and block.settings.show_collection_image
+                            assign is_collection_link = true
+                            assign collection_object = grandchildlink.object
+                            assign collection_image = collection_object.featured_image
+                            assign default_alt = collection_object.title
+                          endif
+
+                          if collection_object.metafields.foxtheme.collection_megamenu_image.value
+                            assign collection_image = collection_object.metafields.foxtheme.collection_megamenu_image.value
+                          endif
+
+                          if block.settings.show_image_of_first_product
+                            assign collection_image = collections[grandchildlink.object.handle].all_products.first.featured_image
+                          endif
+
+                          assign image_ratio = block.settings.image_ratio
+                          if image_ratio == 'adapt'
+                            assign image_ratio = collection_image.aspect_ratio
+                          endif
+                        -%}
+                        <li>
+                          <a
+                            href="{{ grandchildlink.url }}"
+                            class="menu-drawer__item-link flex items-center gap-3 color-current text-decoration-none focus-visible--inset"
+                          >
+                            {%- if is_collection_link and collection_image != blank -%}
+                              <div class="menu-sidebar__collection-image media-mask-clip shrink-0">
+                                {% render 'responsive-image',
+                                  mode: 'liquid',
+                                  image: collection_image,
+                                  image_ratio: image_ratio,
+                                  default_alt: default_alt,
+                                  sizes: '50px',
+                                  widths: '50, 100'
+                                %}
+                              </div>
+                            {%- endif -%}
+                            <span class="menu-sidebar__collection-text min-w-0 text-wrap">{{- grandchildlink.title | escape -}}</span>
+                          </a>
+                        </li>
+                      {%- endfor -%}
+                    </ul>
+                  {%- else -%}
+                    <ul class="list-unstyled">
+                      {%- for grandchildlink in childlink.links -%}
+                        <li class="menu-drawer__item">
+                          <a
+                            href="{{ grandchildlink.url }}"
+                            class="menu-drawer__item-link menu-drawer__item-link--lv3 block text-decoration-none focus-visible--inset color-subtext"
+                          >
+                            {{- grandchildlink.title | escape -}}
+                          </a>
+                        </li>
+                      {%- endfor -%}
+                    </ul>
+                  {%- endif -%}
+                </div>
+              </div>
+            </details>
+          </menu-drawer-submenu>
+        {%- else -%}
+          <a
+            href="{{ childlink.url }}"
+            class="menu-drawer__item-link menu-drawer__item-link--lv2 block text-decoration-none focus-visible--inset color-subtext"
+          >
+            {{- childlink.title -}}
+          </a>
+        {%- endif -%}
+      </li>
+    {%- endfor -%}
+  </ul>
+{%- endif -%}

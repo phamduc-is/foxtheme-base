@@ -1,0 +1,168 @@
+{%- liquid
+  assign article = block.settings.article
+  assign layout = block.settings.layout_type
+  assign alignment = block.settings.text_alignment
+-%}
+{%- capture tag_html -%}
+  {%- content_for 'block', type: '_article-card-tag', id: 'article-card-tag', article: article, layout: layout -%}
+{%- endcapture -%}
+{%- capture title_html -%}
+  {%- content_for 'block', type: '_article-card-title', id: 'article-card-title', article: article, layout: layout -%}
+{%- endcapture -%}
+{%- capture meta_html -%}
+  {%- content_for 'block', type: '_article-card-meta', id: 'article-card-meta', article: article, layout: layout, alignment: alignment -%}
+{%- endcapture -%}
+{%- capture children -%}
+  {%- content_for 'blocks', closest.article: article -%}
+{%- endcapture -%}
+
+{%- render 'article-card-markup', block: block, tag_html: tag_html, title_html: title_html, meta_html: meta_html, children: children -%}
+
+{% schema %}
+{
+  "name": "t:names.article_card",
+  "tag": null,
+  "blocks": [{ "type": "_article-card-excerpt" }, { "type": "_article-card-button" }],
+  "settings": [
+    {
+      "type": "article",
+      "id": "article",
+      "label": "t:names.article"
+    },
+    {
+      "type": "select",
+      "id": "layout_type",
+      "label": "t:settings.type",
+      "options": [
+        { "value": "column", "label": "t:options.vertical" },
+        { "value": "row", "label": "t:options.horizontal" }
+      ],
+      "default": "column"
+    },
+    {
+      "type": "header",
+      "content": "t:content.size"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "t:settings.aspect_ratio",
+      "options": [
+        {
+          "value": "adapt",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "1/1",
+          "label": "t:options.square"
+        },
+        {
+          "value": "4/5",
+          "label": "t:options.portrait"
+        },
+        {
+          "value": "3/4",
+          "label": "t:options.portrait_3_4"
+        },
+        {
+          "value": "16/9",
+          "label": "t:options.landscape"
+        },
+        {
+          "value": "4/3",
+          "label": "t:options.landscape_4_3"
+        }
+      ],
+      "default": "adapt"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio_mobile",
+      "label": "t:settings.aspect_ratio_mobile",
+      "options": [
+        {
+          "value": "adapt",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "1/1",
+          "label": "t:options.square"
+        },
+        {
+          "value": "4/5",
+          "label": "t:options.portrait"
+        },
+        {
+          "value": "3/4",
+          "label": "t:options.portrait_3_4"
+        },
+        {
+          "value": "16/9",
+          "label": "t:options.landscape"
+        },
+        {
+          "value": "4/3",
+          "label": "t:options.landscape_4_3"
+        }
+      ],
+      "default": "adapt"
+    },
+    {
+      "type": "header",
+      "content": "t:content.card_settings"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        }
+      ],
+      "default": "left"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.article_card",
+      "category": "t:categories.basic",
+      "blocks": [
+        {
+          "type": "_article-card-tag",
+          "id": "article-card-tag",
+          "name": "t:names.tag",
+          "static": true,
+          "settings": {
+            "placement": "media"
+          }
+        },
+        {
+          "type": "_article-card-title",
+          "id": "article-card-title",
+          "name": "t:names.title",
+          "static": true,
+          "settings": {
+            "type_preset": "h4"
+          }
+        },
+        {
+          "type": "_article-card-meta",
+          "id": "article-card-meta",
+          "name": "t:names.meta",
+          "static": true,
+          "settings": {
+            "show_date": true,
+            "show_author": true
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,460 @@
+{% doc %}
+  Outputs the JavaScript import map and conditionally loaded <script> tags for all theme modules.
+  The import map exposes
+
+  @theme/* aliases to asset URLs for native ESM.
+  Module scripts are loaded conditionally based on page context (section presence, feature flags, template type). Rendered once before </body> in the
+  layout.
+
+  @example
+  {% render 'scripts' %}
+{% enddoc %}
+
+<!--
+  ============================================================
+    Import Map — must appear before any type="module" scripts
+  ============================================================
+-->
+<script type="importmap">
+  {
+    "imports": {
+      "@theme/utilities": "{{ 'utilities.js' | asset_url }}",
+      "@theme/component": "{{ 'component.js' | asset_url }}",
+      "@theme/events": "{{ 'events.js' | asset_url }}",
+      "@theme/dialog": "{{ 'dialog.js' | asset_url }}",
+      "@theme/carousel": "{{ 'carousel.js' | asset_url }}",
+      "@theme/carousel-centered-slider": "{{ 'carousel-centered-slider.js' | asset_url }}",
+      "@theme/flex-carousel": "{{ 'flex-carousel.js' | asset_url }}",
+      "@theme/product-bundle": "{{ 'product-bundle.js' | asset_url }}",
+      "@theme/swiper": "{{ 'swiper.js' | asset_url }}",
+      "@theme/modules": "{{ 'modules.js' | asset_url }}",
+      "@theme/morph": "{{ 'morph.js' | asset_url }}",
+      "@theme/reveal-swap": "{{ 'reveal-swap.js' | asset_url }}",
+      "@theme/section-renderer": "{{ 'section-renderer.js' | asset_url }}",
+      "@theme/product-form": "{{ 'product-form.js' | asset_url }}",
+      "@theme/variant-picker": "{{ 'variant-picker.js' | asset_url }}",
+      "@theme/media-gallery": "{{ 'media-gallery.js' | asset_url }}",
+      "@theme/animation": "{{ 'animation.js' | asset_url }}",
+      "@theme/lenis": "{{ 'lenis.js' | asset_url }}",
+      "@theme/photoswipe": "{{ 'photoswipe.js' | asset_url }}",
+      "@theme/zoom-dialog": "{{ 'zoom-dialog.js' | asset_url }}",
+      "@theme/paginated-list": "{{ 'paginated-list.js' | asset_url }}",
+      "@theme/carousel-features/counter": "{{ 'counter.js' | asset_url }}",
+      "@theme/carousel-features/navigation-position": "{{ 'navigation-position.js' | asset_url }}",
+      "@theme/carousel-features/thumbnails": "{{ 'thumbnails.js' | asset_url }}",
+      "@theme/motion-coordinator": "{{ 'motion-coordinator.js' | asset_url }}",
+      "@theme/motion-presets": "{{ 'motion-presets.js' | asset_url }}",
+      "@theme/motion-controller": "{{ 'motion-controller.js' | asset_url }}",
+      "@theme/image-coordinator": "{{ 'image-coordinator.js' | asset_url }}",
+      "@theme/sticky-add-to-cart": "{{ 'sticky-add-to-cart.js' | asset_url }}",
+      "@theme/standard-events": "{{ 'standard-events.js' | asset_url }}",
+      "@shopify/standard-events": "https://cdn.shopify.com/storefront/standard-events.js"
+    }
+  }
+</script>
+
+<!--
+  ============================================================
+    Theme globals — plain <script> runs synchronously during HTML parse,
+    guaranteed to be set before any deferred module scripts execute
+  ============================================================
+-->
+{%- capture theme_name -%}{%- render 'theme-name' -%}{%- endcapture -%}
+{%- capture theme_version -%}{%- render 'theme-version' -%}{%- endcapture -%}
+<script>
+  window.FoxTheme = {
+    translations: {
+      placeholder_image: `{{ 'content.placeholder_image' | t }}`,
+      added: `{{ 'actions.added' | t }}`,
+      recipient_form_fields_visible: `{{ 'content.recipient_form_fields_visible' | t }}`,
+      recipient_form_fields_hidden: `{{ 'content.recipient_form_fields_hidden' | t }}`,
+      recipient_form_error: `{{ 'content.recipient_form_error' | t }}`,
+      shipping_calculator_error: `{{ 'content.shipping_calculator.error' | t }}`,
+      shipping_calculator_not_found: `{{ 'content.shipping_calculator.notFound' | t }}`,
+      shipping_calculator_one_result: `{{ 'content.shipping_calculator.oneResult' | t }}`,
+      shipping_calculator_multiple_results: `{{ 'content.shipping_calculator.multipleResults' | t }}`,
+      compare_limit_message: `{{ 'content.compare_limit_message' | t: maximum: settings.compare_limit }}`,
+      cart_quantity_limit_one: `{{ 'content.cart_quantity_limit.one' | t }}`,
+      cart_quantity_limit_other: `{{ 'content.cart_quantity_limit.other' | t }}`,
+    },
+    routes: {
+      cart: '{{ routes.cart_url | append: '.js' }}',
+      cart_add_url: '{{ routes.cart_add_url | append: '.js' }}',
+      cart_change_url: '{{ routes.cart_change_url }}',
+      cart_update_url: '{{ routes.cart_update_url }}',
+      cart_url: '{{ routes.cart_url }}',
+      shop_url: '{{ shop.url }}',
+      predictive_search_url: '{{ routes.predictive_search_url }}',
+      search_url: '{{ routes.search_url }}',
+    },
+    template: {
+      name: '{{ template }}',
+    },
+    settings: {
+      cartType: '{{ settings.cart_type }}',
+      compareLimit: {{ settings.compare_limit }},
+      pageTransitionsEnabled: {{ settings.page_transitions_enabled }},
+      smoothScroll: {{ settings.smooth_scroll | default: false }},
+      themeName: {{ theme_name | json }},
+      themeVersion: {{ theme_version | json }},
+    },
+    moneyFormat: '{{ shop.money_format }}',
+    moneyWithCurrencyFormat: '{{ shop.money_with_currency_format }}',
+    showCurrencyCode: {% if settings.show_currency_code %}true{% else %}false{% endif %},
+  };
+
+  console.log(
+    '%c' +
+      window.FoxTheme.settings.themeName +
+      ' theme (v' +
+      window.FoxTheme.settings.themeVersion +
+      ') by Foxecom | Learn more https://foxecom.com/products/motrix-shopify-theme',
+    'font-size: 14px; color: #FF5C00;'
+  );
+</script>
+
+<!--
+  ============================================================
+    --scrollbar-width — how much wider 100vw is than the page, read by every
+    `50vw - var(--scrollbar-width) / 2` page-padding formula. Measured as a
+    100vw probe minus the root's real width, which is exactly what those
+    formulas need — NOT the scrollbar's own width: with
+    `html { scrollbar-gutter: stable }` desktop Chrome already leaves the
+    reserved gutter out of vw (→ 0, measured on Chrome 153 / macOS with classic
+    scrollbars) while headless Chrome keeps it in (→ 15), and overlay scrollbars
+    have none (→ 0); the same holds while scroll-locked. A fixed 15px guess is
+    wrong for every one of them.
+    Runs here, synchronously, so first paint already has it:
+    this script waits for theme.css (the gutter rule), and setting it later
+    shifted every centred column sideways once it landed. Re-measured on load
+    (no gutter support: the scrollbar only appears once content overflows) and
+    on resize (browser zoom rescales the scrollbar in CSS px).
+  ============================================================
+-->
+<script>
+  (function () {
+    var root = document.documentElement;
+    var measure = function () {
+      var probe = document.createElement('div');
+      probe.style.cssText = 'position:absolute;top:0;left:0;width:100vw;height:0;visibility:hidden;pointer-events:none';
+      root.appendChild(probe);
+      var width = Math.max(0, probe.getBoundingClientRect().width - root.getBoundingClientRect().width);
+      root.removeChild(probe);
+      root.style.setProperty('--scrollbar-width', width + 'px');
+    };
+    var timer;
+    var schedule = function () {
+      clearTimeout(timer);
+      timer = setTimeout(measure, 100);
+    };
+    measure();
+    window.addEventListener('load', measure, { once: true });
+    window.addEventListener('resize', schedule);
+  })();
+</script>
+
+<!--
+  ============================================================
+    Standard storefront actions (Shopify.actions) — the configure calls must
+    run before any app code, so they register here (this snippet renders
+    above content_for_header in the layout) inside DOMContentLoaded; only the
+    FIRST configure call on an action wins. Handlers lazy-import
+    @theme/standard-events; without this block updateCart falls back to a
+    full page reload and openCart to plain /cart navigation.
+  ============================================================
+-->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var actions = window.Shopify && window.Shopify.actions;
+    if (!actions) return;
+    try {
+      if (actions.openCart && typeof actions.openCart.configure === 'function') {
+        actions.openCart.configure({
+          handler: function () {
+            return import('@theme/standard-events').then(function (module) {
+              return module.openCartHandler();
+            });
+          },
+        });
+      }
+      if (actions.updateCart && typeof actions.updateCart.configure === 'function') {
+        actions.updateCart.configure({
+          eventTarget: function (meta) {
+            if (meta && meta.type === 'shopify:cart:note-update') return document.querySelector('cart-note');
+            if (meta && meta.type === 'shopify:cart:discount-update') return document.querySelector('cart-discount');
+            if (meta && meta.type === 'shopify:cart:lines-update' && meta.action === 'add') {
+              return document.querySelector('product-form-component');
+            }
+            return document.querySelector('cart-items-component');
+          },
+          handler: function (defaultHandler, payload, options) {
+            return import('@theme/standard-events').then(function (module) {
+              return module.updateCartHandler(defaultHandler, payload, options);
+            });
+          },
+        });
+      }
+    } catch (error) {
+      console.error('[standard-actions] configure failed:', error);
+    }
+  });
+</script>
+
+<!--
+  ============================================================
+    Standard storefront PAGE + VIEW events. The library comes in through a
+    dynamic import, so a slow or blocked CDN holds nothing back; without it
+    there are simply no view events.
+    Order matters: shopify:page:view first, THEN the <s-view-event> definition
+    — defining the element fires every `connect` view on the page, and both
+    wait for DOMContentLoaded so app listeners added by deferred scripts are
+    attached before anything fires.
+  ============================================================
+-->
+<script type="module">
+  // Registered NOW, while this (non-async) module runs: it sits in the defer
+  // queue, so DOMContentLoaded has not fired yet — but readyState already
+  // reads 'interactive' here, so checking it after the import would fire
+  // views before deferred app scripts behind this one attach their listeners.
+  const domReady = new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
+
+  Promise.all([import('@shopify/standard-events'), domReady])
+    .then(([StandardEvents]) => {
+      /**
+       * A card in a fade slider (every slide stacked in place, hidden with
+       * opacity) is only seen once its slide is the active one AND in view:
+       * wait for both, then dispatch once.
+       */
+      const waitForActiveSlide = (element, slide) => {
+        if (element.slideWatcher) return;
+        let intersectionObserver = null;
+        const watchInView = () => {
+          if (intersectionObserver || !slide.classList.contains('swiper-slide-active')) return;
+          intersectionObserver = new IntersectionObserver(
+            (entries) => {
+              if (!entries.some((entry) => entry.isIntersecting)) return;
+              intersectionObserver.disconnect();
+              intersectionObserver = null;
+              if (!slide.classList.contains('swiper-slide-active')) return;
+              mutationObserver.disconnect();
+              element.slideWatcher = null;
+              element.dispatchViewEvent();
+            },
+            { threshold: 0.5 }
+          );
+          intersectionObserver.observe(element);
+        };
+        const mutationObserver = new MutationObserver(watchInView);
+        mutationObserver.observe(slide, { attributes: true, attributeFilter: ['class'] });
+        element.slideWatcher = mutationObserver;
+        watchInView();
+      };
+
+      const defineViewEventElement = () => {
+        if (customElements.get('s-view-event')) return;
+        customElements.define(
+          's-view-event',
+          class extends StandardEvents.createViewEventElement() {
+            dispatchViewEvent() {
+              // Swiper's loop mode clones slides; a clone is not a second view.
+              if (this.closest('.swiper-slide-duplicate')) return;
+
+              const fadeSlide = this.closest('.swiper-fade .swiper-slide');
+              if (fadeSlide && !fadeSlide.classList.contains('swiper-slide-active')) {
+                waitForActiveSlide(this, fadeSlide);
+                return;
+              }
+
+              // Regions JS re-renders wholesale create fresh cards for the
+              // same products: the cart drawer on every cart change, predictive
+              // search on every refocus. Report each card once per opening /
+              // per search (CartDrawerComponent.showDialog and
+              // PredictiveSearch's new search clear the set).
+              const scope =
+                this.getAttribute('view-event-trigger') === 'intersect' &&
+                this.closest('cart-drawer-component, predictive-search');
+              if (scope) {
+                scope.viewedProducts = scope.viewedProducts || new Set();
+                const payload = this.getAttribute('view-event-payload');
+                if (scope.viewedProducts.has(payload)) return;
+                scope.viewedProducts.add(payload);
+              }
+
+              super.dispatchViewEvent();
+            }
+          }
+        );
+      };
+
+      const start = () => {
+        try {
+          document.dispatchEvent(
+            new StandardEvents.PageViewEvent({
+              page: {
+                // The page TYPE ('product'), not the suffixed template ('product.alt').
+                template: {{ template.name | json }},
+                title: document.title,
+                url: window.location.href,
+              },
+            })
+          );
+        } catch (error) {
+          console.warn('[standard-events] page view failed:', error);
+        }
+        defineViewEventElement();
+      };
+      start();
+    })
+    .catch((error) => {
+      console.warn('[standard-events] library unavailable; no view events:', error);
+    });
+</script>
+
+<!--
+  ============================================================
+    Preload hints — tell browser to fetch these assets early.
+    Critical deps (imported by many modules): auto priority.
+    Less urgent deps: fetchpriority="low" to avoid competing with critical resources.
+  ============================================================
+-->
+<link rel="modulepreload" href="{{ 'utilities.js' | asset_url }}">
+<link rel="modulepreload" href="{{ 'component.js' | asset_url }}">
+<link rel="modulepreload" href="{{ 'events.js' | asset_url }}">
+<link rel="modulepreload" href="{{ 'swiper.js' | asset_url }}">
+<link rel="modulepreload" href="{{ 'morph.js' | asset_url }}">
+<link rel="modulepreload" href="{{ 'animation.js' | asset_url }}">
+{% if settings.animations_enabled %}
+  <link rel="modulepreload" href="{{ 'motion-presets.js' | asset_url }}">
+  <link rel="modulepreload" href="{{ 'motion-component.js' | asset_url }}">
+  <link rel="modulepreload" href="{{ 'motion-group.js' | asset_url }}">
+  <link rel="modulepreload" href="{{ 'motion-text.js' | asset_url }}">
+{% endif %}
+{% # modules.js imports it statically; without the hint the browser only discovers it after modules.js has arrived — one extra round-trip before any responsive-image can upgrade (measured: +750ms on Fast 3G) %}
+<link rel="modulepreload" href="{{ 'image-coordinator.js' | asset_url }}">
+<link rel="modulepreload" href="{{ 'modules.js' | asset_url }}" fetchpriority="low">
+<link rel="modulepreload" href="{{ 'carousel.js' | asset_url }}" fetchpriority="low">
+<link rel="modulepreload" href="{{ 'section-renderer.js' | asset_url }}" fetchpriority="low">
+{% if settings.page_transitions_enabled %}
+  <link rel="modulepreload" href="{{ 'page-transition.js' | asset_url }}">
+{% endif %}
+
+<!--
+  ============================================================
+    Core / infrastructure
+  ============================================================
+-->
+<script src="{{ 'custom-elements.js' | asset_url }}" defer></script>
+{% comment %}
+  First module script on purpose. The curtain it lifts is painted with the
+  first frame and stays until this module EXECUTES; deferred modules execute in
+  document order, so as the last script it waited for every other module's
+  fetch + run (measured: 1.4s past first paint on Slow 4G / 4x CPU).
+{% endcomment %}
+{% if settings.page_transitions_enabled %}
+  <script src="{{ 'page-transition.js' | asset_url }}" type="module"></script>
+{% endif %}
+<script src="{{ 'modules.js' | asset_url }}" type="module"></script>
+
+<!--
+  ============================================================
+    Navigation — above fold, no fetchpriority="low"
+  ============================================================
+-->
+<script src="{{ 'carousel.js' | asset_url }}" type="module"></script>
+<script src="{{ 'header.js' | asset_url }}" type="module"></script>
+<script src="{{ 'details-dropdown.js' | asset_url }}" type="module"></script>
+<script src="{{ 'menu-sidebar.js' | asset_url }}" type="module"></script>
+<script src="{{ 'menu-drawer.js' | asset_url }}" type="module"></script>
+{% if settings.animations_enabled %}
+  <script src="{{ 'motion-controller.js' | asset_url }}" type="module"></script>
+  <script src="{{ 'motion-component.js' | asset_url }}" type="module"></script>
+  <script src="{{ 'motion-group.js' | asset_url }}" type="module"></script>
+  {% # <motion-text>, a heading whose animation is "Reveal words" (snippets/text-markup.liquid). Loaded here with the rest of the motion runtime, not by that snippet: its markup is the heading itself, and the boot watchdog arms the prestage before any heading renders %}
+  <script src="{{ 'motion-text.js' | asset_url }}" type="module"></script>
+  {% # `<em is="highlight-text">` sweep-in, emitted by snippets/highlight-text.liquid only with animations on. Loaded here, not by that snippet: its output is captured INTO rich text, where a <script> would become the `.rte > :last-child` and keep the last paragraph's bottom margin %}
+  <script src="{{ 'highlight-text.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+
+<!--
+  ============================================================
+    UI components
+  ============================================================
+-->
+<script src="{{ 'flex-carousel.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'carousel-centered-slider.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'slideshow.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'swipe-component.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'show-more.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'read-more.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'image-comparison.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'marquee.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'parallax-component.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'counter-component.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'scroll-progress-bar.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'back-to-top.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'video-card.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'newsletter-form.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-finder.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'footer-details.js' | asset_url }}" type="module" fetchpriority="low"></script>
+
+<!--
+  ============================================================
+    Product / commerce
+  ============================================================
+-->
+<script src="{{ 'dialog.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'media-gallery.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'variant-picker.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-card.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-title.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-price.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-badge.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-inventory.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'quantity-selector.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-form.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'price-per-item.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'gift-card-recipient-form.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'cart-count.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'quick-add.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'quick-view.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-recently-viewed.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'product-bundle.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'featured-collection.js' | asset_url }}" type="module" fetchpriority="low"></script>
+<script src="{{ 'local-pickup.js' | asset_url }}" type="module" fetchpriority="low"></script>
+
+<!--
+  ============================================================
+    Conditional / page-specific
+  ============================================================
+-->
+{% if template == 'product' or template.name == 'product' or request.page_type == 'product' %}
+  <script src="{{ 'sticky-add-to-cart.js' | asset_url }}" type="module" fetchpriority="low"></script>
+  <script src="{{ 'product-information-below-media.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if settings.search_predictive_enabled %}
+  <script src="{{ 'search.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if settings.search_by_product_type_enabled %}
+  <script src="{{ 'search-type-select.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if settings.compare_enabled %}
+  <script src="{{ 'compare.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if template.directory == 'customers' %}
+  <script src="{{ 'customer-addresses.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if settings.show_cart_note %}
+  <script src="{{ 'cart-note.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if settings.gift_wrap_product != blank %}
+  <script src="{{ 'gift-wrapping.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if settings.show_add_discount_code %}
+  <script src="{{ 'cart-discount.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if settings.show_free_shipping_goal %}
+  <script src="{{ 'free-shipping-goal.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}
+{% if localization.available_countries.size > 1 or localization.available_languages.size > 1 %}
+  <script src="{{ 'localization.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{% endif %}

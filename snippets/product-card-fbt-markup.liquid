@@ -1,0 +1,513 @@
+{% doc %}
+  Renders a product card for any multi-product add-to-cart context (Frequently Bought
+  Together, bought-together panels, bundle pickers).
+  Resolves the featured image from the selected variant first, then falls back to product.featured_media.
+
+  Emits the markup contract `product-bundle.js` reads, and emits it ONCE for every
+  variant of this card: `<product-card data-product-id>`, `[data-product-card-wrapper]`,
+  the `data-variant-sync` targets, `<product-bundle-variant-selector>` +
+  `select[name="id"]` (with data-price / data-compare-at-price / data-options-id),
+  `select[name="quantity"]` (with data-line-price) and
+  `[data-product-bought-together-checkbox]`. Chrome and arrangement vary by param;
+  the contract does not — do not fork this snippet to change a look.
+
+  @param {object} product - The Shopify product object (blank → onboarding placeholder)
+  @param {string} [layout] - Arrangement from md up: 'horizontal' (media beside content) | 'vertical' (media above). Default 'horizontal'
+  @param {string} [layout_mobile] - Arrangement below md (default: layout)
+  @param {string} [style] - Chrome: 'card' (bordered box that highlights when selected, controls revealed on select) | 'standard' (no chrome — the host styles it). Default 'card'
+  @param {string} [toggle_style] - Selection control: 'checkbox' (a visible checkbox) | 'button' (a visually-hidden checkbox driving an Add / Added button face). Default 'checkbox'
+  @param {boolean} [show_quantity_selector] - Show the quantity picker and its volume-pricing popover (default: true). When false the picker is still RENDERED, only `hidden` — the element reads `[name="quantity"]` and its `data-line-price` unconditionally — while the popover, which nothing reads, is not rendered at all
+  @param {object} [color_scheme] - Colour scheme object (e.g. block.settings.color_scheme) painted on the card itself. Omit to inherit the host's
+  @param {object} [parent_color_scheme] - The host's scheme object. Only used to decide the ring, and only under `style: 'card'`: given both, a card whose background differs from its host drops the ring, since its own background already marks its edge
+  @param {string} [uid] - Unique-per-instance prefix for the checkbox id (default: section.id). Needed when one page renders several lists
+  @param {number} [index] - Position in the list; disambiguates placeholder cards, which have no product id
+  @param {string} [image_ratio] - Aspect ratio: 'auto' | 'adapt' | a numeric string (default: settings.pcard_aspect_ratio)
+  @param {boolean} [show_second_image_on_hover] - Show second product image on hover (default: settings.show_second_image_on_hover)
+  @param {boolean} [show_badges] - Show product badges (default: true)
+  @param {boolean} [show_vendor] - Desktop: show vendor (default: settings.pcard_show_vendor)
+  @param {boolean} [show_vendor_mobile] - Mobile: show vendor (default: show_vendor)
+  @param {boolean} [show_type] - Desktop: show type (default: settings.pcard_show_type)
+  @param {boolean} [show_type_mobile] - Mobile: show type (default: show_type)
+  @param {number} [media_width_desktop] - Media width in px, used to build `sizes` (default: 100)
+  @param {number} [media_width_mobile] - Media width in px, used to build `sizes` (default: 80)
+  @param {string} [media_sizes] - Explicit `sizes` string; overrides the media_width_* pair
+  @param {string} [media_widths] - Explicit `widths` string; overrides the media_width_* pair
+  @param {string} [loading] - Image loading attribute: 'lazy' | 'eager' (default: 'lazy')
+  @param {string} [product_title_line_limit] - Max lines for title: 'none' | '1-line' | '2-lines' | '3-lines' (default: settings.pcard_title_line_limit)
+
+  @example
+  {% render 'product-card-fbt-markup', product: product %}
+  {% render 'product-card-fbt-markup',
+    product: product,
+    layout: 'horizontal',
+    layout_mobile: 'vertical',
+    style: 'standard',
+    toggle_style: 'button',
+    show_quantity_selector: false
+  %}
+{% enddoc %}
+
+{%- liquid
+  # Logic to determine which variant URL to use (matching swatch selection logic)
+  assign variant_to_link = product.selected_or_first_available_variant
+
+  assign selected_variant = product.selected_or_first_available_variant
+  assign featured_media = selected_variant.featured_media
+  if selected_variant.featured_media == blank
+    assign featured_media = product.featured_media
+  endif
+  assign featured_image = featured_media
+  assign featured_image_alt = featured_media.alt | default: product.title
+  assign first_media_type = featured_media.media_type
+
+  # Non-image media (video / external_video / model) only expose dimensions via preview_image.
+  if first_media_type != 'image'
+    assign featured_image = featured_media.preview_image
+  endif
+
+  assign show_second_image_on_hover = show_second_image_on_hover | default: settings.show_second_image_on_hover, allow_false: true
+  assign second_image = ''
+  if show_second_image_on_hover and product.images.size > 1 and product.images[1] != blank
+    assign second_image = product.images[1]
+  endif
+
+  if image_ratio == blank
+    assign image_ratio = settings.pcard_aspect_ratio | default: '1'
+  endif
+  # `adapt` is the value every `pcard_image_ratio` setting stores for "Auto" — including
+  # `blocks/_product-fbt.liquid`, this snippet's own caller. Only `auto` was recognised,
+  # so picking Auto there emitted `--ratio: adapt`: an invalid declaration that silently
+  # fell back to the image's natural ratio instead of being resolved here.
+  if image_ratio == 'adapt'
+    assign image_ratio = 'auto'
+  endif
+  if image_ratio == 'auto'
+    if featured_image != blank
+      assign image_ratio = featured_image.aspect_ratio
+    else
+      assign image_ratio = '1'
+    endif
+  endif
+
+  assign media_width_desktop = media_width_desktop | default: 100
+  assign media_width_mobile = media_width_mobile | default: 80
+
+  assign show_badges = show_badges | default: true, allow_false: true
+
+  assign loading = loading | default: 'lazy'
+  assign product_title_line_limit = product_title_line_limit | default: settings.pcard_title_line_limit | default: 'none'
+
+  # Presentation axes. Every default reproduces the card as it rendered before these
+  # existed, so the FBT block keeps its markup byte-for-byte.
+  assign layout = layout | default: 'horizontal'
+  assign layout_mobile = layout_mobile | default: layout
+  assign style = style | default: 'card'
+  assign toggle_style = toggle_style | default: 'checkbox'
+  assign show_quantity_selector = show_quantity_selector | default: true, allow_false: true
+
+  assign onboarding = false
+  assign product_title = product.title
+  if product.id == empty or product == blank
+    assign onboarding = true
+    assign product_title = 'placeholders.product_title' | t
+  endif
+
+  # The checkbox needs a stable id so a <label> can drive it. A placeholder card has no
+  # product id, so several of them would collide (and one label would toggle them all) —
+  # the list position disambiguates. `uid` separates two lists on the same page.
+  assign uid = uid | default: section.id
+  assign card_key = product.id
+  if onboarding
+    assign card_key = 'placeholder-' | append: index
+  endif
+  assign checkbox_id = 'fbt-' | append: uid | append: '-' | append: card_key
+
+  # Only the `card` style has an edge to draw at all. `standard` deliberately has no
+  # chrome — no padding, no box — so the ring would not trace a card, it would trace the
+  # content, and every host of a standard card was switching it back off in its own CSS.
+  # Within `card`: one that paints its own background is already separated from what sits
+  # behind it, so the ring would only add noise. One that resolves to the SAME background
+  # as its host — or that has no scheme of its own to compare — has nothing else marking
+  # its edge, so it keeps the ring. A `card` caller passing neither param therefore still
+  # gets the ring, which is what every existing caller renders today.
+  assign show_card_border = false
+  if style == 'card'
+    assign show_card_border = true
+    if color_scheme != blank and parent_color_scheme != blank
+      assign show_card_border = false
+      if color_scheme.settings.background.rgb == parent_color_scheme.settings.background.rgb
+        assign show_card_border = true
+      endif
+    endif
+  endif
+
+  # A select holding one option is not a choice. `has_only_default_variant` catches
+  # "Title: Default Title", but a product with a real option that has a single value
+  # (Size: One Size) is not a default-variant product — it slipped through and rendered a
+  # dropdown with nothing to pick, which also cost a row of height in a narrow card.
+  # `< 2` subsumes the old sold-out clause: a lone unavailable variant is still `< 2`.
+  # The select stays in the DOM either way — `product-bundle.js` reads `[name="id"]`
+  # unconditionally — it is only hidden.
+  assign number_variants = product.variants | size
+  assign hide_select = false
+  if product.has_only_default_variant or number_variants < 2
+    assign hide_select = true
+  endif
+-%}
+{%- comment -%}
+  Only derive `sizes`/`widths` from the media_width_* pair when the caller has not
+  supplied them outright. A caller whose media is a percentage of its column (a vertical
+  card, a swipe row) cannot express that as a px pair, and before this guard its
+  explicit strings were assigned and then immediately overwritten here.
+{%- endcomment -%}
+{%- if media_sizes == blank -%}
+  {%- capture media_sizes -%}{%- if media_width_desktop != media_width_mobile -%}(min-width: 768px) {{ media_width_desktop }}px, {%- endif -%}{{ media_width_mobile }}px{%- endcapture -%}
+{%- endif -%}
+{%- if media_widths == blank -%}
+  {%- capture media_widths -%}{%- if media_width_desktop != media_width_mobile -%}{{ media_width_desktop }}, {{ media_width_desktop | times: 2 }}, {%- endif -%}{{ media_width_mobile }}, {{ media_width_mobile | times: 2 }}{%- endcapture -%}
+{%- endif -%}
+{%- capture card_classes -%}
+  block w-full product-card product-card--fbt product-card--fbt-{{ style }}
+  {%- if layout == 'vertical' %} product-card--fbt-vertical{% else %} product-card--fbt-horizontal{% endif -%}
+  {%- if layout_mobile == 'vertical' %} product-card--fbt-vertical-mobile{% else %} product-card--fbt-horizontal-mobile{% endif -%}
+  {%- if toggle_style == 'button' %} product-card--fbt-toggle-button{% endif -%}
+  {%- if show_card_border %} product-card--fbt-border{% endif -%}
+  {%- if color_scheme != blank %} color-{{ color_scheme }}{% endif -%}
+{%- endcapture -%}
+{%- capture card_style -%}
+  {%- comment -%}
+    `pcard_content_alignment`, the same way `product-card-markup` hands it over: the
+    base `.product-card__content` rule reads these two, and reaching it needs them
+    declared on the card. Emitted only when an arrangement is stacked — beside the
+    media, centring the text just detaches it from the image, which is why the
+    horizontal modifiers below reset it for the breakpoint they own.
+  {%- endcomment -%}
+  {%- if layout == 'vertical' or layout_mobile == 'vertical' -%}
+    --content-alignment: {{ settings.pcard_content_alignment }};
+    --content-text-align: {{ settings.pcard_content_alignment | replace: 'flex-start', 'left' | replace: 'flex-end', 'right' }};
+  {%- endif -%}
+{%- endcapture -%}
+<product-card
+  class="{{ card_classes | strip_newlines | strip }}"
+  style="{{ card_style | strip | strip_newlines }}"
+  data-product-id="{{ product.id }}"
+>
+  <div
+    class="product-card__wrapper flex items-center"
+    data-product-id="{{ product.id }}"
+    data-product-card-wrapper
+  >
+    <div
+      class="product-card__media media-hover--scale{% if second_image != blank %} product-card__media--has-second-image{% endif %} relative media-mask-clip shrink-0"
+      data-variant-sync="media"
+      style="--ratio: {{ image_ratio }};"
+    >
+      <a
+        {% unless onboarding %}
+          href="{{ variant_to_link.url }}"
+        {% else %}
+          role="link"
+        {% endunless %}
+        ref="cardGalleryLink"
+        aria-label="{{ product_title | escape }}"
+        tabindex="-1"
+      >
+        {%- if settings.animations_enabled -%}
+          <motion-component data-motion="zoom-out" class="block">
+        {%- endif -%}
+        {%- if featured_image -%}
+          {% comment %}
+            // Backup when need use video media instead of image
+             {%- unless first_media_type == 'video' or first_media_type == 'external_video' -%}
+             {%- else -%}
+               <div class="media">
+                 {% render 'video-markup',
+                   player_only: true,
+                   video: featured_media,
+                   video_autoplay: true,
+                   video_loop: true,
+                   section_id: section.id,
+                   poster_size: '1200x',
+                   disable_controls: true,
+                   enable_toggle_button: false
+                 %}
+               </div>
+             {%- endunless -%}
+          {% endcomment %}
+          {% render 'responsive-image',
+            mode: 'liquid',
+            sizes: media_sizes,
+            widths: media_widths,
+            image: featured_image,
+            default_alt: featured_image_alt,
+            image_ratio: image_ratio,
+            class: 'product-card__image product-card__image--first',
+            img_class: 'w-full',
+            loading: loading,
+            fetchpriority: fetchpriority
+          %}
+
+          {%- if second_image != blank -%}
+            {% render 'responsive-image',
+              mode: 'liquid',
+              sizes: media_sizes,
+              widths: media_widths,
+              image: second_image,
+              image_ratio: image_ratio,
+              class: 'product-card__image product-card__image--second',
+              img_class: 'w-full'
+            %}
+          {%- endif -%}
+        {%- else -%}
+          <div class="media media--placeholder">
+            {{ 'product-1' | placeholder_svg_tag: 'placeholder' }}
+          </div>
+        {%- endif -%}
+        {%- if settings.animations_enabled -%}
+          </motion-component>
+        {%- endif -%}
+      </a>
+      {%- if show_badges and product != blank -%}
+        <product-badge data-product-id="{{ product.id }}" class="product-card__badges">
+          {% render 'product-badges',
+            product: product,
+            use_variant: false,
+            show_soldout_badge: settings.pcard_show_sold_out_badge,
+            sale_badge_type: settings.pcard_sale_badge_type,
+            show_sale_badge: settings.pcard_show_sale_badge,
+            show_custom_badges: settings.pcard_show_custom_badges,
+            badge_layout: settings.pcard_badge_layout
+          %}
+        </product-badge>
+      {%- endif -%}
+    </div>
+    {%- comment -%}
+      A grid, not nested flex boxes: __content / __form / __checkbox are placed by
+      grid-area, so switching the arrangement is one `grid-template-areas` instead of
+      flipping `flex-direction` on two levels. Spacing is margin, not `gap` — the
+      content→form and content→checkbox distances differ, and one `gap` cannot say so.
+    {%- endcomment -%}
+    <div class="product-card__content-wrap flex-grow min-w-0">
+      <div
+        class="product-card__content pointer-pass-through flex flex-col"
+        data-variant-sync="content"
+      >
+        {% render 'product-card-metas',
+          product: product,
+          show_vendor: show_vendor,
+          show_vendor_mobile: show_vendor_mobile,
+          show_type: show_type,
+          show_type_mobile: show_type_mobile
+        %}
+        {%- if product != blank -%}
+          <a
+            class="product-card__title text-wrap reversed-link text-limit-{{ product_title_line_limit }}"
+            href="{% render 'product-card-variant-url', product: product %}"
+            ref="productTitleLink"
+            aria-label="{{ product_title | escape }}"
+          >
+            <span class="reversed-link__text">{{ product_title }}</span>
+          </a>
+        {%- else -%}
+          <p class="product-card__title text-wrap">
+            <span>{{ product_title }}</span>
+          </p>
+        {%- endif -%}
+        <product-price class="product-card__price">
+          {% render 'price', show_unit_price: true, product_resource: product, use_variant: true %}
+        </product-price>
+      </div>
+      {%- unless onboarding -%}
+        {%- liquid
+          assign product_form_id = 'product-form-' | append: section.id | append: block.id | append: product.id
+        -%}
+        {%- form 'product',
+          product,
+          id: product_form_id,
+          class: 'product-card__form flex items-center gap-1',
+          data-type: 'add-to-cart-form',
+          data-product-card-form: ''
+        -%}
+          <product-bundle-variant-selector
+            class="select select--outline select--small select--sizing-content{% if hide_select %} hidden{% endif %}"
+            data-product-id="{{ product.id }}"
+            data-product-url="{{ product.url }}"
+            data-section-id="{{ section.id }}"
+          >
+            <label class="visually-hidden" for="FbtCardVariant-{{ section.id }}-{{ product.id }}">
+              {{- 'actions.choose_options' | t -}}
+            </label>
+            <select
+              ref="variantSelect"
+              on:change="/onVariantChange"
+              id="FbtCardVariant-{{ section.id }}-{{ product.id }}"
+              name="id"
+              class="form-control"
+            >
+              {%- for variant in product.variants -%}
+                {%- capture option_ids -%}
+                  {%- for option in variant.options -%}
+                    {{- option.id -}}{%- unless forloop.last -%},{%- endunless -%}
+                  {%- endfor -%}
+                {%- endcapture -%}
+                <option
+                  {% if variant.id == variant_to_link.id or number_variants == 1 %}
+                    selected="selected"
+                  {% endif %}
+                  {% if variant.available == false %}
+                    disabled="disabled"
+                  {% endif %}
+                  value="{{ variant.id }}"
+                  data-price="{{ variant.price }}"
+                  data-compare-at-price="{{ variant.compare_at_price | default: 0 }}"
+                  data-options-id="{{ option_ids }}"
+                >
+                  {{ variant.title }}
+                  {%- if variant.available == false %}
+                    - {{ 'products.product.sold_out' | t -}}
+                  {%- endif -%}
+                </option>
+              {%- endfor -%}
+            </select>
+          </product-bundle-variant-selector>
+          {%- comment -%}
+            A design with no quantity control HIDES this picker, it does not replace it
+            with a simpler one. Two reasons: the element reads `[name="quantity"]` and
+            its `data-line-price` unconditionally, and only the real picker resolves
+            `quantity_rule.min` and the volume breaks — the "locked to 1" variant that
+            used to live here hardcoded an option of 1, so a product with a minimum of 6
+            was counted as 1 and then rejected at `/cart/add`.
+            `hidden` is `display: none`, not `.visually-hidden`: an absolutely
+            positioned control inside a horizontal scroll row drags the scroller when it
+            takes focus.
+          {%- endcomment -%}
+          <div
+            class="select select--outline select--small shrink-0{% unless show_quantity_selector %} hidden{% endunless %}"
+          >
+            {%- liquid
+              assign maximum_options = 25
+              assign increment = variant_to_link.quantity_rule.increment | default: 1
+              assign quantity_min = variant_to_link.quantity_rule.min | default: 1
+
+              if variant_to_link.quantity_rule.max
+                assign quantity_max = variant_to_link.quantity_rule.max
+              else
+                assign quantity_max = maximum_options | minus: 1 | times: increment | plus: quantity_min
+              endif
+            -%}
+            <label class="visually-hidden" for="FbtCardQuantity-{{ section.id }}-{{ product.id }}">
+              {{- 'accessibility.quantity' | t -}}
+            </label>
+            <select
+              id="FbtCardQuantity-{{ section.id }}-{{ product.id }}"
+              name="quantity"
+              class="form-control"
+              data-variant-sync="quantity"
+            >
+              {%- for i in (1..maximum_options) -%}
+                {%- liquid
+                  assign quantity_value = i | minus: 1 | times: increment | plus: quantity_min
+                  if quantity_value > quantity_max
+                    continue
+                  endif
+                  assign effective_unit = variant_to_link.price
+                  if variant_to_link.quantity_price_breaks.size > 0
+                    assign volume_prices_sorted = variant_to_link.quantity_price_breaks | sort: 'quantity'
+                    for price_break in volume_prices_sorted
+                      if quantity_value >= price_break.minimum_quantity
+                        assign effective_unit = price_break.price
+                      endif
+                    endfor
+                  endif
+                  assign line_price_cents = quantity_value | times: effective_unit
+                  assign line_compare_cents = 0
+                  if variant_to_link.compare_at_price > variant_to_link.price
+                    assign line_compare_cents = quantity_value | times: variant_to_link.compare_at_price
+                  endif
+                -%}
+                <option
+                  value="{{ quantity_value }}"
+                  data-line-price="{{ line_price_cents }}"
+                  {% if line_compare_cents > 0 %}
+                    data-compare-line-price="{{ line_compare_cents }}"
+                  {% endif %}
+                >
+                  {{ quantity_value }}
+                </option>
+              {%- endfor -%}
+            </select>
+          </div>
+          {%- comment -%}
+            Not rendered at all when the picker is hidden. Unlike the select, nothing
+            reads this one — it is pure explanation of a control that is not on screen.
+          {%- endcomment -%}
+          {%- if show_quantity_selector -%}
+            {% render 'product-card-volume-popover',
+              product: product,
+              section: section,
+              block: block,
+              show_toggle_text: false,
+              variant_sync: true
+            %}
+          {%- endif -%}
+        {%- endform -%}
+      {%- endunless -%}
+      {%- comment -%}
+        The checkbox IS the control in both styles — the core element listens for `change`
+        on `[data-product-bought-together-checkbox]` and flips `.is-selected` on the
+        `<product-card>`. `toggle_style` only decides what the user sees and clicks:
+        the input itself, or a `<label>` styled as a button that drives it. Either way
+        the input carries an id and has a label pointing at it, so it is never an
+        unlabelled checkbox.
+      {%- endcomment -%}
+      <div class="product-card__checkbox flex">
+        <input
+          class="form-control product-bought-together__checkbox{% if toggle_style == 'button' %} visually-hidden{% endif %}"
+          data-product-bought-together-checkbox
+          type="checkbox"
+          name="products"
+          id="{{ checkbox_id }}"
+          value="{{ product.id }}"
+          {% if onboarding %}
+            disabled
+          {% endif %}
+        >
+        {%- if toggle_style == 'button' -%}
+          <label
+            class="product-card__toggle btn btn--secondary"
+            for="{{ checkbox_id }}"
+            {% if onboarding %}
+              aria-disabled="true"
+            {% endif %}
+          >
+            {%- comment -%}
+              Both faces carry `.btn__text`: it is the button system's name for a
+              label, and without it this control reads as a button with none. The
+              hover fill is chosen by `:has(.btn__text)`, so the toggle was the one
+              `.btn--secondary` on the page still answering with the plain sweep
+              while every other secondary button used the theme's chosen effect.
+
+              Only the ADD face gets `data-label`. That attribute opts a label into
+              the label-roll a fork may paint, which renders the text from two
+              pseudo-elements and makes the element's own content transparent — it
+              would take this face's check icon with it, and the icon is the whole
+              signal that the item is in.
+            {%- endcomment -%}
+            <span
+              class="product-card__toggle-face product-card__toggle-face--add btn__text"
+              data-label="{{ 'products.product.add_to_cart_short' | t | escape }}"
+            >
+              {{- 'products.product.add_to_cart_short' | t -}}
+            </span>
+            <span class="product-card__toggle-face product-card__toggle-face--added btn__text">
+              {%- render 'icon', icon: 'check' -%}
+              {{- 'actions.added' | t -}}
+            </span>
+          </label>
+        {%- else -%}
+          <label class="visually-hidden" for="{{ checkbox_id }}">{{- 'products.product.add_to_cart_short' | t }} — {{ product_title -}}</label>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</product-card>

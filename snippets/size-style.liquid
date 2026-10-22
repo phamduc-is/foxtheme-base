@@ -1,0 +1,91 @@
+{% doc %}
+  Outputs CSS custom property declarations for size (width, height, aspect-ratio) based on section or block settings.
+  Intended to be rendered inline in a style attribute.
+
+  @param {object} settings - Section or block settings object
+  @param {string} [type] - Layout type of the consuming container; 'grid' enables the swipe-width math below
+  @param {boolean} [swipe_on_mobile] - Mobile swipe/carousel mode: with type: 'grid', widens the mobile custom/fill width by the page padding
+
+  @example
+  <div style="{% render 'size-style', settings: section.settings %}">
+{% enddoc %}
+
+{%- capture size_style -%}
+  {%- if settings.width != blank -%}
+    {%- if settings.width == 'custom' and settings.custom_width != blank -%}
+      --size-style-width: {{ settings.custom_width }}%;
+    {%- elsif settings.width == 'pixel' and settings.custom_width_px != blank -%}
+      {%- comment -%}
+        The 100% cap lives in `max-width`, NOT folded into the width value. A
+        percentage inside `width` is indefinite while an ancestor is being sized
+        intrinsically (`max-content` / `fit-content`), so the browser falls back
+        to this element's OWN max-content when adding the parent up — and a
+        100px logo whose image is intrinsically 300px then contributes 300px.
+        A percentage `max-width` is ignored during that same pass, so the
+        element contributes the pixel value it was actually given.
+
+        Measured: four such children in a `max-content` flex parent made the
+        parent 1200px with `min()` and 400px with the pair, while the used child
+        width stayed 100px either way, and a 60px container still clamped the
+        child to 60px in both forms. The marquee repeated that phantom width as
+        a gap between every copy.
+      {%- endcomment -%}
+      {%- if settings.width_mobile == 'pixel' and settings.custom_width_px_mobile != blank -%}
+        {%- comment -%}
+          Both breakpoints are pixel: scale linearly from the mobile value at 767px
+          to the desktop value at 1455px, the breakpoint the other fluid
+          `clamp-calculate-style` values in sections use.
+          `clamp-calculate-style` also emits `--size-style-width-mobile`, so the
+          mobile `pixel` branch below skips it. vw + rem only — no percentage, so
+          the intrinsic-sizing reasoning above still holds.
+        {%- endcomment -%}
+        {%- render 'clamp-calculate-style',
+          property_name: 'size-style-width',
+          min_value: settings.custom_width_px_mobile,
+          max_value: settings.custom_width_px,
+          max_breakpoint: 1455
+        -%}
+      {%- else -%}
+        --size-style-width: {{ settings.custom_width_px }}px;
+      {%- endif -%}
+      --size-style-max-width: 100%;
+    {%- elsif settings.width == 'fill' -%}
+      --size-style-width: 100%;
+    {%- elsif settings.width != 'custom' and settings.width != 'pixel' -%}
+      --size-style-width: {{ settings.width }};
+    {%- endif -%}
+  {%- endif -%}
+  
+  {%- if settings.width_mobile != blank -%}
+    {%- if settings.width_mobile == 'custom' and settings.custom_width_mobile != blank -%}
+      {%- if swipe_on_mobile == true and type == 'grid' -%}
+        --size-style-width-mobile: calc({{ settings.custom_width_mobile }}% + var(--page-padding) * 2);
+      {%- else -%}
+        --size-style-width-mobile: {{ settings.custom_width_mobile }}%;
+        --size-style-width-mobile-min: {{ settings.custom_width_mobile }}%;
+      {%- endif -%}
+    {%- elsif settings.width_mobile == 'pixel' and settings.custom_width_px_mobile != blank -%}
+      {%- comment -%} Same reasoning as the desktop `pixel` branch above. {%- endcomment -%}
+      {%- unless settings.width == 'pixel' and settings.custom_width_px != blank -%}
+        --size-style-width-mobile: {{ settings.custom_width_px_mobile }}px;
+      {%- endunless -%}
+      --size-style-width-mobile-min: {{ settings.custom_width_px_mobile }}px;
+      --size-style-max-width: 100%;
+    {%- elsif settings.width_mobile == 'fill' -%}
+      {%- if swipe_on_mobile == true and type == 'grid' -%}
+        --size-style-width-mobile: calc(100% + var(--page-padding) * 2);
+      {%- else -%}
+        --size-style-width-mobile: 100%;
+        --size-style-width-mobile-min: 5rem;
+      {%- endif -%}
+    {%- elsif settings.width_mobile == 'fit-content' -%}
+      --size-style-width-mobile: {{ settings.width_mobile }};
+      --size-style-width-mobile-min: {{ settings.width_mobile }};
+    {%- endif -%}
+  {%- endif -%}
+  
+  {%- if settings.height == 'fill' -%}
+    --size-style-height: 100%;
+  {%- endif -%}
+{%- endcapture -%}
+{{- size_style | strip | strip_newlines -}}

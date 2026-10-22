@@ -1,0 +1,74 @@
+@use "../mixins" as *;
+
+// ─── Accelerated checkout ─────────────────────────────────────────────────────
+
+shopify-accelerated-checkout,
+shopify-accelerated-checkout-cart {
+  --shopify-accelerated-checkout-button-border-radius: var(--button-corner-radius, 0rem);
+  --shopify-accelerated-checkout-button-block-size: var(--button-height, 5rem);
+}
+
+button.shopify-payment-button__button--unbranded {
+  position: relative;
+  z-index: 0;
+  font-family: var(--font-button--family);
+  font-weight: var(--font-button--weight);
+  letter-spacing: var(--font-button--letter-spacing);
+  text-transform: var(--font-button--transform);
+  font-size: var(--font-size--paragraph);
+  line-height: var(--button-line-height, var(--font-paragraph--line-height, 1.6));
+  padding: var(--button-padding-block, 1rem) var(--button-padding-inline, 2.4rem);
+  transition-property: background-color, color, border-color, opacity, transform;
+  transition-duration: var(--motion-ui);
+  transition-timing-function:
+    var(--motion-ease), var(--motion-ease), var(--motion-ease), var(--motion-ease-fade), var(--motion-ease);
+  color: rgb(var(--color-primary-button-text));
+  background-color: rgb(var(--color-primary-button-background)) !important;
+  border: var(--button-border-thickness, 0.1rem) var(--button-border-style, solid)
+    rgb(var(--color-primary-button-background));
+}
+
+button.shopify-payment-button__button--unbranded::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 0;
+  transition-property: width;
+  transition-duration: var(--motion-ui);
+  transition-timing-function: var(--motion-ease);
+  border-radius: inherit;
+  background-color: rgb(var(--color-primary-button-text));
+}
+
+button.shopify-payment-button__button--unbranded:not([disabled]):hover {
+  color: rgb(var(--color-primary-button-background));
+  border: var(--button-border-thickness, 0.1rem) solid rgb(var(--color-primary-button-background));
+}
+
+button.shopify-payment-button__button--unbranded:not([disabled]):hover::before {
+  width: 100%;
+}
+
+// ─── More payment options ─────────────────────────────────────────────────────
+
+.accelerated-checkout-block {
+  margin-block-start: 0.8rem;
+}
+
+more-payment-options-link {
+  font-size: smaller;
+}
+
+more-payment-options-link a {
+  color: var(--color-foreground-secondary);
+}
+
+more-payment-options-link a:hover {
+  color: var(--color-foreground);
+}
+
+.shopify-payment-button__more-options[aria-hidden="true"] {
+  display: none;
+}

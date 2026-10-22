@@ -1,0 +1,17 @@
+@use "../mixins" as *;
+
+// ─── Image block ──────────────────────────────────────────────────────────────
+
+.image-block {
+  @include media-breakpoint-up(md) {
+    &--img-full &__image img {
+      width: 100%;
+    }
+  }
+
+  @include media-breakpoint-down(md) {
+    &--img-mobile-full &__image img {
+      width: 100%;
+    }
+  }
+}

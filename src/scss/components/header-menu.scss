@@ -1,0 +1,285 @@
+@use "../mixins" as *;
+
+// Menus
+.dropdown,
+.mega-menu {
+  position: absolute;
+  top: 100%;
+  pointer-events: none;
+  max-width: 100%;
+
+  &[open] {
+    pointer-events: auto;
+  }
+}
+
+.dropdown {
+  min-width: 26rem;
+  max-width: 50rem;
+  width: max-content;
+  color: rgb(var(--color-foreground));
+  background-color: rgb(var(--color-background));
+  box-shadow:
+    inset 0 1px 0 0 rgb(var(--color-border) / var(--color-border-alpha)),
+    inset -1px 0 0 0 rgb(var(--color-border) / var(--color-border-alpha));
+  border-radius: 1rem;
+
+  &__container {
+    padding-block: 2.6rem 3.6rem;
+  }
+
+  .dropdown {
+    margin-top: -2.4rem;
+    top: 0;
+    inset-inline-start: 100%;
+    transform: translate(var(--translate-x));
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -0.2rem;
+      width: 0.2rem;
+      height: 100%;
+      background: transparent;
+    }
+  }
+
+  &.needs-reverse {
+    .dropdown {
+      inset-inline: auto 100%;
+      margin-inline: 0 0.2rem;
+    }
+  }
+}
+
+[level="top"] > .dropdown {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.mega-menu {
+  width: 100%;
+  inset-inline-start: 0;
+  max-height: 75vh;
+  overflow: hidden;
+  color: rgb(var(--color-foreground));
+
+  &__container {
+    max-height: 100%;
+    background-color: rgb(var(--color-background));
+    border-top: 1px solid rgb(var(--color-border) / var(--color-border-alpha));
+  }
+
+  // No fade on the content: the entrance is the slide, and this wrapper used to
+  // fade on top of it — 0.6s (--motion-swap), and armed only once [open] lands
+  // on .mega-menu 100ms in (ANIMATION_TIMING.contentOpenDelay), so the content
+  // finished ~700ms in, trailing the panel that carries it.
+  &__wrapper {
+    gap: 3rem;
+  }
+
+  &__list {
+    display: grid;
+    grid-template-columns: repeat(var(--menu-columns, 3), 1fr);
+    flex: 1;
+
+    .mega-menu__column {
+      &:first-child {
+        padding-inline-start: 0;
+      }
+    }
+  }
+
+  &__item-child {
+    li {
+      > a {
+        padding-block: 0.4rem;
+      }
+
+      &:last-child {
+        > a {
+          padding-bottom: 0;
+        }
+      }
+    }
+  }
+
+  &__link--top {
+    margin-bottom: 0.8rem;
+  }
+
+  &__promotions {
+    flex: 0 0 var(--promotions-width);
+    min-width: 0;
+    gap: 2.4rem 3rem;
+  }
+
+  &__promotions-text {
+    width: 28rem;
+    max-width: 30%;
+  }
+
+  &__column {
+    padding-block: var(--dropdown-offset-top) var(--dropdown-offset-bottom);
+    padding-inline: 3rem;
+  }
+
+  &--rich {
+    .mega-menu {
+      &__promotions {
+        padding-block: var(--dropdown-offset-top) var(--dropdown-offset-bottom);
+        padding-inline: 3rem 0;
+        border-inline-start: 1px solid rgb(var(--color-border) / var(--color-border-alpha));
+      }
+    }
+
+    &.mega-menu--reverse-column {
+      .mega-menu {
+        &__promotions {
+          padding-inline: 0 3rem;
+          border-inline-start: 0;
+          border-inline-end: 1px solid rgb(var(--color-border) / var(--color-border-alpha));
+        }
+      }
+    }
+  }
+
+  &--no-links {
+    // Strong selector to overwrite
+    .mega-menu__promotions.mega-menu__promotions {
+      flex: 0 0 100%;
+      border: 0;
+      padding-block: var(--dropdown-offset-top) var(--dropdown-offset-bottom);
+      padding-inline: 0;
+    }
+  }
+
+  &--sidebar .mega-menu {
+    &__wrapper {
+      align-items: flex-start;
+    }
+
+    &__promotions {
+      padding-block: var(--dropdown-offset-top) var(--dropdown-offset-bottom);
+    }
+  }
+}
+
+.dropdown__list {
+  li {
+    > :is(a),
+    > :is(details) > summary > a {
+      margin: 0;
+      padding-inline: 3rem;
+      padding-block: 0.4rem;
+    }
+  }
+}
+
+// ─── Dropdown/Mega menu/Search stage ──────────────────────────────────────────
+
+:is(.search-open, .dropdown-open) {
+  .header__background-inner::before {
+    opacity: 0 !important;
+  }
+
+  .header ~ .header__backdrop {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    cursor: zoom-out;
+  }
+}
+
+.menu-sidebar {
+  min-height: max(var(--sidebar-height), var(--promotions-height, 0px));
+  overflow: hidden;
+
+  &__item {
+    &:first-child {
+      padding-block-start: 2.4rem;
+    }
+
+    &:last-child {
+      padding-block-end: 4rem;
+    }
+  }
+
+  &__toggle {
+    width: var(--toggle-width);
+    padding-block: 0.6rem;
+
+    &.is-visible {
+      .reversed-link__text {
+        background-position-x: var(--transform-origin-start);
+        background-size: 100% var(--underline-thickness);
+        background-position-y: bottom;
+        color: rgb(var(--color-foreground));
+      }
+
+      & + .menu-sidebar__content {
+        opacity: 1;
+        visibility: visible;
+
+        .menu-sidebar__content-inner {
+          opacity: 1;
+          visibility: visible;
+        }
+      }
+    }
+  }
+
+  &__content {
+    position: absolute;
+    top: 0;
+    inset-inline: var(--toggle-width) 0;
+    margin-inline-start: 3rem;
+    opacity: 0;
+    visibility: hidden;
+    transition-property: visibility, opacity;
+    transition: var(--motion-ui);
+
+    &::before {
+      content: "";
+      position: absolute;
+      display: block;
+      top: 0;
+      inset-inline-start: 0;
+      width: 1px;
+      height: max(var(--sidebar-height), var(--promotions-height, 0px));
+      background-color: rgb(var(--color-border) / var(--color-border-alpha));
+      transition: height var(--motion-ui) var(--motion-ease);
+    }
+  }
+
+  &__content-inner {
+    opacity: 0;
+    visibility: hidden;
+    transition-property: opacity, visibility;
+    transition: var(--motion-ui);
+    padding-inline-start: 3rem;
+    padding-block: var(--dropdown-offset-top) var(--dropdown-offset-bottom);
+    gap: 3rem;
+  }
+
+  &__collection-image {
+    width: 5rem;
+    border-radius: 1rem;
+  }
+
+  &__collections + .mega-menu__promotions {
+    max-width: 60%;
+  }
+}
+
+// Products block inside the sidebar mega menu (gap comes from the carousel's gap-style).
+.menu-mega-products {
+  .mega-menu--with-links & {
+    padding-inline-start: 3rem;
+  }
+
+  .product-card__media {
+    border-radius: min(1rem, var(--product-card-media-radius));
+  }
+}

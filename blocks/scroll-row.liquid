@@ -1,0 +1,248 @@
+{% doc %}
+  Scroll row — ONE horizontal row of child blocks that keeps every child at its own width and
+  scrolls sideways once they no longer fit. Content-driven: no breakpoint, no desktop/mobile
+  split. While the row fits it is aligned by `horizontal_alignment`. It stays inside its own box,
+  except below md with `full_width_mobile`, where it runs out to the screen edges (by the page
+  padding — right when the row sits at the page gutter, which is the common mobile case).
+
+  Built on the house scroll row (swipe-component + .swipe__element > .swipe__inner +
+  .edge__shadows). `swipe-all` is what keeps swipe-component driving the fade at every width;
+  its page-edge bleed, mandatory snap and grid layout are overridden in _block-scroll-row.scss.
+
+  Children are limited to small inline pieces (icon box, button, text, image, icon) on purpose —
+  layout containers inside a scroll row are where the edge cases live.
+
+  @example
+  {% content_for 'block', type: 'scroll-row', id: 'scroll-row' %}
+{% enddoc %}
+
+{%- capture children -%}
+  {% content_for 'blocks' %}
+{%- endcapture -%}
+
+{%- capture block_style -%}
+  {% render 'spacing-style', settings: block.settings %}
+  {% render 'size-style', settings: block.settings %}
+{%- endcapture -%}
+
+{%- capture track_style -%}
+  --scroll-row-justify: {{ block.settings.horizontal_alignment | default: 'flex-start' }};
+  --scroll-row-align: {{ block.settings.vertical_alignment | default: 'center' }};
+  {% render 'gap-style', settings: block.settings %}
+{%- endcapture -%}
+
+<div
+  class="scroll-row spacing-style size-style{% if block.settings.full_width_mobile %} scroll-row--full-mobile{% endif %}"
+  style="{{ block_style | strip | strip_newlines }}"
+  {{ block.shopify_attributes }}
+>
+  <div
+    is="swipe-component"
+    class="scroll-row__viewport{% if block.settings.edge_fade %} edge__shadows{% endif %}"
+  >
+    <div
+      class="scroll-row__track swipe__element swipe-all swipe-all--auto-cols"
+      style="{{ track_style | strip | strip_newlines }}"
+    >
+      <div class="scroll-row__inner swipe__inner">
+        {{- children -}}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.scroll_row",
+  "tag": null,
+  "blocks": [
+    { "type": "icon-box" },
+    { "type": "button" },
+    { "type": "text" },
+    { "type": "image" },
+    { "type": "icon" }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "horizontal_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        { "value": "flex-start", "label": "t:options.left" },
+        { "value": "center", "label": "t:options.center" },
+        { "value": "flex-end", "label": "t:options.right" }
+      ],
+      "default": "flex-start"
+    },
+    {
+      "type": "select",
+      "id": "vertical_alignment",
+      "label": "t:settings.position",
+      "options": [
+        { "value": "flex-start", "label": "t:options.top" },
+        { "value": "center", "label": "t:options.center" },
+        { "value": "flex-end", "label": "t:options.bottom" }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "checkbox",
+      "id": "edge_fade",
+      "label": "t:settings.show_edge_fade",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_layout"
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "checkbox",
+      "id": "full_width_mobile",
+      "label": "t:settings.full_width_on_mobile",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "t:content.size"
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "t:settings.width",
+      "options": [
+        { "value": "fit-content", "label": "t:options.fit" },
+        { "value": "fill", "label": "t:options.fill" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "fill"
+    },
+    {
+      "type": "range",
+      "id": "custom_width",
+      "label": "t:settings.custom_width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "width_mobile",
+      "label": "t:settings.width_mobile",
+      "options": [
+        { "value": "fit-content", "label": "t:options.fit" },
+        { "value": "fill", "label": "t:options.fill" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "fill"
+    },
+    {
+      "type": "range",
+      "id": "custom_width_mobile",
+      "label": "t:settings.custom_width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width_mobile == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        { "value": "desktop", "label": "t:options.desktop" },
+        { "value": "mobile", "label": "t:options.mobile" }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.scroll_row",
+      "category": "t:categories.layout",
+      "blocks": {
+        "button-1": { "type": "button", "settings": { "style": "secondary" } },
+        "button-2": { "type": "button", "settings": { "style": "secondary" } },
+        "button-3": { "type": "button", "settings": { "style": "secondary" } }
+      },
+      "block_order": ["button-1", "button-2", "button-3"]
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,385 @@
+{% doc %}
+  Visual test cases for carousel-controls snippet.
+  Usage: {% render 'dev-carousel-controls' %}
+  Remove render call before release — snippet stays in repo for reuse.
+{% enddoc %}
+
+<style>
+  .ct {
+    padding: 4rem 2rem;
+    background: #f5f5f5;
+  }
+  .ct h2 {
+    font-size: 2rem;
+    margin-bottom: 3.2rem;
+  }
+  .ct-case {
+    margin-bottom: 5rem;
+  }
+  .ct-label {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 0.8rem;
+  }
+  .ct-label code {
+    background: #ddd;
+    padding: 0.1em 0.4em;
+    border-radius: 3px;
+    font-size: 1.1rem;
+  }
+  .ct-carousel {
+    background: #e0e0e0;
+    border-radius: 8px;
+    overflow: visible;
+  }
+  .ct-slide {
+    height: 20rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.4rem;
+    font-weight: 700;
+    color: #fff;
+  }
+  .ct-carousel carousel-slider {
+    display: block;
+  }
+</style>
+
+{% capture test_slides %}
+  <div class="swiper-slide ct-slide" style="background:#e87c5b;">1</div>
+  <div class="swiper-slide ct-slide" style="background:#5b8ee8;">2</div>
+  <div class="swiper-slide ct-slide" style="background:#5bc87e;">3</div>
+  <div class="swiper-slide ct-slide" style="background:#c85bb4;">4</div>
+  <div class="swiper-slide ct-slide" style="background:#c8b85b;">5</div>
+{% endcapture %}
+
+<div class="ct">
+  <h2>Carousel Controls — Visual Test</h2>
+
+  {% comment %} ── 1. group · counter · dots ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">1. navigation: group · combined: counter · pagination: dots</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-1">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "counter": true, "pagination": { "type": "bullets" } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', combined: 'counter', pagination: 'dots' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 2. group · no counter · no dots ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">2. navigation: group · combined: none · pagination: none</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-2">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1 }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', pagination: 'none' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 3. group · no counter · dots ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">3. navigation: group · combined: none · pagination: dots</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-3">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "pagination": { "type": "bullets" } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', pagination: 'dots' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 4. group · size small ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">4. navigation: group · navigation_size: small · combined: counter</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-4">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "counter": true }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', navigation_size: 'small', combined: 'counter', pagination: 'none' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 5. group · pagination_style: scale ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">5. navigation: group · pagination_style: scale</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-5">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "pagination": { "type": "bullets" } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', pagination: 'dots', pagination_style: 'scale' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 6. absolute · hover to reveal ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">
+      6. navigation: absolute · pagination: none —
+      <em>hover to reveal</em>
+    </div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-6">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1 }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', navigation: 'absolute', pagination: 'none' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 7. absolute · dots below ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">
+      7. navigation: absolute · pagination: dots —
+      <em>hover to reveal nav</em>
+    </div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-7">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "pagination": { "type": "bullets" } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', navigation: 'absolute', pagination: 'dots' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 8. absolute-inside · size small ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">
+      8. navigation: absolute-inside · navigation_size: small —
+      <em>hover to reveal</em>
+    </div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-8">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1 }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', navigation: 'absolute-inside', navigation_size: 'small', pagination: 'none' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 9. absolute · --nav-edge override ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">
+      9. navigation: absolute ·
+      <code>--nav-edge: 0.8rem</code>
+      (stays inside) —
+      <em>hover</em>
+    </div>
+    <div class="ct-carousel" style="--nav-edge: 0.8rem;">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-9">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1 }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', navigation: 'absolute', pagination: 'none' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 10. absolute · navigationPosition: enabled ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">
+      10. navigation: absolute · navigationPosition JS —
+      buttons align to media, not full box —
+      <em>hover</em>
+    </div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-10">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "navigationPosition": { "enabled": true } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', navigation: 'absolute', pagination: 'none' %}
+      </carousel-slider>
+      <div style="padding: 1.6rem 2rem; background: #ccc; font-size: 1.2rem; color: #333;">Caption area below slide</div>
+    </div>
+  </div>
+
+  {% comment %} ── 11. mobile: dots only · desktop: group nav + counter ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">11. navigation_mobile: none · pagination_mobile: dots · navigation: group · pagination: none</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-11">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "counter": true, "pagination": { "type": "bullets" } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls',
+          ref: 'controls',
+          navigation: 'group',
+          navigation_mobile: 'none',
+          combined: 'counter',
+          combined_mobile: 'none',
+          pagination: 'none',
+          pagination_mobile: 'dots'
+        %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 12. desktop: absolute-inside + no pagi · mobile: dots ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">
+      12. navigation: absolute-inside · pagination: none (desktop) · pagination_mobile: dots —
+      <em>resize to mobile to see dots</em>
+    </div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-12">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "pagination": { "type": "bullets" } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', navigation: 'absolute-inside', pagination: 'none', pagination_mobile: 'dots', pagination_style: 'pill' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 13. pagination_style: pill-autoplay + autoplay ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">13. navigation: group · pagination_style: pill-autoplay + autoplay — dot fills left→right as timer runs</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-13">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "pagination": { "type": "bullets" }, "autoplay": { "delay": 3000 } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', pagination: 'dots', pagination_style: 'pill-autoplay' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 14. pagination_style: pill-autoplay · no autoplay fallback ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">14. navigation: group · combined: counter · pagination_style: pill-autoplay — no autoplay → fallback solid pill</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-14">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "pagination": { "type": "bullets" }, "counter": true }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls',
+          ref: 'controls',
+          navigation: 'group',
+          combined: 'counter',
+          pagination: 'dots',
+          pagination_style: 'pill-autoplay',
+          navigation_style: 'outline'
+        %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 15. pagination_style: progress ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">15. navigation: group · navigation_style: outline · pagination_style: progress — horizontal fill bar</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-15">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "pagination": { "type": "progressbar" } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', navigation_style: 'outline', pagination: 'dots', pagination_style: 'progress' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 16. pagination_style: progress-autoplay ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">16. navigation: group · navigation_style: outline · pagination_style: progress-autoplay — bar fills during autoplay delay</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-16">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "autoplay": { "delay": 3000 } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', navigation_style: 'outline', pagination: 'dots', pagination_style: 'progress-autoplay' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 17. controls_layout: nav-end + progress-autoplay ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">17. controls_layout: nav-end · pagination_style: progress-autoplay — bar left, buttons right</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-17">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1, "autoplay": { "delay": 3000 } }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', navigation_style: 'outline', pagination: 'dots', pagination_style: 'progress-autoplay', controls_layout: 'nav-end' %}
+      </carousel-slider>
+    </div>
+  </div>
+
+  {% comment %} ── 18. controls_layout: nav-end + dots ── {% endcomment %}
+  <div class="ct-case">
+    <div class="ct-label">18. controls_layout: nav-end · pagination_style: pill — dots left, buttons right</div>
+    <div class="ct-carousel">
+      <carousel-slider class="carousel carousel--visible" data-section-id="ct-18">
+        <script type="application/json" ref="config">
+          { "loop": true, "slidesPerView": 1 }
+        </script>
+        <div ref="container" class="swiper">
+          <div class="swiper-wrapper">{{ test_slides }}</div>
+        </div>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', navigation_style: 'outline', pagination: 'dots', pagination_style: 'pill', controls_layout: 'nav-end' %}
+      </carousel-slider>
+    </div>
+  </div>
+</div>

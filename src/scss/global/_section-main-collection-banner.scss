@@ -1,0 +1,103 @@
+@use "../mixins" as *;
+
+// ─── Collection banner ────────────────────────────────────────────────────────
+
+.collection-banner {
+  &--container-fixed {
+    .collection-banner__content {
+      grid-column: 1 / -1;
+    }
+  }
+
+  // Height = a min-height FLOOR on the wrapper; the grid stretches the (row-span-full) media row
+  // up to that floor, and the content overlay can grow it past the floor. Mobile-first; desktop
+  // floor in the md+ block below.
+  .section__wrapper {
+    min-height: var(--height-mobile, 0);
+  }
+
+  // CUSTOM ("cover", default): let the grid ITEM (.collection-banner__media) stretch to the row —
+  // do NOT set a height on it, that breaks the stretch-to-floor. The inner <picture> (`.media`)
+  // fills it and the image absolutely covers it, so a short overlay still gets the chosen height
+  // and a tall one is fully covered. The outer element also carries `.media`, so neutralise its
+  // global aspect-ratio (it must stretch, not ratio-lock).
+  .collection-banner__media {
+    position: static;
+
+    // The outer element also carries `.media`; neutralise its global aspect-ratio so the grid
+    // item stretches (no height here — that breaks the stretch-to-floor). The mixin covers the
+    // inner <picture> + image.
+    aspect-ratio: unset;
+
+    @include full-bleed-media-cover;
+  }
+
+  .section__wrapper:has(.collection-banner__media) {
+    background-color: rgb(var(--color-background) / 20%);
+  }
+
+  @include media-breakpoint-down(md) {
+    // AUTO ("adapt to image") on mobile: the inner media's ratio sets the height (grows with content).
+    .media-mobile--adapt .collection-banner__media {
+      @include full-bleed-media-adapt(var(--ratio-mobile, var(--ratio)));
+    }
+
+    .collection-banner__inner {
+      width: 100%;
+
+      .block-breadcrumbs {
+        max-width: 100%;
+      }
+    }
+
+    // Content stacked BELOW the image: the media becomes a natural-height band (NOT a cover),
+    // with the content flowing under it.
+    &:has(.collection-banner__content--outside-mobile) {
+      .section__wrapper {
+        display: flex;
+        flex-direction: column;
+        background-color: transparent;
+        border-radius: 0;
+      }
+
+      .collection-banner__media {
+        border-radius: var(--border-radius, 0);
+        height: auto;
+        min-height: 0;
+
+        > * {
+          position: static;
+        }
+
+        .media {
+          height: auto;
+          min-height: 0;
+        }
+
+        img {
+          position: static;
+          height: auto;
+        }
+      }
+    }
+
+    &__content--outside-mobile {
+      padding-inline: 0;
+
+      .collection-banner--container-full & {
+        padding-inline: var(--page-padding);
+      }
+    }
+  }
+
+  @include media-breakpoint-up(md) {
+    .section__wrapper {
+      min-height: var(--height, 0);
+    }
+
+    // AUTO ("adapt to image") on desktop.
+    .media--adapt .collection-banner__media {
+      @include full-bleed-media-adapt;
+    }
+  }
+}

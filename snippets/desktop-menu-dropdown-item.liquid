@@ -1,0 +1,22 @@
+{% doc %}
+  Renders a single desktop menu link as a list item (`<li>`).
+  Expected to be rendered inside a `<ul>` — used for leaf links such as
+  child and grandchild links in the desktop mega menu dropdowns.
+
+  @param {object} link - A Shopify menu link object (from `linklists`). Uses `link.url` and `link.title`.
+
+  @example
+  {%- for childlink in link.links -%}
+    {% render 'desktop-menu-item', link: childlink %}
+  {%- endfor -%}
+{% enddoc %}
+<li class="dropdown__item reversed-link color-subtext">
+  <a
+    class="dropdown__link block text-decoration-none color-current"
+    href="{{ link.url }}"
+  >
+    <span class="reversed-link__text">
+      {{- link.title | escape -}}
+    </span>
+  </a>
+</li>

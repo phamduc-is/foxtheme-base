@@ -1,0 +1,140 @@
+{% doc %}
+  Theme block entry for `blocks/countdown-timer.liquid` (no schema). Renders `<countdown-timer>` and loads `countdown-timer.js`.
+
+  @param {object} block - Theme block (settings + editor attributes).
+{% enddoc %}
+{{ 'scoped-countdown-timer.css' | asset_url | stylesheet_tag }}
+{%- if block.settings.type == 'evergreen' or block.settings.time != blank -%}
+  {%- liquid
+    assign id = block.id
+    assign type = block.settings.type
+    assign duration = block.settings.duration
+    assign time = block.settings.time
+    assign style = block.settings.style
+    assign number_background = block.settings.number_background
+    assign number_border_radius = block.settings.number_border_radius
+    assign show_text = block.settings.show_text
+    assign column_gap = block.settings.column_gap
+    assign column_gap_mobile = block.settings.column_gap_mobile
+    assign separator_size = block.settings.separator_size | default: 50
+    assign number_preset = block.settings.number_preset
+    assign number_font = block.settings.number_font
+    assign number_font_weight = block.settings.number_font_weight
+    assign number_font_size = block.settings.number_font_size
+    assign number_font_size_mobile = block.settings.number_font_size_mobile
+    assign number_text_transform = block.settings.number_text_transform
+    assign inherit_color_scheme = block.settings.inherit_color_scheme
+    assign number_color = block.settings.number_color
+    assign number_background_color = block.settings.number_background_color
+  -%}
+  <script src="{{ 'countdown-timer.js' | asset_url }}" type="module"></script>
+  {%- liquid
+    assign inherit_color_scheme = inherit_color_scheme | default: true, allow_false: true
+    assign number_preset = number_preset | default: 'h3'
+
+    assign show_text = show_text | default: false, allow_false: true
+
+    assign type = type | default: 'evergreen'
+    assign duration = duration | default: 'every_month'
+
+    assign item_classes = 'countdown-timer__block relative inline-flex flex-col items-center justify-center gap-1 ' | append: number_preset
+    assign number_classes = 'countdown-timer__number relative flex items-center justify-center text-center'
+    assign number_inner_classes = 'countdown-timer__number-inner flex items-center justify-center text-center'
+    assign text_classes = 'countdown-timer__text block color-subtext font-body'
+    assign separator_classes = 'countdown-timer__separator absolute'
+
+    if number_preset == 'custom'
+      assign item_classes = item_classes | append: ' custom-typography'
+
+      if number_font_size != ''
+        assign item_classes = item_classes | append: ' custom-font-size'
+      endif
+    endif
+  -%}
+  {%- capture timer_inline_style -%}
+    {% render 'clamp-calculate-style', property_name: 'item-gap-x', min_value: column_gap_mobile, max_value: column_gap %}
+    --separator-scale: {{ separator_size | divided_by: 100.0 }};
+    {%- if style == 'card' and number_border_radius != blank -%}
+      --number-radius: {{ number_border_radius }}px;
+    {%- endif -%}
+    {%- unless inherit_color_scheme -%}
+      {%- if number_color != blank -%}
+      --number-color: {{ number_color.rgb }};
+      {%- endif -%}
+      {%- if number_background_color != blank -%}
+      --number-background: {{ number_background_color.rgb }};
+      {%- endif -%}
+    {%- endunless -%}
+  {%- endcapture -%}
+  {%- capture number_inline_style -%}
+    {% render 'typography-style',
+      preset: number_preset,
+      font_family: number_font,
+      font_weight: number_font_weight,
+      font_size: number_font_size,
+      font_size_mobile: number_font_size_mobile,
+      text_transform: number_text_transform
+    %}
+  {%- endcapture -%}
+  <countdown-timer
+    id="countdown-timer-{{ id }}"
+    class="flex countdown-timer countdown-timer--{{ style }}{% if style == 'card' and number_background == 'solid' %} countdown-timer--solid{% endif %}"
+    data-type="{{ type }}"
+    data-duration="{{ duration }}"
+    data-due-date="{{ time }}"
+    style="{{ timer_inline_style | strip | strip_newlines }}"
+    {% if block != blank %}
+      {{ block.shopify_attributes }}
+    {% endif %}
+  >
+    <div class="countdown-timer__inner inline-flex items-center justify-center flex-wrap">
+      <div
+        class="{{ item_classes }}"
+        style="{{ number_inline_style | strip | strip_newlines }}"
+      >
+        <div class="{{ number_classes }}">
+          <span class="{{ number_inner_classes }}" ref="day">00</span>
+          <span class="{{ separator_classes }}"></span>
+        </div>
+        {%- if show_text -%}
+          <span class="{{ text_classes }}">{{ 'content.timer.days' | t }}</span>
+        {%- endif -%}
+      </div>
+      <div
+        class="{{ item_classes }}"
+        style="{{ number_inline_style | strip | strip_newlines }}"
+      >
+        <div class="{{ number_classes }}">
+          <span class="{{ number_inner_classes }}" ref="hour">00</span>
+          <span class="{{ separator_classes }}"></span>
+        </div>
+        {%- if show_text -%}
+          <span class="{{ text_classes }}">{{ 'content.timer.hours' | t }}</span>
+        {%- endif -%}
+      </div>
+      <div
+        class="{{ item_classes }}"
+        style="{{ number_inline_style | strip | strip_newlines }}"
+      >
+        <div class="{{ number_classes }}">
+          <span class="{{ number_inner_classes }}" ref="minute">00</span>
+          <span class="{{ separator_classes }}"></span>
+        </div>
+        {%- if show_text -%}
+          <span class="{{ text_classes }}">{{ 'content.timer.minutes' | t }}</span>
+        {%- endif -%}
+      </div>
+      <div
+        class="{{ item_classes }}"
+        style="{{ number_inline_style | strip | strip_newlines }}"
+      >
+        <div class="{{ number_classes }}">
+          <span class="{{ number_inner_classes }}" ref="second">00</span>
+        </div>
+        {%- if show_text -%}
+          <span class="{{ text_classes }}">{{ 'content.timer.seconds' | t }}</span>
+        {%- endif -%}
+      </div>
+    </div>
+  </countdown-timer>
+{%- endif -%}

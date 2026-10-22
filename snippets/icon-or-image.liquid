@@ -1,0 +1,62 @@
+{% doc %}
+  Renders either an SVG icon or an uploaded image based on block settings.
+
+  @param {string} icon - The icon name from block.settings.icon
+  @param {object} [image_upload] - The uploaded image from block.settings.image_upload
+  @param {string} [class_name] - CSS class name for the rendered element
+  @param {number} [width] - The width of the icon from block.settings.width
+  @param {number} [width_mobile] - The width of the icon from block.settings.width_mobile
+  @param {object} [attributes] - Additional HTML attributes to add to the element
+  @param {string} [icon_size] - The size of the icon from block.settings.icon_size
+  @param {string} [icon_color] - Overrides the SVG icon color; blank inherits the ambient color
+{% enddoc %}
+{%- comment -%}
+  The custom size is built as DECLARATIONS, never as a ready-made `style=`
+  attribute, and reaches the icon through `style:` instead of `attributes:`.
+
+  The `icon` snippet writes its OWN `style=` from `icon_color` and prints
+  `attributes` right after it. A second `style=` smuggled in through `attributes`
+  therefore produced a span with two of them — and HTML keeps the first and
+  discards the rest, silently. So picking a colour dropped the size and the icon
+  fell back to the 1.6rem default in `.icon--custom-size`; leaving the colour
+  blank left only one `style` and it worked. `icon` appends the colour to this
+  string, so the two now share one attribute.
+
+  `custom_size_style` is assigned ONLY in custom-size mode, so otherwise it stays
+  undefined — nil, which `icon` treats as falsy and skips. Capturing an empty
+  string instead would not do: an empty string is TRUTHY in Liquid, and every
+  icon in the theme would then carry a bare `style=""`.
+
+  The image branch keeps taking the size as an attribute: that `<div>` has no
+  `style` of its own to collide with.
+{%- endcomment -%}
+{%- if icon_size == 'custom-size' -%}
+  {%- capture custom_size_style -%}
+    --icon-custom-size: {{ width | divided_by: 10.0 }}rem;--icon-custom-size-mobile: {{ width_mobile | divided_by: 10.0 }}rem;
+  {%- endcapture -%}
+{%- endif -%}
+{%- capture image_attributes -%}
+  {{ attributes }}
+  {%- if custom_size_style != blank %} style="{{ custom_size_style | strip }}"{% endif -%}
+{%- endcapture -%}
+{%- if icon != 'none' and image_upload == blank -%}
+  {%- render 'icon', icon: icon, attributes: attributes, style: custom_size_style, size: icon_size, icon_color: icon_color, class: class_name -%}
+{%- elsif image_upload != blank -%}
+  {%- liquid
+    assign media_width_desktop = 100
+    assign media_width_mobile = 100
+    if icon_size == 'custom-size'
+      assign media_width_desktop = width
+      assign media_width_mobile = width_mobile
+    endif
+  -%}
+  {%- capture image_sizes -%}(min-width: 768px) {{ media_width_desktop }}px, {{ media_width_mobile }}px{%- endcapture -%}
+  <div class="icon icon--{{ icon_size }} icon--image" {{ image_attributes }}>
+    {%- liquid
+      # Guarantee the alt ATTRIBUTE exists: with no alt text image_tag omits it
+      # entirely, which axe/Lighthouse fails. Empty alt = decorative, the safe default.
+      assign image_upload_alt = image_upload.alt | default: ''
+    -%}
+    {{ image_upload | image_url: width: image_upload.width | image_tag: sizes: image_sizes, widths: '100, 200, 300, 400', class: class_name, alt: image_upload_alt }}
+  </div>
+{%- endif -%}

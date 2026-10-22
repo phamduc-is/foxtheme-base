@@ -1,0 +1,23 @@
+{% doc %}
+  Outputs the font preconnect <link> for body and heading fonts selected in theme settings
+  (skipped for system fonts) and the inline <style> block that declares the @font-face rules.
+  No font preload on purpose — see the comment below.
+  Rendered once in the layout <head>.
+
+  @example
+  {% render 'fonts' %}
+{% enddoc %}
+
+{%- unless settings.type_body_font.system? and settings.type_heading_font.system? -%}
+  <link rel="preconnect" href="https://fonts.shopifycdn.com" crossorigin>
+{%- endunless -%}
+
+{% comment %}
+  Deliberately NO <link rel="preload" as="font">. Chrome treats a preloaded font as render-blocking,
+  and with the body + heading preloads in place the whole page held its FIRST PAINT at ~2.3s on
+  product/collection pages — fonts, CSS and JS had all arrived by 0.4s, load had fired, the main
+  thread was idle. Measured with Lighthouse (mobile) on the Motrix demo: blocking the font requests
+  moved first paint 1.8–2.4s → 0.32s and performance 60 → 78; `fetchpriority="low"` on the preload
+  did not help. font-display stays swap; the @font-face rules below already name the files, so the
+  preload scanner still starts them from the stylesheet.
+{% endcomment %}

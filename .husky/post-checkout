@@ -1,0 +1,6 @@
+#!/bin/sh
+# Regenerate the gitignored PROJECT-MAP.md after switching branches (the file
+# set can differ between branches). $3 = checkout flag: 1 = branch checkout,
+# 0 = file checkout — only regen on branch checkout. Best-effort.
+[ "$3" = "1" ] || exit 0
+yarn map >/dev/null 2>&1 || true

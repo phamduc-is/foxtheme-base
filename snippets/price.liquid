@@ -1,0 +1,176 @@
+{% doc %}
+  Renders a product's price (sale/compare-at aware, optional unit price + sale badge).
+  Used by product cards, the product block, and the featured product block.
+
+  @param {product} product_resource - The product to render the price of (the param name matters — passing `product:` renders the placeholder price)
+  @param {boolean} [show_unit_price] - Whether to show the unit price
+  @param {string} [type_preset] - The type preset to use for the price
+  @param {string} [ref] - Ref attribute for querying element
+  @param {boolean} [use_variant] - Whether to use the selected variant or the product resource
+  @param {string} [sale_badge_type] - The type of sale badge to show
+  @param {boolean} [show_sale_badge] - Whether to show the sale badge
+  @param {boolean} [sale_badge_inline] - Whether to show the sale badge inline
+
+  @example
+  {% render 'price', product_resource: product, use_variant: true %}
+  @example
+  {% render 'price', product_resource: product, use_variant: false %}
+  @example
+  {% render 'price', product_resource: product, use_variant: true, show_unit_price: true %}
+  @example
+  {% render 'price', product_resource: product, use_variant: false, show_unit_price: true %}
+{% enddoc %}
+
+{%- liquid
+  if use_variant
+    assign target = product_resource.selected_or_first_available_variant
+  else
+    assign target = product_resource
+  endif
+
+  assign compare_at_price = target.compare_at_price
+  assign price = target.price | default: 1999
+
+  assign show_unit_price = show_unit_price | default: false
+  assign selected_variant = product_resource.selected_or_first_available_variant
+  assign price_min = product_resource.price_min
+  assign price_max = product_resource.price_max
+  assign available = target.available | default: false
+  assign money_price = price | money
+  assign money_compare_at_price = compare_at_price | money
+  assign money_price_min = price_min | money
+  assign money_price_max = price_max | money
+
+  # Format price with or without currency code based on settings
+  if settings.show_currency_code
+    assign money_price = price | money_with_currency
+    assign money_price_min = price_min | money_with_currency
+    assign money_price_max = price_max | money_with_currency
+    assign money_compare_at_price = compare_at_price | money_with_currency
+  endif
+
+  if target == product_resource and product_resource.price_varies
+    assign money_price = 'content.price_from_html' | t: price: money_price
+  endif
+
+  assign ref = ref | default: 'priceContainer', allow_false: true
+
+  assign show_sale_badge = show_sale_badge | default: false, allow_false: true
+  assign sale_badge_inline = sale_badge_inline | default: false, allow_false: true
+-%}
+
+<div
+  {% if ref != blank %}
+    ref="priceContainer"
+  {% endif %}
+  class="
+    price-container {{ type_preset }}
+    {%- if available == false %} price--sold-out{% endif -%}
+    {%- if compare_at_price > price and target.quantity_price_breaks_configured? != true %} price--on-sale{% endif -%}
+    {%- if compare_at_price > price and target.quantity_price_breaks_configured? %} volume-pricing--sale-badge{% endif -%}
+    {%- if target.price_varies == false and target.compare_at_price_varies %} price--no-compare{% endif -%}
+    {%- if sale_badge_inline and show_sale_badge %} price--sale-badge-inline{% endif -%}
+  "
+>
+  {%- comment -%}
+    Both price__regular and price__sale wrappers always render so the optimistic
+    JS update can reliably toggle .price--on-sale and patch text in either branch.
+    BUT the inner text values are conditionally populated based on on_sale state:
+      - Non-sale variant → only price__regular has text; price__sale fields empty.
+      - Sale variant     → only price__sale has text; price__regular field empty.
+    This avoids duplicating the price (and showing a "sale price" identical to the
+    regular price) in the DOM, which is bad for SEO / structured data crawlers.
+  {%- endcomment -%}
+  {%- assign on_sale = false -%}
+  {%- if compare_at_price > price -%}
+    {%- assign on_sale = true -%}
+  {%- endif -%}
+
+  <div class="price__regular" data-price-regular>
+    {%- if product_resource.quantity_price_breaks_configured? -%}
+      <span class="visually-hidden">{{ 'content.price_regular' | t }}&nbsp;</span>
+      <span class="price" data-price-amount>{%- unless on_sale -%}{{- 'content.price_range' | t: minimum: money_price_min, maximum: money_price_max -}}{%- endunless -%}</span>
+      {% if compare_at_price %}
+        {% unless product_resource.price_varies == false and product_resource.compare_at_price_varies %}
+          <span class="visually-hidden">{{ 'content.price_regular' | t }}&nbsp;</span>
+          <span class="compare-at-price" data-compare-price>{%- unless on_sale -%}{{- money_compare_at_price -}}{%- endunless -%}</span>
+        {% endunless %}
+      {% endif %}
+    {%- else -%}
+      <span class="visually-hidden">{{ 'content.price_regular' | t }}&nbsp;</span>
+      <span class="price" data-price-amount>{%- unless on_sale -%}{{- money_price -}}{%- endunless -%}</span>
+    {%- endif -%}
+  </div>
+
+  {%- comment -%}
+    Sale-badge text always renders an inner [data-sale-value] span so JS can
+    patch the value on optimistic variant switch, even while the badge is
+    hidden. A percentage discount smaller than 0.5% rounds to 0 — "-0" is
+    meaningless, so it falls back to the plain "On sale" text instead
+    (product-price.js mirrors this rule on variant switch).
+  {%- endcomment -%}
+  {%- liquid
+    assign sale_badge = ''
+    assign sale_fallback = ''
+    assign use_sale_fallback = false
+    assign amount = 0
+    case sale_badge_type
+      when 'percentage'
+        assign sale_fallback = 'products.product.on_sale' | t
+        if on_sale
+          assign pct = compare_at_price | minus: price | times: 100.0 | divided_by: compare_at_price | round
+          if pct > 0
+            assign amount = pct | append: '%'
+          endif
+        endif
+        if amount == 0
+          assign use_sale_fallback = true
+        else
+          assign sale_badge = 'products.product.save_price_signs_html' | t: amount: amount
+        endif
+      when 'fixed_amount'
+        if on_sale
+          assign amount = compare_at_price | minus: price | money
+        endif
+        assign sale_badge = 'products.product.save_price_html' | t: amount: amount
+      else
+        assign sale_badge = 'products.product.on_sale' | t
+    endcase
+  -%}
+
+  <div class="price__sale" data-price-sale>
+    <span class="visually-hidden">{{ 'content.price_sale' | t }}&nbsp;</span>
+    <span class="price price--sale" data-price-amount>{%- if on_sale -%}{{- money_price -}}{%- endif -%}</span>
+    <span class="visually-hidden">{{ 'content.price_regular' | t }}&nbsp;</span>
+    {% if show_sale_badge %}
+      <div class="items-center gap-2{% if sale_badge_inline %} inline-flex{% else %} flex{% endif %}">
+        <span class="compare-at-price" data-compare-price>{%- if on_sale -%}{{- money_compare_at_price -}}{%- endif -%}</span>
+        <span
+          class="badge badge--sale price__sale-badge"
+          data-sale-badge
+          data-sale-badge-type="{{ sale_badge_type }}"
+          {% if sale_fallback != blank %}data-sale-fallback="{{ sale_fallback | escape }}"{% endif %}
+        >
+          {%- if use_sale_fallback -%}
+            <span data-sale-value>{{ sale_fallback }}</span>
+          {%- else -%}
+            {{ sale_badge }}
+          {%- endif -%}
+        </span>
+      </div>
+    {% else %}
+      <span class="compare-at-price" data-compare-price>{%- if on_sale -%}{{- money_compare_at_price -}}{%- endif -%}</span>
+    {% endif %}
+  </div>
+
+  {%- if selected_variant.unit_price and show_unit_price %}
+    {%- liquid
+      if settings.show_currency_code
+        assign unit_price = selected_variant.unit_price | money_with_currency
+      else
+        assign unit_price = selected_variant.unit_price | money
+      endif
+    -%}
+    {% render 'unit-price', price: unit_price, measurement: selected_variant.unit_price_measurement %}
+  {%- endif -%}
+</div>

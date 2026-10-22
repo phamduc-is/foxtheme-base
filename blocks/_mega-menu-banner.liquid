@@ -1,0 +1,227 @@
+{% doc %}
+  Private header mega-menu block: banner layout (images only).
+{% enddoc %}
+{%- liquid
+  assign menu_item_handle = block.settings.menu_title | downcase | handle
+
+  assign link = blank
+  for top_link in section.settings.menu.links
+    assign top_link_handle = top_link.title | downcase | handle
+    if top_link_handle == menu_item_handle
+      assign link = top_link
+      break
+    endif
+  endfor
+
+  assign menu_mobile = section.settings.menu_mobile | default: section.settings.menu
+  assign mobile_link = blank
+  for top_link in menu_mobile.links
+    assign top_link_handle = top_link.title | downcase | handle
+    if top_link_handle == menu_item_handle
+      assign mobile_link = top_link
+      break
+    endif
+  endfor
+
+  assign menu_columns = block.settings.menu_columns
+  assign promotions_width = block.settings.promotions_width
+  assign has_banners = false
+
+  if block.blocks.size > 0
+    assign has_banners = true
+    assign mega_menu_css_class = 'mega-menu--rich'
+  endif
+
+  if link.links != blank
+    assign mega_menu_css_class = mega_menu_css_class | append: ' mega-menu--with-links'
+  else
+    assign mega_menu_css_class = mega_menu_css_class | append: ' mega-menu--no-links'
+  endif
+-%}
+{%- capture children -%}{% content_for 'blocks' %}{%- endcapture -%}
+<!-- @megaMenu/context/desktop -->
+<details
+  data-has-banner="{{ has_banners }}"
+  id="Mega-menu-item-{{ block.id }}"
+  is="details-mega"
+  trigger="{{ section.settings.menu_trigger }}"
+  level="top"
+  style="--menu-columns: {{ menu_columns }}; --promotions-width: {{ promotions_width }}%;"
+  {{ block.shopify_attributes }}
+>
+  <summary data-link="{{ link.url }}">
+    <span class="menu__item reversed-link">
+      <span class="reversed-link__text">{{- link.title | escape -}}</span>
+      {%- render 'icon', icon: 'caret-down', size: 'extra-small' -%}
+    </span>
+  </summary>
+  <div class="mega-menu mega-menu--banner{% if mega_menu_css_class != blank %} {{ mega_menu_css_class }}{% endif %} flex flex-col">
+    <div class="mega-menu__container v-scrollable{% unless settings.dialog_color_scheme_inherit %} color-{{ settings.dialog_color_scheme }}{% endunless %}">
+      <div
+        data-mega-menu-wrapper
+        class="page-width mega-menu__wrapper flex flex-wrap"
+      >
+        {%- if link.links != blank -%}
+          <div class="mega-menu__list">
+            {%- for i in (1..menu_columns) -%}
+              {%- assign column_index = forloop.index0 -%}
+              <div class="mega-menu__column flex flex-col gap-6">
+                {%- for childlink in link.links -%}
+                  {%- liquid
+                    assign item_index = forloop.index0
+                    assign current_column = item_index | modulo: menu_columns
+                  -%}
+                  {%- if current_column == column_index -%}
+                    <div class="mega-menu__item">
+                      <a
+                        href="{{ childlink.url }}"
+                        class="mega-menu__link mega-menu__link--top block h5 text-decoration-none color-current"
+                      >
+                        {{- childlink.title | escape -}}
+                      </a>
+                      {%- if childlink.links != blank -%}
+                        <ul class="mega-menu__item-child list-unstyled color-subtext">
+                          {%- for grandchildlink in childlink.links -%}
+                            <li>
+                              <a
+                                class="block mega-menu__link text-decoration-none reversed-link color-current"
+                                href="{{ grandchildlink.url }}"
+                              >
+                                <span class="reversed-link__text">
+                                  {{- grandchildlink.title | escape -}}
+                                </span>
+                              </a>
+                            </li>
+                          {%- endfor -%}
+                        </ul>
+                      {%- endif -%}
+                    </div>
+                  {%- endif -%}
+                {%- endfor -%}
+              </div>
+            {%- endfor -%}
+          </div>
+        {%- endif -%}
+        {%- if has_banners -%}
+          <div class="mega-menu__promotions">
+            {%- liquid
+              assign columns_desktop = block.settings.columns_desktop
+              assign columns_mobile = block.settings.columns_mobile | times: 1
+            -%}
+            {% capture inline_style %}
+              {% render 'layout-panel-style', type: 'grid', columns_mobile: columns_mobile, columns_xxl: columns_desktop %}
+              {% render 'gap-style', column_gap: 30, column_gap_mobile: 12, row_gap: 30, row_gap_mobile: 12 %}
+            {% endcapture %}
+            <div
+              class="layout-panel-grid gap-style"
+              style="{{ inline_style }}"
+            >
+              {{ children }}
+            </div>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</details>
+<!-- @megaMenu/context/mobile -->
+{%- if mobile_link != blank -%}
+  {%- capture details_content_html -%}
+    {%- if mobile_link.links != blank -%}
+      <div class="menu-drawer__nav flex flex-col gap-5">
+        {%- render 'menu-drawer-sublinks', link: mobile_link, style: 'default' -%}
+      </div>
+    {%- endif -%}
+    {%- if has_banners -%}
+      {%- liquid
+        assign columns_mobile = block.settings.columns_mobile | times: 1
+      -%}
+      {%- capture drawer_banner_style -%}
+        {% render 'layout-panel-style', type: 'grid', columns_mobile: columns_mobile %}
+        {% render 'gap-style', column_gap: 30, column_gap_mobile: 12, row_gap: 30, row_gap_mobile: 12 %}
+      {%- endcapture -%}
+      <div class="menu-drawer__mega">
+        <div
+          class="layout-panel-grid gap-style"
+          style="{{ drawer_banner_style }}"
+        >
+          {{ children }}
+        </div>
+      </div>
+    {%- endif -%}
+  {%- endcapture -%}
+  {%- render 'menu-drawer-details', link: mobile_link, content: details_content_html, content_class: 'menu-drawer__submenu--banner' -%}
+{%- endif -%}
+<!-- @megaMenu/handle/{{ menu_item_handle }} -->
+<!-- @megaMenu/split -->
+{% schema %}
+{
+  "name": "t:names.banners",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "label": "t:settings.menu_title",
+      "id": "menu_title"
+    },
+    {
+      "type": "range",
+      "id": "menu_columns",
+      "label": "t:settings.menu_columns",
+      "min": 1,
+      "max": 4,
+      "default": 2
+    },
+    {
+      "type": "header",
+      "content": "t:content.banners"
+    },
+    {
+      "type": "range",
+      "id": "promotions_width",
+      "label": "t:settings.width",
+      "info": "t:info.promotions_width",
+      "min": 20,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 38
+    },
+    {
+      "type": "range",
+      "id": "columns_desktop",
+      "label": "t:settings.desktop_columns",
+      "default": 2,
+      "min": 1,
+      "max": 4,
+      "step": 1
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:settings.mobile_columns",
+      "options": [
+        {
+          "value": "1",
+          "label": "t:options.grid_1_column"
+        },
+        {
+          "value": "2",
+          "label": "t:options.grid_2_column"
+        }
+      ],
+      "default": "2"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "image-card"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.banners"
+    }
+  ]
+}
+{% endschema %}

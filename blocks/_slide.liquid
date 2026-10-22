@@ -1,0 +1,324 @@
+{%- liquid
+  assign container = section.settings.container
+  assign content_position = section.settings.content_position
+  assign position_mobile = block.settings.position_mobile | append: '-center'
+
+  # The image branch decides this inside slide-image-markup; the video poster needs it here.
+  assign block_index = section.blocks | find_index: 'id', block.id
+  capture priority
+    render 'image-priority', section: section, index: block_index, preload: block.settings.enable_preload_image
+  endcapture
+  assign priority = priority | split: ','
+  assign loading = priority[0]
+  assign fetchpriority = priority[1]
+
+  # Reported to the section by the marker at the end of this file — a theme block's
+  # settings are unreachable through `section.blocks`. theme-check cannot follow a
+  # variable out of here into raw markup, so it reads the second branch as dead.
+  # theme-check-disable UnusedAssign
+  if block.settings.media_type == 'video'
+    assign media_ratio = block.settings.video.aspect_ratio | default: '16/9'
+    assign media_ratio_mobile = media_ratio
+  else
+    assign media_ratio = block.settings.image.aspect_ratio | default: '16/9'
+    assign media_ratio_mobile = block.settings.image_mobile.aspect_ratio | default: media_ratio
+  endif
+  # theme-check-enable UnusedAssign
+-%}
+
+{%- capture slide_inner_class -%}
+  slide
+  {%- if container == 'full' and content_position == 'inside' %} section-grid{% else %} grid{% endif -%}
+{%- endcapture -%}
+{%- capture slide_content_class -%}
+  slide__content relative col-span-full content-overlay-style
+{%- endcapture -%}
+<div
+  class="swiper-slide"
+  ref="slides[]"
+  data-color-scheme="color-{{ block.settings.color_scheme }}"
+  {{ block.shopify_attributes }}
+>
+  <div class="{{ slide_inner_class | strip | strip_newlines }}">
+    <div
+      class="slide__media relative row-span-full col-span-full overflow-hidden"
+      style="--border-radius: 0;"
+    >
+      {%- if block.settings.media_type == 'video' -%}
+        {% render 'video-markup',
+          player_only: true,
+          video: block.settings.video,
+          video_loop: true,
+          video_autoplay: true,
+          video_ratio: 'auto',
+          disable_controls: true,
+          loading: loading,
+          fetchpriority: fetchpriority,
+          section_id: section.id
+        %}
+      {%- else -%}
+        {% render 'slide-image-markup', block: block, section: section %}
+      {%- endif -%}
+      {%- if block.settings.toggle_overlay -%}
+        {% render 'overlay',
+          overlay_type: block.settings.overlay_type,
+          overlay_color: block.settings.overlay_color,
+          overlay_gradient: block.settings.overlay_gradient
+        %}
+      {%- endif -%}
+    </div>
+    <div
+      class="{{ slide_content_class | strip | strip_newlines }}"
+      style="{% render 'content-overlay-style', position: block.settings.position, position_mobile: position_mobile %}"
+    >
+      {%- content_for 'block', type: '_slide-content', id: 'static-slide-content', parent_color_scheme: block.settings.color_scheme -%}
+    </div>
+  </div>
+</div>
+{%- comment -%}
+  `sections/slideshow` reads the FIRST of these under `height: auto`. Two markers rather
+  than one: a ratio can itself read `16/9`, leaving no separator safe inside a pair.
+{%- endcomment -%}
+<!-- @slide/ratio/{{ media_ratio }} -->
+<!-- @slide/ratio-mobile/{{ media_ratio_mobile }} -->
+{% schema %}
+{
+  "name": "t:names.slide",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.media"
+    },
+    {
+      "type": "select",
+      "id": "media_type",
+      "label": "t:settings.type",
+      "options": [
+        {
+          "value": "image",
+          "label": "t:options.image"
+        },
+        {
+          "value": "video",
+          "label": "t:options.video"
+        }
+      ],
+      "default": "image"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "t:settings.image",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "image_picker",
+      "id": "image_mobile",
+      "label": "t:settings.image_mobile",
+      "visible_if": "{{ block.settings.media_type == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "t:settings.video",
+      "visible_if": "{{ block.settings.media_type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "toggle_overlay",
+      "label": "t:settings.media_overlay",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "overlay_type",
+      "label": "t:settings.overlay_style",
+      "options": [
+        {
+          "value": "color",
+          "label": "t:options.color"
+        },
+        {
+          "value": "gradient",
+          "label": "t:options.gradient"
+        }
+      ],
+      "default": "color",
+      "visible_if": "{{ block.settings.toggle_overlay }}"
+    },
+    {
+      "type": "color",
+      "id": "overlay_color",
+      "label": "t:settings.overlay_color",
+      "alpha": true,
+      "default": "#00000033",
+      "visible_if": "{{ block.settings.toggle_overlay and block.settings.overlay_type == 'color' }}"
+    },
+    {
+      "type": "color_background",
+      "id": "overlay_gradient",
+      "label": "t:settings.gradient_color",
+      "default": "linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.75) 100%)",
+      "visible_if": "{{ block.settings.toggle_overlay and block.settings.overlay_type == 'gradient' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.content"
+    },
+    {
+      "type": "select",
+      "id": "position",
+      "label": "t:settings.position",
+      "options": [
+        {
+          "label": "t:options.top_left",
+          "value": "top-left"
+        },
+        {
+          "label": "t:options.top_center",
+          "value": "top-center"
+        },
+        {
+          "label": "t:options.top_right",
+          "value": "top-right"
+        },
+        {
+          "label": "t:options.middle_left",
+          "value": "middle-left"
+        },
+        {
+          "label": "t:options.middle_center",
+          "value": "middle-center"
+        },
+        {
+          "label": "t:options.middle_right",
+          "value": "middle-right"
+        },
+        {
+          "label": "t:options.bottom_left",
+          "value": "bottom-left"
+        },
+        {
+          "label": "t:options.bottom_center",
+          "value": "bottom-center"
+        },
+        {
+          "label": "t:options.bottom_right",
+          "value": "bottom-right"
+        }
+      ],
+      "default": "middle-left"
+    },
+    {
+      "type": "select",
+      "id": "position_mobile",
+      "label": "t:settings.position_mobile",
+      "options": [
+        {
+          "value": "top",
+          "label": "t:options.top"
+        },
+        {
+          "value": "middle",
+          "label": "t:options.middle"
+        },
+        {
+          "value": "bottom",
+          "label": "t:options.bottom"
+        }
+      ],
+      "default": "middle"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_preload_image",
+      "label": "t:settings.enable_preload_image",
+      "info": "t:info.enable_preload_image"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.slide",
+      "blocks": {
+        "static-slide-content": {
+          "type": "_slide-content",
+          "static": true,
+          "settings": {
+            "horizontal_alignment_flex_direction_column": "flex-start",
+            "width": "custom",
+            "custom_width": 27,
+            "inherit_color_scheme": true,
+            "enable_transparent": true
+          },
+          "blocks": {
+            "heading": {
+              "type": "text",
+              "settings": {
+                "text": "<h2>Image slide</h2>",
+                "type_preset": "custom",
+                "font": "var(--font-heading--family)",
+                "font_size": 68,
+                "font_size_mobile": 38,
+                "line_height": "normal",
+                "animation_type": "fade-up",
+                "animation_split": "words",
+                "animation_delay": 100
+              }
+            },
+            "spacer_1": {
+              "type": "_spacer",
+              "settings": {
+                "gap": 16,
+                "gap_mobile": 16
+              }
+            },
+            "text": {
+              "type": "text",
+              "settings": {
+                "text": "<p>Introducing our latest products, made especially for the season. Shop your favorites before they're gone!</p>",
+                "type_preset": "custom",
+                "font_size": 15,
+                "font_size_mobile": 15,
+                "line_height": "loose",
+                "animation_type": "none",
+                "animation_delay": 200
+              }
+            },
+            "spacer_2": {
+              "type": "_spacer",
+              "settings": {
+                "gap": 32,
+                "gap_mobile": 24
+              }
+            },
+            "button": {
+              "type": "button",
+              "settings": {
+                "label": "Button label",
+                "link": "shopify://collections/all",
+                "style": "primary",
+                "icon": "caret-right",
+                "animation_type": "none",
+                "animation_delay": 300
+              }
+            }
+          },
+          "block_order": ["heading", "spacer_1", "text", "spacer_2", "button"]
+        }
+      },
+      "block_order": []
+    }
+  ]
+}
+{% endschema %}

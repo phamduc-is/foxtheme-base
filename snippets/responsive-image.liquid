@@ -1,0 +1,292 @@
+{% doc %}
+  Renders a responsive image with two modes:
+  - mode="js": sizes/srcset are hydrated by the responsive-image web component.
+  - mode="liquid": sizes/srcset are generated server-side via image_tag (no JS).
+
+  Supports optional wrapper div.media and optional mobile source. Honors the
+  Files-page focal point (image.presentation.focal_point) via --focal-position /
+  --focal-position-mobile vars emitted on the img.
+
+  @param {image} image - Desktop image object
+  @param {image} [image_mobile] - Optional mobile image object
+  @param {string} [image_ratio] - Aspect ratio for desktop (or 'adapt')
+  @param {string} [image_ratio_mobile] - Aspect ratio for mobile (or 'adapt'). Default inherit from image_ratio
+  @param {boolean} [use_aspect_ratio] - false (default): --ratio / --ratio-mobile (.media). true: --aspect-ratio / --aspect-ratio-mobile
+  @param {string} [class] - Extra classes applied to wrapper (with_wrapper) or to img when with_wrapper=false
+  @param {string} [img_class] - Extra classes applied to img
+  @param {string} [media_width_desktop] - Max width at >=768px used in default sizes
+  @param {string} [media_width_mobile] - Max width below 768px used in default sizes
+  @param {string} [loading] - Loading attribute. Default 'lazy'
+  @param {string} [mode] - Rendering mode (js | liquid). Default 'js'; anything else falls back to 'liquid'. An above-fold image (loading: 'eager' or fetchpriority: 'high') is ALWAYS rendered in liquid mode, whatever is passed: only a server-side srcset is visible to the browser's preload scanner, a data-srcset waits for the whole deferred bundle
+  @param {string} [widths] - Comma-separated widths for srcset (desktop / default img)
+  @param {string} [widths_mobile] - Comma-separated widths for mobile source (max ~1280w recommended)
+  @param {string} [sizes] - sizes attribute when mode='liquid'
+  @param {number} [sizes_multiplier] - Multiplier for computed sizes. mode='js' ONLY — ignored in liquid mode (pass `sizes` there)
+  @param {number} [sizes_target_dpr] - Target DPR for sizes computation. mode='js' only
+  @param {number} [sizes_safety] - Safety factor for sizes computation. mode='js' only
+  @param {string} [sizes_unit] - 'vw' to emit sizes in vw, otherwise px. mode='js' only
+  @param {string} [default_sizes] - Fallback sizes string for JS mode before the wrapper is measured (e.g. "(min-width: 768px) 50vw, 100vw"). Default: built from media_width_desktop / media_width_mobile
+  @param {string} [default_alt] - Fallback alt if the given image has no alt
+  @param {boolean} [with_wrapper] - Wrap output in div.media when true
+  @param {string} [ref] - Ref attribute for querying element
+  @param {string} [fetchpriority] - fetchpriority attribute passed to image_tag (liquid mode)
+  @param {string} [svg_placeholder] - Default: 'image'
+  @param {boolean} [use_zoom] - Whether to allow zoom when image in view. Default: true
+  @param {boolean} [use_hover] - Whether to allow hover to zoom image. Default: true
+
+  @example
+  {% render 'responsive-image', mode: 'js', image: product.featured_media, sizes_unit: 'vw' %}
+  @example
+  {% render 'responsive-image', mode: 'liquid', image: product.featured_media, sizes: '(min-width: 768px) 50vw, 100vw' %}
+  @example
+  {% render 'responsive-image', mode: 'js', image: product.featured_media, image_mobile: product.featured_media, with_wrapper: false, sizes_target_dpr: 2, sizes_safety: 1.1 %}
+  @example
+  {% render 'responsive-image', mode: 'liquid', image: block.settings.image, use_aspect_ratio: true %}
+{% enddoc %}
+
+{% liquid
+  assign mode = mode | default: 'js'
+  # `strip`: a captured helper output can carry a leading newline (a doc block
+  # closed without whitespace control emits one — see check-doc-newline), and a
+  # newline-prefixed 'eager' never equals 'eager': every eager image at section
+  # index 2-3 rendered in js mode until this.
+  assign loading = loading | default: 'lazy' | strip
+  assign fetchpriority = fetchpriority | strip
+  if mode == 'js' and loading == 'eager' or fetchpriority == 'high'
+    assign mode = 'liquid'
+  endif
+  unless mode == 'js'
+    assign mode = 'liquid'
+  endunless
+  if with_wrapper == null
+    assign with_wrapper = true
+  endif
+  assign image_ratio = image_ratio | default: 'adapt'
+  assign image_ratio_mobile = image_ratio_mobile | default: image_ratio
+  assign use_aspect_ratio = use_aspect_ratio | default: false, allow_false: true
+  assign desktop_image = image
+
+  if image != blank
+    if image_ratio == 'adapt'
+      assign image_ratio = image.aspect_ratio
+    endif
+
+    if image_ratio_mobile == 'adapt'
+      if image_mobile != blank
+        assign image_ratio_mobile = image_mobile.aspect_ratio
+      else
+        assign image_ratio_mobile = image.aspect_ratio
+      endif
+    endif
+  elsif image_mobile != blank
+    assign desktop_image = image_mobile
+    if image_ratio == 'adapt'
+      assign image_ratio = image_mobile.aspect_ratio
+    endif
+    if image_ratio_mobile == 'adapt'
+      assign image_ratio_mobile = image_mobile.aspect_ratio
+    endif
+  else
+    if image_ratio == 'adapt'
+      assign image_ratio = 1
+    endif
+    if image_ratio_mobile == 'adapt'
+      assign image_ratio_mobile = 1
+    endif
+  endif
+
+  # The chain must bottom out at a STRING: image_tag suppresses any attribute
+  # whose param resolves to nil (the docs state it for width: nil; alt behaves
+  # the same), so a nil alt shipped liquid-mode <img> with no alt attribute at
+  # all. An explicit '' stays alt="" — decorative, and axe-clean.
+  assign desktop_image_alt = desktop_image.alt | default: default_alt | default: '' | escape
+  assign svg_placeholder = svg_placeholder | default: 'image'
+
+  assign use_hover = use_hover | default: true, allow_false: true
+  assign use_zoom = use_zoom | default: true, allow_false: true
+
+  assign zoom_class = ''
+  if use_zoom and settings.animations_enabled
+    assign zoom_class = ' image-zoom-reveal'
+  endif
+%}
+
+{% capture style %}
+  {%- if use_aspect_ratio -%}
+  --aspect-ratio: {{ image_ratio }};
+  --aspect-ratio-mobile: {{ image_ratio_mobile }};
+  {%- else -%}
+  --ratio: {{ image_ratio }};
+  --ratio-mobile: {{ image_ratio_mobile }};
+  {%- endif -%}
+{% endcapture %}
+
+{%- liquid
+  # Files-page focal point -> object-position custom props, carried on the <img>
+  # itself so they survive with_wrapper: false. Read by .media__image in
+  # _component-media.scss; the mobile var wins below md, when the <picture>
+  # mobile source is the one showing.
+  assign focal_point = desktop_image.presentation.focal_point
+  assign focal_point_mobile = image_mobile.presentation.focal_point | default: focal_point
+  assign img_focal_style = ''
+  if focal_point != blank
+    assign img_focal_style = '--focal-position: ' | append: focal_point | append: ';'
+  endif
+  if focal_point_mobile != blank and focal_point_mobile != focal_point
+    assign img_focal_style = img_focal_style | append: ' --focal-position-mobile: ' | append: focal_point_mobile | append: ';'
+  endif
+  if img_focal_style == blank
+    assign img_focal_style = nil
+  endif
+-%}
+
+{% liquid
+  assign media_width_desktop = media_width_desktop | default: '100vw'
+  assign media_width_mobile = media_width_mobile | default: '100vw'
+
+  assign computed_sizes = '(min-width: 768px) ' | append: media_width_desktop | append: ', ' | append: media_width_mobile
+  assign default_sizes = default_sizes | default: computed_sizes
+  assign sizes = sizes | default: default_sizes
+
+  assign widths = widths | default: '240, 352, 832, 1200, 1600, 1920, 2560, 3840'
+  assign widths_mobile = widths_mobile | default: '360, 480, 640, 768, 1024'
+  if desktop_image != blank
+    assign widths = widths | append: ', ' | append: desktop_image.width
+  endif
+  if image_mobile != blank
+    assign widths_mobile = widths_mobile | append: ', ' | append: image_mobile.width
+  endif
+
+  assign img_class = img_class | default: ''
+  assign img_class = img_class | append: ' media__image'
+  assign wrapper_class = ''
+  if class != blank
+    if with_wrapper
+      assign wrapper_class = ' ' | append: class
+    else
+      assign img_class = img_class | append: ' ' | append: class
+    endif
+  endif
+  if use_hover
+    assign img_class = img_class | append: ' media-hover__element'
+  endif
+
+  # The blank-image branch renders an inline SVG rather than an <img>, so it
+  # cannot reuse `img_class` wholesale: `class` already goes on ITS wrapper
+  # there, and reusing img_class would apply it twice. It still needs the hover
+  # hook, though — without it `.media-hover--scale .media-hover__element`
+  # matches nothing and every card hover effect is silently dead until the
+  # merchant uploads an image, which reads as a broken setting rather than as
+  # missing content.
+  #
+  # `image-zoom-reveal` is deliberately NOT mirrored here: that reveal arms its
+  # start state on bytes that have not arrived, and an inline SVG never fires a
+  # load event, so a placeholder could be left hidden.
+  assign placeholder_class = 'placeholder media__image'
+  if use_hover
+    assign placeholder_class = placeholder_class | append: ' media-hover__element'
+  endif
+%}
+
+{% assign width_values = widths | remove: ' ' | split: ',' | uniq %}
+{% assign width_values_mobile = widths_mobile | remove: ' ' | split: ',' | uniq %}
+
+{% capture desktop_srcset %}
+  {%- for w in width_values -%}
+    {%- assign w_int = w | strip -%}
+    {{ desktop_image | image_url: width: w_int }} {{ w_int }}w{%- unless forloop.last -%}, {%- endunless -%}
+  {%- endfor -%}
+{% endcapture %}
+
+{% capture mobile_srcset %}
+  {%- if image_mobile != blank -%}
+    {%- for w in width_values_mobile -%}
+      {%- assign w_int = w | strip -%}
+      {{ image_mobile | image_url: width: w_int }} {{ w_int }}w{%- unless forloop.last -%}, {%- endunless -%}
+    {%- endfor -%}
+  {%- endif -%}
+{% endcapture %}
+
+{%- capture markup -%}
+  {%- if desktop_image != blank or image_mobile != blank -%}
+    {%- if mode == 'js' -%}
+      {%- capture img_for_js_mode -%}
+        <img
+          class="{{ img_class }}"
+          {% if img_focal_style != blank %}style="{{ img_focal_style }}"{% endif %}
+          alt="{{ desktop_image_alt }}"
+          width="{{ desktop_image.width }}"
+          height="{{ desktop_image.height }}"
+          {% if fetchpriority != blank %}fetchpriority="{{ fetchpriority }}"{% endif %}
+          is="responsive-image"
+          data-mode="js"
+          data-default-sizes="{{ default_sizes }}"
+          data-srcset="{{ desktop_srcset | strip | strip_newlines }}"
+          {% if sizes_multiplier %}data-sizes-mult="{{ sizes_multiplier }}"{% endif %}
+          {% if sizes_unit %}data-sizes-unit="{{ sizes_unit }}"{% endif %}
+          {% if sizes_target_dpr %}data-target-dpr="{{ sizes_target_dpr }}"{% endif %}
+          {% if sizes_safety %}data-sizes-safety="{{ sizes_safety }}"{% endif %}
+          sizes=""
+          {% if ref != blank %}
+            ref="{{ ref }}"
+          {% endif %}
+        >
+      {%- endcapture -%}
+      {%- if image_mobile != blank -%}
+        <picture class="media{{ zoom_class }}{% if image == blank %} md:hidden{% endif %}{{ wrapper_class }}" style="{{ style | strip | strip_newlines }}">
+          <source
+            media="(max-width: 767px)"
+            data-srcset="{{ mobile_srcset | strip | strip_newlines }}"
+            sizes="{{ default_sizes }}"
+          >
+          {{ img_for_js_mode }}
+        </picture>
+      {%- else -%}
+        {%- if with_wrapper -%}
+          <div class="media{{ zoom_class }}{% if image == blank %} md:hidden{% endif %}{{ wrapper_class }}" style="{{ style | strip | strip_newlines }}">
+            {{ img_for_js_mode }}
+          </div>
+        {%- else -%}
+          {{ img_for_js_mode }}
+        {%- endif -%}
+      {%- endif -%}
+    {%- else -%}
+      {%- capture img_for_liquid_mode -%}
+        {{ desktop_image | image_url: width: desktop_image.width | image_tag:
+          sizes: sizes,
+          widths: widths,
+          alt: desktop_image_alt,
+          class: img_class,
+          style: img_focal_style,
+          is: 'responsive-image',
+          data-mode: 'liquid',
+          loading: loading,
+          fetchpriority: fetchpriority,
+          ref: ref
+        }}
+      {%- endcapture -%}
+      {%- if image_mobile != blank -%}
+        <picture class="media{{ zoom_class }}{% if image == blank %} md:hidden{% endif %}{{ wrapper_class }}" style="{{ style | strip | strip_newlines }}">
+          <source
+            media="(max-width: 767px)"
+            srcset="{{ mobile_srcset | strip | strip_newlines }}"
+            sizes="{{ sizes }}"
+          >
+          {{ img_for_liquid_mode }}
+        </picture>
+      {%- else -%}
+        {%- if with_wrapper -%}
+          <div class="media{{ zoom_class }}{% if image == blank %} md:hidden{% endif %}{{ wrapper_class }}" style="{{ style | strip | strip_newlines }}">
+            {{ img_for_liquid_mode }}
+          </div>
+        {%- else -%}
+          {{ img_for_liquid_mode }}
+        {%- endif -%}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endif -%}
+  {%- if image == blank -%}
+    <div class="media relative{% if image_mobile != blank %} hidden md:block{% endif %}{% if class != blank %} {{ class }}{% endif %}" style="{{ style | strip | strip_newlines }}">{{ svg_placeholder | placeholder_svg_tag: placeholder_class }}</div>
+  {%- endif -%}
+{%- endcapture -%}
+{{ markup | strip | strip_newlines }}

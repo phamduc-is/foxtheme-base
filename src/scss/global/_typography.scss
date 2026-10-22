@@ -1,0 +1,165 @@
+// ─── Body / paragraph ─────────────────────────────────────────────────────────
+
+// @capability Global type scale — body/.paragraph base, h1-h6 + .h1-.h6 class equivalents, .mega-title, .text-block heading scopes; all sized via the theme's font CSS vars.
+// @when Headings and body text get a scale class (.h1-.h6) or the typography-style snippet — never hardcode font-size/line-height in a partial; custom sizes go through --typography-* vars.
+// @contract .h1-.h6 mirror the elements; .paragraph normalizes rich-text children; pairs with the typography-style snippet's emitted vars.
+// @keywords typography, font size, heading, h1 h2 h3, type scale, text size, paragraph, mega title
+
+body,
+.paragraph > *,
+.paragraph :is(ul, ol) :is(h1, h2, h3, h4, h5, h6),
+.paragraph:not(.button) {
+  font-family: var(--font-body--family);
+  font-style: var(--font-body--style);
+  font-weight: var(--font-body--weight);
+  line-height: var(--font-paragraph--line-height);
+  font-size: var(--font-size--paragraph);
+  -webkit-font-smoothing: antialiased;
+}
+
+// ─── Headings ─────────────────────────────────────────────────────────────────
+
+// `.rte.hN > *` mirrors `.text-block.hN > *` for any richtext wrapper that carries a
+// preset class (a section heading typed into a richtext setting). The editor lets the
+// merchant pick Heading 1-6 inside the richtext, so the child can be an `<h2>` while the
+// preset says `.h3`: without the `> *` rule the element rule (0-0-1) sizes that child and
+// the preset silently loses. The wrapper class is the look, the tag is the semantics.
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6,
+.mega-title,
+.text-block.h1 > *,
+.text-block.h2 > *,
+.text-block.h3 > *,
+.text-block.h4 > *,
+.text-block.h5 > *,
+.text-block.h6 > *,
+.rte.h1 > *,
+.rte.h2 > *,
+.rte.h3 > *,
+.rte.h4 > *,
+.rte.h5 > *,
+.rte.h6 > * {
+  font-family: var(--font-heading--family);
+  font-style: var(--font-heading--style);
+  font-weight: var(--font-heading--weight);
+  text-transform: var(--font-heading--transform);
+  letter-spacing: var(--font-heading--letter-spacing, 0);
+}
+
+// A heading element/class carrying .paragraph must also drop the heading-only
+// properties. The .paragraph rule above out-specifies `h1`-`h6` but only for
+// what it declares, so text-transform and letter-spacing would otherwise fall
+// through to the rule above — an `<h3 class="paragraph">` stays uppercase.
+// `none` here means "as typed"; it never lowercases the author's own casing.
+
+// Scoped to headings on purpose, NOT written as `.paragraph { … }`: `.paragraph`
+// is also used on buttons (`.btn.paragraph` — filter toggles, article tags,
+// share links), and a bare `.paragraph` rule at 0-2-0 would beat `.btn`'s own
+// 0-1-0 transform and strip their uppercase.
+
+// The last two selectors mirror the descendant halves of the rule at the top of
+// this file, one level down: `.paragraph > *` normalizes a nested heading's font
+// and size but declares neither of these, so an `<h3>` typed into a rich-text
+// field (a product or collection description) renders at body size in the body
+// font while still SHOUTING in the heading's uppercase. Keeping the two rules on
+// the same selector shape is what stops them drifting apart again.
+:is(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6, .mega-title).paragraph,
+.paragraph > :is(h1, h2, h3, h4, h5, h6),
+.paragraph :is(ul, ol) :is(h1, h2, h3, h4, h5, h6) {
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.mega-title {
+  font-size: var(--font-size--mega-title);
+  line-height: var(--font-mega-title--line-height);
+}
+
+h1,
+.h1,
+.text-block.h1 > *,
+.rte.h1 > * {
+  font-size: var(--font-size--h1);
+  line-height: var(--font-h1--line-height);
+}
+
+h2,
+.h2,
+.text-block.h2 > *,
+.rte.h2 > * {
+  font-size: var(--font-size--h2);
+  line-height: var(--font-h2--line-height);
+}
+
+h3,
+.h3,
+.text-block.h3 > *,
+.rte.h3 > * {
+  font-size: var(--font-size--h3);
+  line-height: var(--font-h3--line-height);
+}
+
+h4,
+.h4,
+.text-block.h4 > *,
+.rte.h4 > * {
+  font-size: var(--font-size--h4);
+  line-height: var(--font-h4--line-height);
+}
+
+h5,
+.h5,
+.text-block.h5 > *,
+.rte.h5 > * {
+  font-size: var(--font-size--h5);
+  line-height: var(--font-h5--line-height);
+}
+
+h6,
+.h6,
+.text-block.h6 > *,
+.rte.h6 > * {
+  font-size: var(--font-size--h6);
+  line-height: var(--font-h6--line-height);
+}
+
+// ─── Utility text sizes ───────────────────────────────────────────────────────
+
+.text-body-sm {
+  font-size: calc(var(--font-size--paragraph) * 0.933334);
+  line-height: 2rem;
+}
+
+.text-body-xs {
+  font-size: calc(var(--font-size--paragraph) * 0.866667);
+  line-height: 1.8rem;
+}
+
+// ─── Subheading ───────────────────────────────────────────────────────────────
+
+.text-subheading {
+  font-family: var(--font-subheading--family);
+  font-weight: var(--font-subheading--weight);
+  font-style: var(--font-subheading--style);
+  text-transform: var(--font-subheading--transform);
+  letter-spacing: var(--font-subheading--letter-spacing, 0);
+  font-size: var(--font-subheading--size);
+  line-height: calc(1 + 0.6 / var(--font-subheading--size-scale));
+}
+
+// ─── Body bolder (Category_title) ─────────────────────────────────────────────
+.text-body-bolder {
+  font-family: var(--font-body--family);
+  font-style: var(--font-body--style);
+  font-weight: var(--font-body--weight-bolder);
+}

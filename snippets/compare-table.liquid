@@ -1,0 +1,75 @@
+{% doc %}
+  Renders the `<compare-table>` component: a comparison table whose label column
+  comes from `section.blocks`, while the product columns are loaded client-side
+  (compare.js) from the customer's compared products and injected as cells.
+
+  Used by both the `compare-table` section (inline) and the `compare-dialog` section (deferred).
+
+  @param {object} section - Section providing the blocks (price, description, vendor, type, variants) and the id used for the Section Rendering API fetch.
+  @param {object} [product] - Product used to build the row template fetched per compared product. Blank on initial render.
+  @param {boolean} [defer] - When true, the component waits for an explicit `render()` call instead of rendering on connect. Used inside the compare dialog so it loads only when the dialog opens.
+  @param {boolean} [bleed] - Below lg, the scroller pulls out of the page gutter and puts it back as padding, so columns scroll to the viewport edge. Only for a table in a fixed-width section container.
+  @param {boolean} [gap_start] - From md up, each product column carries its whole column gap before it, so the last column ends on the container edge.
+  @param {boolean} [fluid] - From md up, product columns share the width the label column leaves — four of them fill the container, five from xl — down to a minimum, past which the table scrolls.
+
+  @example
+  {% render 'compare-table', section: section, product: product %}
+  {% render 'compare-table', section: section, product: product, defer: true %}
+  {% render 'compare-table', section: section, product: product, bleed: true, gap_start: true, fluid: true %}
+{% enddoc %}
+<compare-table
+  class="compare-table block relative{% if gap_start %} compare-table--gap-start{% endif %}{% if fluid %} compare-table--fluid{% endif %}"
+  data-compare-loading
+  data-section-id="{{ section.id }}"
+  {% if defer %}
+    defer
+  {% endif %}
+>
+  <div
+    class="compare-table__container h-scrollable relative z-0{% if bleed %} compare-table__container--bleed{% endif %}"
+    ref="content"
+  >
+    <table
+      class="compare-table__table"
+      ref="compareTable"
+    >
+      {%- for block in section.blocks -%}
+        <tr data-compare-key="{{ block.type }}">
+          <td
+            role="rowheader"
+            class="td-label"
+            data-compare-table-col-label
+          >
+            {%- case block.type -%}
+              {%- when 'price' -%}
+                {{ 'content.price' | t }}
+              {%- when 'description' -%}
+                {{ 'content.description' | t }}
+              {%- when 'vendor' -%}
+                {{ 'content.vendor' | t }}
+              {%- when 'type' -%}
+                {{ 'content.type' | t }}
+              {%- when 'variants' -%}
+                {{ 'content.variants' | t }}
+              {%- when 'metafield' -%}
+                {{- block.settings.row_label -}}
+            {%- endcase -%}
+          </td>
+        </tr>
+      {%- endfor -%}
+    </table>
+  </div>
+
+  <div
+    class="compare-table__empty text-center hidden"
+    ref="emptyState"
+  >
+    {{- 'content.compare_table_empty' | t -}}
+  </div>
+
+  {% render 'compare-table-row-product', section: section, product: product %}
+  {% render 'compare-table-row-skeleton', section: section %}
+  {%- if request.design_mode -%}
+    {% render 'compare-table-row-placeholder', section: section %}
+  {%- endif -%}
+</compare-table>

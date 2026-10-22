@@ -1,0 +1,114 @@
+{% comment %}
+  Renders a slideshow slide's image media (desktop + mobile picture, with a
+  lifestyle placeholder when no image is set). Extracted from blocks/_slide.liquid.
+
+  @param {object} block - The slide block (reads settings.image / settings.image_mobile)
+  @param {object} section - The parent slideshow section (reads settings.container, plus index for loading priority)
+{% endcomment %}
+{%- liquid
+  assign block_index = section.blocks | find_index: 'id', block.id
+
+  capture priority
+    render 'image-priority', section: section, index: block_index, preload: block.settings.enable_preload_image
+  endcapture
+  assign priority = priority | split: ','
+  assign loading = priority[0]
+  assign fetchpriority = priority[1]
+
+  assign image_desktop = block.settings.image
+  assign image_mobile = block.settings.image_mobile
+  assign aspect_ratio = image_desktop.aspect_ratio | default: '16/9'
+  assign aspect_ratio_mobile = image_mobile.aspect_ratio | default: aspect_ratio
+
+  assign section_container = section.settings.container
+
+  assign wrapper_tag = 'div'
+  if settings.animations_enabled
+    assign wrapper_tag = 'motion-component'
+  endif
+-%}
+
+{%- capture style -%}
+  --ratio: {{ aspect_ratio }};
+  --ratio-mobile: {{ aspect_ratio_mobile }};
+{%- endcapture -%}
+
+{%- if image_desktop == blank -%}
+  <{{ wrapper_tag }}
+    class="slide__media-placeholder h-full{% if image_mobile != blank %} hidden md:block{% else %} block{% endif %}"
+    {% if settings.animations_enabled %}
+      data-motion="zoom-out"
+    {% endif %}
+  >
+    <div
+      class="media w-full h-full overflow-hidden"
+      style="{{ style }}"
+    >
+      {% capture current %}{% cycle 1, 2 %}{% endcapture %}
+      {{ 'lifestyle-' | append: current | placeholder_svg_tag: 'placeholder w-full h-full' }}
+    </div>
+  </{{ wrapper_tag }}>
+{%- endif -%}
+{%- if image_desktop != blank or image_mobile != blank -%}
+  {%- liquid
+    assign widths = '480, 535, 640, 750, 767, 828, 960, 1024, 1280, 1440, 1680, 1920, 2560, 3840'
+    assign width_values = widths | split: ','
+  -%}
+
+  {%- capture sizes -%}
+    {%- if section_container == 'full' -%}100vw{%- else -%}min({{ settings.page_width }}px, 100vw){%- endif -%}
+  {%- endcapture -%}
+
+  {% capture mobile_srcset %}
+    {%- if image_mobile != blank -%}
+      {%- for w in width_values -%}
+        {%- assign w_int = w | strip -%}
+        {{ image_mobile | image_url: width: w_int }} {{ w_int }}w{%- unless forloop.last -%}, {%- endunless -%}
+      {%- endfor -%}
+    {%- endif -%}
+  {% endcapture %}
+
+  <{{ wrapper_tag }}
+    class="w-full h-full block{% if image_desktop == blank %} md:hidden{% endif %}"
+    {% if settings.animations_enabled %}
+      data-motion="zoom-out"
+      data-motion-hold
+    {% endif %}
+  >
+    <picture
+      class="media w-full h-full overflow-hidden"
+      style="{{ style }}"
+    >
+      {%- if image_desktop != blank and image_mobile != blank -%}
+        <source
+          media="(max-width: 767px)"
+          srcset="{{ mobile_srcset | strip | strip_newlines }}"
+          width="{{ image_mobile.width }}"
+          height="{{ image_mobile.height }}"
+          sizes="{{ sizes }}"
+        >
+      {%- endif -%}
+      {%- liquid
+        if image_desktop == blank
+          assign image_desktop = image_mobile
+        endif
+
+        assign image_desktop_height = image_desktop.width | divided_by: image_desktop.aspect_ratio | ceil
+        assign image_desktop_alt = image_desktop.alt | default: shop.name | escape
+      -%}
+      {{-
+        image_desktop
+        | image_url: width: image_desktop.width
+        | image_tag:
+          width: image_desktop.width,
+          height: image_desktop_height,
+          alt: image_desktop_alt,
+          loading: loading,
+          fetchpriority: fetchpriority,
+          class: 'media__image',
+          sizes: sizes,
+          widths: widths
+      -}}
+    </picture>
+  </{{ wrapper_tag }}>
+{%- endif -%}

@@ -1,0 +1,15 @@
+{% doc %}
+  Renders a minimal variant-picker custom element that seeds the currently selected variant
+  as JSON for the quick-add flow. No visible UI — the data drives the JS component.
+
+  @param {object} product_resource - The Shopify product object whose selected_or_first_available_variant is serialized
+
+  @example
+  {% render 'variant-quick-add', product_resource: product %}
+{% enddoc %}
+
+<variant-picker>
+  <script type="application/json">
+    {{ product_resource.selected_or_first_available_variant | json }}
+  </script>
+</variant-picker>

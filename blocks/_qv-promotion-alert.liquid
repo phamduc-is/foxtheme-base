@@ -1,0 +1,145 @@
+{%- liquid
+  if block.settings.color != blank
+    assign promotion_alert_color = block.settings.color.rgb
+  else
+    assign promotion_alert_color = '20, 105, 232'
+  endif
+-%}
+{%- capture promotion_alert_icon_html -%}
+  {% content_for 'block', type: '_icon', id: 'promotion-alert-icon' %}
+{%- endcapture -%}
+{%- capture promotion_alert_title_html -%}
+  {% content_for 'block', type: '_simple-text', id: 'promotion-alert-title' %}
+{%- endcapture -%}
+{%- capture promotion_alert_description_html -%}
+  {% content_for 'block', type: '_simple-text', id: 'promotion-alert-description' %}
+{%- endcapture -%}
+{% render 'promotion-alert-markup',
+  promotion_alert_color: promotion_alert_color,
+  settings: block.settings,
+  block_id: block.id,
+  shopify_attributes: block.shopify_attributes,
+  promotion_alert_icon_html: promotion_alert_icon_html,
+  promotion_alert_title_html: promotion_alert_title_html,
+  promotion_alert_description_html: promotion_alert_description_html,
+  show_close_button: block.settings.show_close_button
+%}
+
+{% schema %}
+{
+  "name": "t:names.promotion_alert",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.general"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_close_button",
+      "label": "t:settings.show_close_button",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color",
+      "id": "color",
+      "label": "t:settings.color",
+      "default": "#1469E8"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.promotion_alert",
+      "blocks": [
+        {
+          "type": "_icon",
+          "static": true,
+          "id": "promotion-alert-icon",
+          "settings": {
+            "icon": "magic-wand"
+          }
+        },
+        {
+          "type": "_simple-text",
+          "static": true,
+          "id": "promotion-alert-title",
+          "settings": {
+            "text": "<p>Promotion alert</p>",
+            "type_preset": "h6"
+          }
+        },
+        {
+          "type": "_simple-text",
+          "static": true,
+          "id": "promotion-alert-description",
+          "settings": {
+            "text": "<p>Promotion alert description</p>",
+            "type_preset": "custom",
+            "font_size": 15,
+            "font_size_mobile": 15
+          }
+        }
+      ],
+      "category": "t:categories.basic"
+    }
+  ]
+}
+{% endschema %}

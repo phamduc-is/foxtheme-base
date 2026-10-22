@@ -1,0 +1,27 @@
+{% doc %}
+  Renders compare checkbox to add/remove the given product to compare list
+
+  @param {object} [section]
+  @param {object} [block]
+  @param {product} product
+{% enddoc %}
+{%- capture input_id -%}CompareCheckbox-{{ section.id }}-{{ block.id }}-{{ product.id }}{%- endcapture -%}
+<compare-checkbox class="product-card__compare hidden">
+  <label
+    class="flex items-center justify-center"
+    for="{{ input_id }}"
+    data-tooltip="{{ 'accessibility.compare' | t }}"
+    data-tooltip-position="left"
+  >
+    <input
+      data-compare-checkbox
+      ref="checkbox"
+      on:change="/onChange"
+      id="{{ input_id }}"
+      type="checkbox"
+      name="product-compare"
+      data-product-id="{{ product.id }}"
+      data-product-url="{{ product.url }}"
+    >
+  </label>
+</compare-checkbox>

@@ -1,0 +1,26 @@
+{% doc %}
+  Renders the inline predictive search shown in the header on desktop (xl and up).
+  Gated behind the section's `enable_search_form` setting and resolves the dialog
+  color scheme from theme settings.
+
+  @param {object} section - The header section, used to read search settings and id.
+
+  @example
+  {% render 'header-search-form', section: section %}
+{% enddoc %}
+{%- if section.settings.enable_search_form -%}
+  {%- liquid
+    assign search_color_scheme = section.settings.color_scheme
+    unless settings.dialog_color_scheme_inherit
+      assign search_color_scheme = settings.dialog_color_scheme
+    endunless
+  -%}
+  <div class="header__search flex items-center">
+    {%- render 'predictive-search',
+      unique_id: section.id,
+      context: 'header',
+      color_scheme: search_color_scheme,
+      form_style: section.settings.search_form_style
+    -%}
+  </div>
+{%- endif -%}

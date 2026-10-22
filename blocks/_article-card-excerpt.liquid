@@ -1,0 +1,73 @@
+{% doc %}
+  Article card excerpt. Dynamic block nested inside `_article-card`; reads the article from
+  `closest.article` (injected by the card via `content_for 'blocks'`), falling back to a passed-in
+  `article` when rendered through the card's static default path. Renders the article excerpt
+  (falling back to content), clamped to a configurable number of lines.
+{% enddoc %}
+{%- liquid
+  assign article = article | default: closest.article
+  assign line_limit = block.settings.line_limit | default: 'none'
+  if article != blank
+    if article.excerpt.size > 0
+      assign excerpt_text = article.excerpt | strip_html
+    elsif article.content.size > 0
+      assign excerpt_text = article.content | strip_html
+    endif
+  else
+    assign excerpt_text = 'blogs.article.article_content' | t
+  endif
+-%}
+{%- if excerpt_text != blank -%}
+  <p
+    class="article-card__excerpt color-subtext {% if line_limit != none %} text-limit-{{ line_limit }}{% endif %}"
+    {{ block.shopify_attributes }}
+  >
+    {{ excerpt_text }}
+  </p>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:names.excerpt",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "line_limit",
+      "label": "t:settings.text_line_limit",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.no_limit"
+        },
+        {
+          "value": "1-line",
+          "label": "t:options.1_line"
+        },
+        {
+          "value": "2-lines",
+          "label": "t:options.2_lines"
+        },
+        {
+          "value": "3-lines",
+          "label": "t:options.3_lines"
+        },
+        {
+          "value": "4-lines",
+          "label": "t:options.4_lines"
+        },
+        {
+          "value": "5-lines",
+          "label": "t:options.5_lines"
+        }
+      ],
+      "default": "2-lines"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.excerpt"
+    }
+  ]
+}
+{% endschema %}

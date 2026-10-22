@@ -1,0 +1,455 @@
+{%- comment -%}
+  Finder quiz: intro → one question per screen → optional email step → recommended products,
+  where every answer narrows ONE collection with its storefront filters (AND across answers; the
+  cascade hides options whose count is 0). Sibling of sections/recommendation-quiz.liquid; both
+  share `<product-quiz>` and every piece of markup (snippets/product-quiz-shell.liquid).
+
+  Layout container only: it captures its static screens + question blocks and hands them to the
+  shell (`content_for` cannot run inside a snippet). `data-results-source="filter"` is fixed.
+{%- endcomment -%}
+{%- liquid
+  assign quiz_collection = section.settings.collection
+  if quiz_collection == blank
+    assign quiz_collection = collections.all
+  endif
+  assign collection_url = quiz_collection.url | default: '/collections/all'
+
+  assign large_collection = false
+  if quiz_collection.products_count > 5000
+    assign large_collection = true
+  endif
+
+  # Hidden with the editor's eye toggle, a static block renders nothing: the shell reads that.
+  capture intro_html
+    content_for 'block', type: '_product-quiz-intro', id: 'product-quiz-intro'
+  endcapture
+
+  capture questions_html
+    content_for 'blocks'
+  endcapture
+
+  capture email_html
+    content_for 'block', type: '_product-quiz-email', id: 'product-quiz-email'
+  endcapture
+
+  capture results_html
+    content_for 'block', type: '_product-quiz-results', id: 'product-quiz-results'
+  endcapture
+-%}
+{%- render 'product-quiz-shell',
+  section: section,
+  results_source: 'filter',
+  questions_html: questions_html,
+  intro_html: intro_html,
+  email_html: email_html,
+  results_html: results_html,
+  collection_url: collection_url,
+  large_collection: large_collection
+-%}
+
+{% schema %}
+{
+  "name": "t:names.finder_quiz",
+  "disabled_on": {
+    "groups": [
+      "header",
+      "footer",
+      "custom.overlay"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "_finder-quiz-question"
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        {
+          "value": "full",
+          "label": "t:options.full"
+        },
+        {
+          "value": "fixed",
+          "label": "t:options.fixed"
+        }
+      ],
+      "default": "fixed"
+    },
+    {
+      "type": "header",
+      "content": "t:content.quiz"
+    },
+    {
+      "type": "collection",
+      "id": "collection",
+      "label": "t:settings.collection",
+      "info": "t:info.finder_quiz_collection"
+    },
+    {
+      "type": "range",
+      "id": "results_limit",
+      "label": "t:settings.results_limit",
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "select",
+      "id": "advance_mode",
+      "label": "t:settings.advance_mode",
+      "options": [
+        {
+          "value": "button",
+          "label": "t:options.next_button"
+        },
+        {
+          "value": "auto",
+          "label": "t:options.auto"
+        }
+      ],
+      "default": "button"
+    },
+    {
+      "type": "select",
+      "id": "progress_style",
+      "label": "t:settings.progress_style",
+      "options": [
+        {
+          "value": "bar",
+          "label": "t:options.bar"
+        },
+        {
+          "value": "stepper",
+          "label": "t:options.stepper"
+        }
+      ],
+      "default": "bar"
+    },
+    {
+      "type": "color",
+      "id": "progress_color",
+      "label": "t:settings.progress_color",
+      "info": "t:info.leave_blank_to_use_default"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "checkbox",
+      "id": "use_color_scheme_in_container",
+      "label": "t:settings.use_color_scheme_in_container",
+      "default": false,
+      "visible_if": "{{ section.settings.container == 'fixed' }}"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "t:settings.borders",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "solid",
+          "label": "t:options.solid"
+        }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:settings.border_width",
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_opacity",
+      "label": "t:settings.border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ section.settings.border != 'none' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'full' or section.settings.container == 'fixed' and section.settings.use_color_scheme_in_container }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'full' or section.settings.container == 'fixed' and section.settings.use_color_scheme_in_container }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 48,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start-mobile",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'full' or section.settings.container == 'fixed' and section.settings.use_color_scheme_in_container }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end-mobile",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'full' or section.settings.container == 'fixed' and section.settings.use_color_scheme_in_container }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.finder_quiz",
+      "category": "t:categories.product",
+      "settings": {
+        "padding-block-start": 40,
+        "padding-block-end": 40,
+        "padding-block-start-mobile": 20,
+        "padding-block-end-mobile": 20
+      },
+      "blocks": {
+        "product-quiz-intro": {
+          "type": "_product-quiz-intro",
+          "static": true,
+          "blocks": {
+            "intro-eyebrow": {
+              "type": "text",
+              "settings": {
+                "text": "<p>Part finder quiz</p>",
+                "type_preset": "text-subheading",
+                "padding-block-end": 16
+              }
+            },
+            "intro-heading": {
+              "type": "text",
+              "settings": {
+                "text": "<h2>Find your perfect match</h2>",
+                "type_preset": "h1",
+                "padding-block-end": 16
+              }
+            },
+            "intro-text": {
+              "type": "text",
+              "settings": {
+                "text": "<p>Answer a few quick questions and we'll recommend the products that suit you best.</p>",
+                "type_preset": "paragraph",
+                "text_color": "subtext",
+                "padding-block-end": 32
+              }
+            },
+            "start-button": {
+              "type": "_product-quiz-start-button",
+              "static": true,
+              "settings": {
+                "label": "Start quiz",
+                "style": "primary"
+              }
+            },
+            "image": {
+              "type": "_product-quiz-image",
+              "static": true
+            }
+          },
+          "block_order": [
+            "intro-eyebrow",
+            "intro-heading",
+            "intro-text"
+          ]
+        },
+        "question_type": {
+          "type": "_finder-quiz-question",
+          "settings": {
+            "question_id": "type",
+            "stepper_label": "Type",
+            "heading": "What are you looking for?",
+            "question_heading_size": "h2",
+            "subtext": "Pick the kind of product you need.",
+            "filter": "filter.p.product_type",
+            "option_source": "auto",
+            "card_color_scheme": "scheme-2",
+            "card_radius": 0,
+            "columns": 4,
+            "columns_mobile": 2
+          }
+        },
+        "question_brand": {
+          "type": "_finder-quiz-question",
+          "settings": {
+            "question_id": "brand",
+            "stepper_label": "Brand",
+            "heading": "Do you have a favorite brand?",
+            "question_heading_size": "h2",
+            "filter": "filter.p.vendor",
+            "option_source": "auto",
+            "card_color_scheme": "scheme-2",
+            "card_radius": 0,
+            "columns": 4,
+            "columns_mobile": 2
+          }
+        },
+        "product-quiz-email": {
+          "type": "_product-quiz-email",
+          "static": true,
+          "blocks": {
+            "email-heading": {
+              "type": "text",
+              "settings": {
+                "text": "<h2>Get your results</h2>",
+                "type_preset": "h1",
+                "width": "100%",
+                "text_alignment": "center",
+                "width_mobile": "100%",
+                "text_alignment_mobile": "center"
+              }
+            },
+            "email-text": {
+              "type": "text",
+              "settings": {
+                "text": "<p>Enter your email to see your recommendations and hear about new arrivals first.</p>",
+                "type_preset": "paragraph",
+                "width": "100%",
+                "text_alignment": "center",
+                "width_mobile": "100%",
+                "text_alignment_mobile": "center",
+                "text_color": "subtext"
+              }
+            }
+          },
+          "block_order": [
+            "email-heading",
+            "email-text"
+          ]
+        },
+        "product-quiz-results": {
+          "type": "_product-quiz-results",
+          "static": true,
+          "settings": {
+            "row_color_scheme": "scheme-2"
+          }
+        }
+      },
+      "block_order": [
+        "question_type",
+        "question_brand"
+      ]
+    }
+  ]
+}
+{% endschema %}

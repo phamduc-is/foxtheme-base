@@ -1,0 +1,202 @@
+{% doc %}
+  Email step of the product quiz (STATIC, shared by `sections/finder-quiz.liquid` and
+  `sections/recommendation-quiz.liquid`). Hidden with the editor's eye toggle, it renders nothing and
+  the last question goes straight to the results.
+
+  Posts Shopify's customer (newsletter) form — the same `{% form 'customer' %}` + `contact[email]` +
+  `contact[tags]` contract as snippets/newsletter-markup.liquid, in this block's own layout. The
+  runtime fills `contact[tags]` with `newsletter`, the prefix and one tag per answer, keeps the
+  answers in sessionStorage and posts the form natively (Shopify's hCaptcha binds to every customer
+  form, so a fetch is rejected); on return it restores the results. `return_to` stays disabled
+  until that submit, where the runtime points it back at this page + quiz. The discount offer
+  itself is the merchant's Shopify Email / Flow automation; this block only stores the prefix, and
+  the results block reveals the code.
+
+  The heading and description are dynamic `text` children. The screen itself takes focus on a
+  screen change (`data-quiz-focus`), and the runtime announces the first text child's text, or
+  `data-quiz-label` when there is none.
+
+  @example
+  {% content_for 'block', type: '_product-quiz-email', id: 'product-quiz-email' %}
+{% enddoc %}
+
+{%- liquid
+  assign form_id = 'ProductQuizEmail-' | append: section.id
+  assign skip_style = block.settings.skip_button_style | default: 'outline'
+  assign consent_color = block.settings.consent_color | default: 'subtext'
+  assign form_gap = block.settings.form_gap | default: 20 | divided_by: 10.0
+  assign form_gap_mobile = block.settings.form_gap_mobile | default: 20 | divided_by: 10.0
+  assign invalid_message = 'blocks.product_quiz.email_invalid' | t
+  assign error_message = 'blocks.product_quiz.email_error' | t
+  assign fallback_label = 'blocks.product_quiz.email_label' | t
+  assign placeholder = 'blocks.email_signup.placeholder' | t
+  assign continue_label = 'blocks.product_quiz.continue' | t
+  assign skip_label = 'blocks.product_quiz.skip' | t
+
+  capture text_html
+    content_for 'blocks'
+  endcapture
+  assign text_html = text_html | strip
+
+  # The results block reveals the code, but a sibling block cannot read these settings, so the
+  # finished message ships here as a <template> the runtime copies into the results header.
+  assign discount_code = block.settings.discount_code | strip
+  if discount_code != blank
+    assign code_html = discount_code | escape | prepend: '<strong class="product-quiz-results__code">' | append: '</strong>'
+    assign discount_html = block.settings.discount_message | default: '[code]' | escape | replace: '[code]', code_html
+  endif
+-%}
+<div
+  class="product-quiz__screen product-quiz-email"
+  ref="email"
+  tabindex="-1"
+  data-quiz-focus
+  data-quiz-label="{{ fallback_label | escape }}"
+  data-tag-prefix="{{ block.settings.tag_prefix | escape }}"
+  data-error-invalid="{{ invalid_message | escape }}"
+  data-error-generic="{{ error_message | escape }}"
+  style="--product-quiz-email-form-gap: {{ form_gap }}rem; --product-quiz-email-form-gap-mobile: {{ form_gap_mobile }}rem;"
+  {{ block.shopify_attributes }}
+  hidden
+>
+  {%- if text_html != blank -%}
+    <div class="product-quiz-email__text" data-quiz-copy>{{ text_html }}</div>
+  {%- endif -%}
+
+  {%- form 'customer', id: form_id, class: 'product-quiz-email__form', novalidate: 'novalidate' -%}
+    <input type="hidden" name="contact[tags]" value="newsletter" ref="emailTags">
+    <input type="hidden" name="return_to" value="" ref="emailReturnTo" disabled>
+    <label class="visually-hidden" for="{{ form_id }}-email">{{ 'blocks.email_signup.label' | t }}</label>
+    <input
+      id="{{ form_id }}-email"
+      class="product-quiz-email__input form-control"
+      type="email"
+      name="contact[email]"
+      placeholder="{{ placeholder | escape }}"
+      autocomplete="email"
+      autocapitalize="off"
+      autocorrect="off"
+      spellcheck="false"
+      aria-required="true"
+      aria-describedby="{{ form_id }}-error"
+      ref="emailInput"
+      required
+    >
+    <p class="product-quiz-email__error form-message form-message--error" id="{{ form_id }}-error" ref="emailError" hidden></p>
+    <div class="product-quiz-email__buttons">
+      <button type="submit" class="product-quiz-email__button btn btn--primary" ref="emailSubmit">
+        <span class="btn__text" data-label="{{ continue_label | escape }}">
+          {{- continue_label | escape -}}
+        </span>
+        {% render 'loading-spinner', size: 'small' %}
+      </button>
+      {%- if block.settings.show_skip -%}
+        <button type="button" class="product-quiz-email__button btn btn--{{ skip_style }}" on:click="product-quiz/skipEmail">
+          <span class="btn__text" data-label="{{ skip_label | escape }}">
+            {{- skip_label | escape -}}
+          </span>
+        </button>
+      {%- endif -%}
+    </div>
+    {%- if block.settings.consent != blank -%}
+      <div class="product-quiz-email__consent color-{{ consent_color }}">{{ block.settings.consent }}</div>
+    {%- endif -%}
+  {%- endform -%}
+  {%- if discount_code != blank -%}
+    <template ref="discountTemplate">{{ discount_html }}</template>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.product_quiz_email",
+  "tag": null,
+  "blocks": [{ "type": "text" }],
+  "settings": [
+    { "type": "header", "content": "t:content.layout" },
+    {
+      "type": "range",
+      "id": "form_gap",
+      "label": "t:settings.form_gap",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "form_gap_mobile",
+      "label": "t:settings.form_gap_mobile",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 20
+    },
+    { "type": "header", "content": "t:content.content" },
+    {
+      "type": "checkbox",
+      "id": "show_skip",
+      "label": "t:settings.show_skip",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "skip_button_style",
+      "label": "t:settings.skip_button_style",
+      "options": [
+        { "value": "primary", "label": "t:options.primary" },
+        { "value": "secondary", "label": "t:options.secondary" },
+        { "value": "outline", "label": "t:options.outline" }
+      ],
+      "default": "outline",
+      "visible_if": "{{ block.settings.show_skip }}"
+    },
+    {
+      "type": "richtext",
+      "id": "consent",
+      "label": "t:settings.consent",
+      "default": "<p>By clicking Continue, you agree to our <a href=\"/policies/privacy-policy\">Privacy Policy</a> and <a href=\"/policies/terms-of-service\">Terms of Service</a>.</p>"
+    },
+    {
+      "type": "select",
+      "id": "consent_color",
+      "label": "t:settings.consent_color",
+      "options": [
+        {
+          "value": "text",
+          "label": "t:options.text"
+        },
+        {
+          "value": "subtext",
+          "label": "t:options.subtext"
+        }
+      ],
+      "default": "subtext"
+    },
+    { "type": "header", "content": "t:content.discount" },
+    {
+      "type": "text",
+      "id": "discount_code",
+      "label": "t:settings.discount_code",
+      "info": "t:info.product_quiz_discount_code"
+    },
+    {
+      "type": "text",
+      "id": "discount_message",
+      "label": "t:settings.discount_message",
+      "info": "t:info.product_quiz_discount_message",
+      "default": "Use code [code] for 10% off your order"
+    },
+    { "type": "header", "content": "t:content.customer_tags" },
+    {
+      "type": "text",
+      "id": "tag_prefix",
+      "label": "t:settings.tag_prefix",
+      "info": "t:info.product_quiz_tag_prefix",
+      "default": "quiz"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,51 @@
+// @capability Small text label chip with themed font/color/border variables, positionable over media (absolute top-start corner) or inline within content.
+// @when Any small tag/label over an image or beside content (e.g. "Featured", collection labels); reuse instead of a new chip class. No pairing JS.
+// @contract .label with .label--media (absolute over the image, offset via --edge-padding-block/--edge-padding-inline) or .label--content; theming via --color-label-text/bg/border and --label-corner-radius.
+// @keywords label, chip, tag, sticker, overlay label, image badge, pill
+
+@use "../mixins" as *;
+
+// ─── Label ────────────────────────────────────────────────────────────────────
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-label--size, 1.3rem);
+  line-height: 1;
+  font-family: var(--font-label--family);
+  font-weight: var(--font-label--weight);
+  font-style: var(--font-label--style);
+  text-transform: var(--font-label--transform);
+  letter-spacing: var(--font-label--letter-spacing);
+  color: rgb(var(--color-label-text));
+  background: var(--color-label-bg);
+  border-width: var(--label-border-width, 0);
+  border-style: solid;
+  border-color: rgb(var(--color-label-border));
+  border-radius: var(--label-corner-radius, 0);
+  padding: var(--label-padding-block, 0.6rem) var(--label-padding-inline, 1rem);
+
+  &--media {
+    position: absolute;
+    inset-block-start: var(--edge-padding-block, 2rem);
+    inset-inline-start: var(--edge-padding-inline, 2rem);
+    z-index: var(--layer-flat, 1);
+  }
+
+  &--content {
+    position: relative;
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .label--media {
+    inset-block-start: 2rem;
+    inset-inline-start: 2rem;
+  }
+
+  .image-card--content-outside .label--media {
+    inset-block-start: 1rem;
+    inset-inline-start: 1rem;
+  }
+}

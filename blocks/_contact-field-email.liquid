@@ -1,0 +1,119 @@
+{% doc %}
+  Static "Email" field for the contact form — the one required field. Rendered by
+  `blocks/contact-form.liquid` via `content_for 'block'` from INSIDE its
+  `{% form 'contact' %}` tag, so the field posts as part of that form and the
+  inline error state can read `form.errors`.
+
+  @param {string} [parent_id] - Unique id of the hosting contact-form block. A
+  static child's own block.id is the literal static id — identical for every
+  form instance — so two contact forms on one page would collide without it.
+
+  @example
+  {% content_for 'block', type: '_contact-field-email', id: 'contact-field-email', parent_id: block.id %}
+{% enddoc %}
+
+{%- liquid
+  assign uid = parent_id | default: block.id
+  assign field_id = 'ContactForm-email-' | append: uid
+  assign error_id = 'ContactForm-email-error-' | append: uid
+
+  assign width_class = ''
+  if block.settings.width == 'full'
+    assign width_class = ' form-field--full'
+  endif
+  if block.settings.width_mobile == 'half'
+    assign width_class = width_class | append: ' form-field--half-mobile'
+  endif
+-%}
+
+<div
+  class="form-field form-field--email{{ width_class }}"
+  {{ block.shopify_attributes }}
+>
+  <label class="form-label" for="{{ field_id }}">
+    {{- 'blocks.contact_form.email' | t -}}
+    <span aria-hidden="true">*</span>
+  </label>
+  <input
+    autocomplete="email"
+    type="email"
+    id="{{ field_id }}"
+    class="form-control w-full"
+    name="contact[email]"
+    spellcheck="false"
+    autocapitalize="off"
+    required
+    {% if block.settings.placeholder != blank %}
+      placeholder="{{ block.settings.placeholder }}"
+    {% endif %}
+    {% # theme-check-disable %}
+    value="{% if form.email %}{{ form.email }}{% elsif customer %}{{ customer.email }}{% endif %}"
+    {% if form.errors contains 'email' %}
+      aria-invalid="true"
+      aria-describedby="{{ error_id }}"
+    {% endif %}
+    {% # theme-check-enable %}
+  >
+  {% # theme-check-disable %}
+  {%- if form.errors contains 'email' -%}
+    <span
+      class="form-message form-message--small form-message--error flex gap-2"
+      id="{{ error_id }}"
+    >
+      {% render 'icon', icon: 'warning', class: 'shrink-0' %}
+      {{- form.errors.translated_fields.email | capitalize }}
+      {{ form.errors.messages.email -}}
+    </span>
+  {%- endif -%}
+  {% # theme-check-enable %}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.contact_field_email",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder",
+      "label": "t:settings.placeholder"
+    },
+    {
+      "type": "header",
+      "content": "t:content.size"
+    },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "t:settings.width",
+      "options": [
+        {
+          "value": "full",
+          "label": "t:options.full"
+        },
+        {
+          "value": "half",
+          "label": "t:options.one_half"
+        }
+      ],
+      "default": "half"
+    },
+    {
+      "type": "select",
+      "id": "width_mobile",
+      "label": "t:settings.width_mobile",
+      "options": [
+        {
+          "value": "full",
+          "label": "t:options.full"
+        },
+        {
+          "value": "half",
+          "label": "t:options.one_half"
+        }
+      ],
+      "default": "full"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,428 @@
+{% doc %}
+  Renders the product media gallery (carousel or grid).
+
+  @param {object} product - The product object
+  @param {string} [base_class] - CSS modifier class (default: 'media-gallery--main')
+  @param {string} [extra_class] - Additional CSS classes appended to the root element
+  @param {string} [media_style] - 'carousel' | 'grid'. When blank, no style class is added.
+  @param {string} [grid_columns] - '1' | '2' (default: '2')
+  @param {number} [grid_gap] - Gap in px for grid mode (default: 10)
+  @param {string} [carousel_slides] - 'full' | 'peek' (default: 'full')
+  @param {string} [carousel_thumbnail] - 'none' | 'horizontal' | 'vertical' (default: 'none')
+  @param {string} [carousel_thumbnail_mobile] - 'same' | 'none' | 'horizontal' (default: 'same')
+  @param {string} [carousel_thumbnail_vertical_breakpoint] - 'md' | 'lg' — viewport width at which vertical thumbs activate (default: 'md')
+  @param {string} [controls_style] - 'default' | 'combine'. When blank, derived from carousel_slides (peek→combine, else→default).
+
+  default: nav absolute-inside + pagination (auto-hidden when thumbnail is visible) combine: counter + progressbar + group nav
+
+  @param {number} [pagination_max_dots] - In the default style, the most media the dot pagination shows before it gives way to a counter (default: 12). A row of n pills is 32 + 16(n-1)px wide (active pill 3.2rem, dots 0.8rem, 4px Swiper gaps); a 375px phone leaves ~260px between the absolute-inside arrows, so 15 is the physical ceiling and 12 keeps a margin.
+
+  @param {string} [media_aspect_ratio] - Main image ratio (default: 'auto')
+  @param {string} [thumbnail_media_aspect_ratio] - Thumbnail ratio (default: 'auto')
+  @param {number} [media_radius] - Border radius in px (default: 0)
+  @param {boolean} [video_autoplay] - (default: false)
+  @param {boolean} [hide_variants] - Hide unselected variant media (default: false)
+  @param {boolean} [enable_zoom] - Enable zoom dialog (default: false)
+  @param {string} [sizes] - Responsive image sizes string
+  @param {object} [spacing_settings] - Block/section settings passed to spacing-style snippet
+  @param {boolean} [lazy] - Force every media lazy — for a gallery rendered inside a dialog (quick view) that is not visible at page load
+{% enddoc %}
+
+{%- liquid
+  assign selected_product = product
+  assign selected_variant_media = selected_product.selected_or_first_available_variant.featured_media
+  assign first_3d_model = selected_product.media | where: 'media_type', 'model' | first
+
+  if hide_variants
+    assign variant_images = selected_product.images | where: 'attached_to_variant?', true | map: 'src'
+  endif
+-%}
+
+{%- liquid
+  assign sorted_media = '' | split: ','
+  if selected_variant_media
+    assign sorted_media = sorted_media | concat: selected_product.media | where: 'id', selected_variant_media.id
+    for media in selected_product.media
+      if hide_variants and variant_images contains media.src and sorted_media.size > 0
+        continue
+      endif
+      if media.id != selected_variant_media.id
+        assign found_media = selected_product.media | where: 'id', media.id
+        assign sorted_media = sorted_media | concat: found_media
+      endif
+    endfor
+  else
+    if hide_variants and variant_images
+      for media in selected_product.media
+        unless variant_images contains media.src
+          assign found_media = selected_product.media | where: 'id', media.id
+          assign sorted_media = sorted_media | concat: found_media
+        endunless
+      endfor
+    else
+      assign sorted_media = selected_product.media
+    endif
+  endif
+
+  assign media_size = sorted_media.size
+
+  assign max_initial_slides = 8
+  if hide_variants
+    assign max_initial_slides = 999
+  endif
+-%}
+
+{%- liquid
+  # ── Defaults ──────────────────────────────────────────────────────────────────
+  assign base_class = base_class | default: 'media-gallery--main'
+  assign grid_columns = grid_columns | default: '2'
+  assign grid_gap = grid_gap | default: 10
+  assign carousel_slides = carousel_slides | default: 'full'
+  assign carousel_thumbnail = carousel_thumbnail | default: 'none'
+  assign carousel_thumbnail_mobile = carousel_thumbnail_mobile | default: 'same'
+  if controls_style == blank
+    if carousel_slides == 'peek'
+      assign controls_style = 'combine'
+    else
+      assign controls_style = 'default'
+    endif
+  endif
+  assign media_aspect_ratio = media_aspect_ratio | default: 'auto'
+  assign thumb_aspect_ratio = thumbnail_media_aspect_ratio | default: 'auto'
+  assign media_radius = media_radius | default: 0
+
+  # ── Derived: thumbnail visibility per breakpoint ───────────────────────────
+  assign desktop_has_thumb = false
+  if carousel_thumbnail == 'horizontal' or carousel_thumbnail == 'vertical'
+    assign desktop_has_thumb = true
+  endif
+
+  if carousel_thumbnail_mobile == 'same'
+    assign mobile_has_thumb = desktop_has_thumb
+  elsif carousel_thumbnail_mobile == 'horizontal'
+    assign mobile_has_thumb = true
+  else
+    assign mobile_has_thumb = false
+  endif
+
+  assign has_carousel_thumbs = false
+  if media_size > 1 and desktop_has_thumb
+    assign has_carousel_thumbs = true
+  endif
+
+  # ── Derived: controls ─────────────────────────────────────────────────────
+  # Pagination visible when no thumb at that breakpoint (combine always shows)
+  assign show_pag_desktop = false
+  if controls_style == 'combine'
+    assign show_pag_desktop = true
+  elsif controls_style == 'default' and desktop_has_thumb == false
+    assign show_pag_desktop = true
+  endif
+
+  assign show_pag_mobile = false
+  if controls_style == 'combine'
+    assign show_pag_mobile = true
+  elsif controls_style == 'default' and mobile_has_thumb == false
+    assign show_pag_mobile = true
+  endif
+
+  # ── Controls render params ─────────────────────────────────────────────────
+  assign controls_combined = 'none'
+  assign controls_combined_mobile = 'none'
+  assign controls_pagination = 'none'
+  assign controls_pagination_mobile = 'none'
+  assign controls_nav = 'absolute-inside'
+  assign controls_layout_var = ''
+  assign controls_pag_style = ''
+  if controls_style == 'combine'
+    assign controls_combined = 'counter'
+    assign controls_nav = 'group'
+    assign controls_layout_var = 'nav-end'
+    assign controls_pag_style = 'progress'
+  endif
+  if show_pag_desktop
+    assign controls_pagination = 'dots'
+  endif
+  if show_pag_mobile
+    assign controls_pagination_mobile = 'dots'
+  endif
+  assign pagination_max_dots = pagination_max_dots | default: 12
+  if controls_style == 'default' and media_size > pagination_max_dots
+    if show_pag_desktop
+      assign controls_pagination = 'none'
+      assign controls_combined = 'counter'
+    endif
+    if show_pag_mobile
+      assign controls_pagination_mobile = 'none'
+      assign controls_combined_mobile = 'counter'
+    endif
+  endif
+
+  # ── Swiper thumbnail direction ─────────────────────────────────────────────
+  assign carousel_thumbnail_vertical_breakpoint = carousel_thumbnail_vertical_breakpoint | default: 'md'
+  assign thumb_swiper_direction_md = 'horizontal'
+  if carousel_thumbnail == 'vertical'
+    if carousel_thumbnail_vertical_breakpoint == 'lg'
+      # stays horizontal at md; vertical only kicks in at lg via a second breakpoint entry
+    else
+      assign thumb_swiper_direction_md = 'vertical'
+    endif
+  endif
+
+  # ── CSS suffix for wrapper/thumbs classes ('none' | 'outside') ────────────
+  assign thumb_css_suffix = 'none'
+  if carousel_thumbnail == 'horizontal' or carousel_thumbnail == 'vertical'
+    assign thumb_css_suffix = 'outside'
+  endif
+
+  # ── Gallery root class ────────────────────────────────────────────────────
+  assign gallery_class = 'media-gallery ' | append: base_class
+  if media_style != blank
+    assign gallery_class = gallery_class | append: ' media-gallery--' | append: media_style
+    if media_style == 'grid'
+      assign gallery_class = gallery_class | append: ' media-gallery--grid-' | append: grid_columns | append: '-column'
+    endif
+  endif
+  if carousel_slides == 'peek' and media_size > 1
+    assign gallery_class = gallery_class | append: ' media-gallery--carousel-peek'
+  endif
+
+  if extra_class != blank
+    assign gallery_class = gallery_class | append: ' ' | append: extra_class
+  endif
+
+  # ── Inner class vars ──────────────────────────────────────────────────────
+  assign desktop_control_class = ''
+  assign container_class = 'media-gallery__carousel-container'
+  assign carousel_class = 'carousel media-gallery__carousel'
+  assign wrapper_class = 'media-gallery__carousel-wrapper media-gallery__carousel-wrapper--' | append: thumb_css_suffix
+  assign carousel_thumbs_class = 'media-gallery__carousel-thumbnails media-gallery__carousel-thumbnails--' | append: thumb_css_suffix
+
+  if media_style == 'grid'
+    assign wrapper_class = wrapper_class | append: ' md:grid'
+    assign carousel_thumbs_class = carousel_thumbs_class | append: ' md:hidden'
+    assign desktop_control_class = desktop_control_class | append: ' md:hidden'
+  endif
+
+  if desktop_has_thumb and mobile_has_thumb == false
+    assign carousel_thumbs_class = carousel_thumbs_class | append: ' media-gallery__carousel-thumbnails--mobile-hidden'
+  endif
+
+  if carousel_slides == 'peek' and media_size > 1
+    assign carousel_class = carousel_class | append: ' carousel--visible'
+  endif
+-%}
+
+<media-gallery
+  class="block {{ gallery_class }}{% if spacing_settings %} spacing-style{% endif %}{% if media_size == 0 %} hidden{% endif %}"
+  style="--media-gap: {{ grid_gap | divided_by: 10.0 }}rem; --media-radius: {{ media_radius | divided_by: 10.0 }}rem;{% if spacing_settings %}{% render 'spacing-style', settings: spacing_settings %}{% endif %}"
+  {% if hide_variants %}
+    data-hide-variants="true"
+  {% endif %}
+  {% if video_autoplay %}
+    data-video-autoplay="true"
+  {% endif %}
+>
+  <carousel-slider class="{{ carousel_class }}" ref="carousel">
+    {%- liquid
+      assign browse_class = 'media-gallery__carousel-browse'
+      if has_carousel_thumbs and carousel_thumbnail == 'vertical'
+        if carousel_thumbnail_vertical_breakpoint == 'lg'
+          assign browse_class = browse_class | append: ' media-gallery__carousel-browse--vertical-lg'
+        else
+          assign browse_class = browse_class | append: ' media-gallery__carousel-browse--desktop-vertical'
+        endif
+      endif
+    -%}
+    <script type="application/json" ref="config">
+      {
+        "loop": false,
+        "slidesPerView": "auto",
+        "autoHeight": {% if carousel_slides == 'peek' %}false{% else %}true{% endif %},
+        "spaceBetween": 8,
+        "counter": true,
+        "pagination": { "type": "{% if controls_style == 'combine' %}progressbar{% else %}bullets{% endif %}" },
+        "breakpoints": { "768": { "autoHeight": {% if carousel_slides == 'peek' %}false{% else %}true{% endif %} } },
+        "thumbnails": {
+          "enabled": true,
+          "direction": "horizontal",
+          "slidesPerView": "auto",
+          "spaceBetween": 5,
+          "breakpoints": {
+            "768": {
+              "direction": "{{ thumb_swiper_direction_md }}",
+              "spaceBetween": 8,
+              "slidesPerView": {% if thumb_swiper_direction_md == 'vertical' %}"auto"{% else %}6{% endif %}
+            }{% if carousel_thumbnail == 'vertical' and carousel_thumbnail_vertical_breakpoint == 'lg' %},
+            "1024": {
+              "direction": "vertical",
+              "spaceBetween": 8,
+              "slidesPerView": "auto"
+            }{% endif %}
+          }
+        },
+        "navigationPosition": { "enabled": true, "selector": ".product-media" }
+        {% if media_style == 'grid' %},
+        "destroyAbove": 768
+        {% endif %}
+      }
+    </script>
+    {% if has_carousel_thumbs %}
+      <div
+        class="{{ browse_class }}"
+        {% if carousel_thumbnail == 'vertical' %}
+          data-browse-vertical
+        {% endif %}
+      >
+        <div ref="thumbnails" class="{{ carousel_thumbs_class }}" data-thumb-container>
+          <div class="swiper carousel__thumbnails-swiper" data-thumbs-swiper>
+            <div class="swiper-wrapper">
+              {%- capture thumbnail_carousel_size -%}(min-width: 768px) calc(100px), calc(80px){%- endcapture -%}
+              {% for media in sorted_media %}
+                {% if forloop.index > max_initial_slides %}{% break %}{% endif %}
+                <div
+                  class="swiper-slide media-gallery__item media-mask-clip relative carousel__thumbnail cursor-pointer media-gallery__thumb-slide"
+                  data-carousel-thumbnail
+                  data-media-id="{{ media.id }}"
+                >
+                  {%- liquid
+                    assign is_main = forloop.first
+                    if lazy
+                      assign is_main = false
+                    endif
+                  -%}
+                  {% render 'product-media',
+                    media: media,
+                    is_main_product_media: is_main,
+                    image_ratio: thumb_aspect_ratio,
+                    preview_image_only: true,
+                    class: 'media-gallery__thumb-media block w-full',
+                    sizes: thumbnail_carousel_size
+                  %}
+                </div>
+              {% endfor %}
+              {% if media_size > max_initial_slides %}
+                <template data-deferred-thumbnails>
+                  {% for media in sorted_media %}
+                    {% if forloop.index > max_initial_slides %}
+                      <div
+                        class="swiper-slide media-gallery__item media-mask-clip relative carousel__thumbnail cursor-pointer media-gallery__thumb-slide"
+                        data-carousel-thumbnail
+                        data-media-id="{{ media.id }}"
+                      >
+                        {% render 'product-media',
+                          media: media,
+                          image_ratio: thumb_aspect_ratio,
+                          preview_image_only: true,
+                          class: 'media-gallery__thumb-media block w-full',
+                          sizes: thumbnail_carousel_size
+                        %}
+                      </div>
+                    {% endif %}
+                  {% endfor %}
+                </template>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+    {% endif %}
+    <div ref="container" class="swiper {{ container_class }}" data-carousel-container>
+      {%- unless sizes -%}
+        {%- capture sizes -%}(min-width: 768px) calc(min(100vw, {{ settings.page_width }}px) * 0.545), calc(100vw / 2){%- endcapture -%}
+      {%- endunless -%}
+      <div class="swiper-wrapper {{ wrapper_class }}" data-main-wrapper>
+        {% for media in sorted_media %}
+          {% if forloop.index > max_initial_slides %}{% break %}{% endif %}
+          {%- liquid
+            assign is_main = forloop.first
+            if lazy
+              assign is_main = false
+            endif
+          -%}
+          {% render 'product-media',
+            media: media,
+            image_ratio: media_aspect_ratio,
+            is_main_product_media: is_main,
+            selected_product: selected_product,
+            first_3d_model: first_3d_model,
+            class: 'swiper-slide media-gallery__item media-mask-clip relative',
+            sizes: sizes,
+            enable_zoom_dialog: enable_zoom
+          %}
+        {% endfor %}
+        {% if media_size > max_initial_slides %}
+          <template data-deferred-slides>
+            {% for media in sorted_media %}
+              {% if forloop.index > max_initial_slides %}
+                {% render 'product-media',
+                  media: media,
+                  image_ratio: media_aspect_ratio,
+                  selected_product: selected_product,
+                  first_3d_model: first_3d_model,
+                  class: 'swiper-slide media-gallery__item media-mask-clip relative',
+                  sizes: sizes,
+                  enable_zoom_dialog: enable_zoom
+                %}
+              {% endif %}
+            {% endfor %}
+          </template>
+        {% endif %}
+      </div>
+      {% if media_size > 1 %}
+        {% render 'carousel-controls',
+          navigation: controls_nav,
+          combined: controls_combined,
+          combined_mobile: controls_combined_mobile,
+          pagination: controls_pagination,
+          pagination_mobile: controls_pagination_mobile,
+          pagination_style: controls_pag_style,
+          controls_layout: controls_layout_var,
+          class: desktop_control_class
+        %}
+      {% endif %}
+    </div>
+    {% if has_carousel_thumbs %}
+      </div>
+    {% endif %}
+  </carousel-slider>
+  {%- if first_3d_model -%}
+    <button
+      class="btn btn--secondary btn--icon button-shopify-xr hidden"
+      type="button"
+      data-shopify-xr
+      data-shopify-model3d-id="{{ first_3d_model.id }}"
+      data-shopify-title="{{ selected_product.title | escape }}"
+      data-shopify-xr-hidden
+    >
+      {% render 'icon', icon: '3d-model' %}
+      <span class="btn__text" data-label="{{ 'actions.view_in_your_space' | t | escape }}">{{ 'actions.view_in_your_space' | t }}</span>
+    </button>
+    <link
+      id="ModelViewerStyle"
+      rel="stylesheet"
+      href="https://cdn.shopify.com/shopifycloud/model-viewer-ui/assets/v1.0/model-viewer-ui.css"
+      media="print"
+      onload="this.media='all'"
+    >
+    <script>
+      window.ProductModel = {
+        loadShopifyXR() {
+          Shopify.loadFeatures([{ name: 'shopify-xr', version: '1.0', onLoad: this.setupShopifyXR.bind(this) }]);
+        },
+        setupShopifyXR(errors) {
+          if (errors) return;
+          if (!window.ShopifyXR) {
+            document.addEventListener('shopify_xr_initialized', () => this.setupShopifyXR());
+            return;
+          }
+          document.querySelectorAll('[id^="ProductModelJSON-"]').forEach((modelJSON) => {
+            window.ShopifyXR.addModels(JSON.parse(modelJSON.textContent));
+            modelJSON.remove();
+          });
+          window.ShopifyXR.setupXRElements();
+        },
+      };
+      window.ProductModel.loadShopifyXR();
+    </script>
+  {%- endif -%}
+</media-gallery>

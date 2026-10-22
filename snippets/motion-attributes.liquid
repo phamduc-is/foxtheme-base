@@ -1,0 +1,83 @@
+{% doc %}
+  Emits the motion attribute set for one element. The ONLY place Liquid turns a
+  setting into motion markup.
+
+  Before this, thirteen files hand-wrote their own `data-motion` pairs, each with
+  its own idea of when to emit them and what the default was — which is how a
+  theme ends up with two spellings of the same animation. Render this instead,
+  and a new attribute (a trigger, a repeat flag) reaches every caller at once.
+
+  Emits nothing at all when animations are off or the type is `none`, so callers
+  do not need their own `settings.animations_enabled` guard — the guard that was
+  easy to forget, and whose absence leaves prestaged content hidden.
+
+  @param {string} [type] - Preset name from src/js/modules/motion-presets.js. 'none' emits nothing.
+  @param {number} [delay] - Delay in ms before this element starts
+  @param {boolean} [sequence] - List only: true reveals cells one by one, false all together. Omit to leave `stagger` in charge.
+  @param {number} [stagger] - List only: explicit step between cells in ms. 0 means all together.
+  @param {string} [trigger] - 'inview' (default) | 'load' | 'manual'
+  @param {boolean} [repeat] - Re-arm when it scrolls out of view
+  @param {boolean} [instantly] - Do not wait for images inside to load
+
+  `sequence` is the half `type` was missing. An entrance is WHICH effect plus whether the items arrive together or one after another, and the registry
+  owns only the first on purpose: a stagger belongs to a LIST and means nothing on a single element, so folding it into preset names would double the
+  registry for a dimension half its consumers cannot use.
+
+  One call therefore covers both element kinds, from a setting or hardcoded — on a single element the emitted stagger is simply never read.
+
+  @example
+  <div {% render 'motion-attributes', type: block.settings.animation_type, delay: block.settings.animation_delay %}>
+  @example
+  <div is="motion-group" {% render 'motion-attributes', type: 'fade-up', sequence: true %}>
+  @example
+  <div is="motion-group" {% render 'motion-attributes', type: section.settings.content_animation, sequence: list_sequence %}>
+{% enddoc %}
+
+{%- liquid
+  assign motion_type = type | default: 'none'
+
+  unless settings.animations_enabled
+    assign motion_type = 'none'
+  endunless
+
+  # Built as a STRING rather than as inline tags with whitespace control. The
+  # tag form is one `prettier --write` away from silently gluing two attributes
+  # together: it strips the single space that separates them, producing
+  # data-motion="fade-up"data-motion-delay="200" — which theme-check accepts and
+  # the browser silently drops. A string cannot be reformatted into a bug.
+  assign attrs = ''
+
+  if motion_type != 'none'
+    assign attrs = attrs | append: ' data-motion="' | append: motion_type | append: '"'
+
+    if delay and delay != 0
+      assign attrs = attrs | append: ' data-motion-delay="' | append: delay | append: '"'
+    endif
+    # `sequence` outranks `stagger`, and only when the caller actually passed it.
+    # Liquid makes that distinguishable: nil == false is FALSE here, so the
+    # false branch fires for a real `false` and not for an absent parameter.
+    #
+    # true  -> emit nothing, so motion-group uses the --motion-stagger token
+    # false -> 0, every cell together
+    assign motion_stagger = stagger
+    if sequence == true
+      assign motion_stagger = null
+    elsif sequence == false
+      assign motion_stagger = 0
+    endif
+
+    if motion_stagger != blank
+      assign attrs = attrs | append: ' data-motion-stagger="' | append: motion_stagger | append: '"'
+    endif
+    if trigger and trigger != 'inview'
+      assign attrs = attrs | append: ' data-motion-trigger="' | append: trigger | append: '"'
+    endif
+    if repeat
+      assign attrs = attrs | append: ' data-motion-repeat'
+    endif
+    if instantly
+      assign attrs = attrs | append: ' data-instantly'
+    endif
+  endif
+-%}
+{{- attrs -}}

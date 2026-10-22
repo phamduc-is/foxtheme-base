@@ -1,0 +1,33 @@
+{% doc %}
+  Renders the cart drawer addon button row — gift wrapping, discount code, cart note, and
+  shipping rate calculator. Each addon opens its own bottom drawer dialog and is gated by the
+  matching theme setting (`show_add_discount_code`, `show_cart_note`, `show_caculate_shipping_rate`);
+  gift wrapping outputs only when a gift wrap product is configured.
+
+  @param {object} section - The current section, used to scope the discount drawer's input IDs (section.id)
+
+  @example
+  {% render 'cart-summary-addons-drawer', section: section %}
+{% enddoc %}
+{%- liquid
+  unless settings.dialog_color_scheme_inherit
+    assign color_scheme = settings.dialog_color_scheme
+  else
+    assign color_scheme = settings.color_schemes | first
+  endunless
+-%}
+{%- capture wrap_class -%}
+  cart-summary__addons empty-hidden cart-drawer-summary__addons flex flex-wrap justify-end text-left
+{%- endcapture -%}
+<div class="{{ wrap_class | strip | strip_newlines }}">
+  {% render 'cart-gift-wrapping-drawer', color_scheme: color_scheme %}
+  {%- if settings.show_add_discount_code -%}
+    {% render 'cart-discount-drawer', color_scheme: color_scheme, section_id: section.id %}
+  {%- endif -%}
+  {%- if settings.show_cart_note -%}
+    {% render 'cart-note-drawer', color_scheme: color_scheme %}
+  {%- endif -%}
+  {%- if settings.show_caculate_shipping_rate -%}
+    {% render 'cart-shipping-drawer', color_scheme: color_scheme %}
+  {%- endif -%}
+</div>

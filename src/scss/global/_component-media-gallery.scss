@@ -1,0 +1,376 @@
+// @capability Product media gallery layouts — main carousel with peek mode, thumbnail strip (horizontal below, or a vertical grid column on desktop, hideable on mobile) with an animated active ring, hover-revealed zoom-dialog button, grid mode (1/2 columns), and sticky-offset handling under a pinned header.
+// @when Product page or quick-view media galleries; pairs with src/js/modules/media-gallery.js (plus carousel.js/Swiper). Reuse the browse/thumbnail contract instead of building a new gallery.
+// @contract .media-gallery (--main/--grid/--grid-1-column/--grid-2-column/--carousel-peek), .media-gallery__carousel-browse (--desktop-vertical/--vertical-lg) > .media-gallery__carousel-container + .media-gallery__carousel-thumbnails (--outside/--mobile-hidden) with .media-gallery__item (.is-active ring), .media-gallery__zoom-dialog-button, .carousel__thumbnails-swiper.
+// @keywords media gallery, product images, thumbnails, active thumb ring, vertical thumbnails, image zoom button, gallery grid, product slider, peek carousel
+
+@use "../mixins" as *;
+
+// ─── Base ─────────────────────────────────────────────────────────────────────
+
+.media-gallery {
+  .deferred-media__poster-icon,
+  .video-placeholder-wrapper__poster-icon {
+    top: unset;
+    bottom: 1rem;
+    left: 1rem;
+    transform: unset;
+
+    --button-width: 3.4rem;
+    --button-height: 3.4rem;
+  }
+
+  &__content {
+    margin-block-start: 1.2rem;
+
+    @include media-breakpoint-down(md) {
+      margin-block-start: 0.4rem;
+    }
+  }
+}
+
+// CSS-only zoom-out reveal on scroll. Mouse devices only, like the image
+// reveal in _component-media: on touch the image just appears once loaded.
+@media (prefers-reduced-motion: no-preference) and (pointer: fine) {
+  .media-zoom-reveal {
+    .media__image {
+      transform: scale(var(--motion-image-reveal-scale));
+      opacity: 0;
+      transition:
+        transform var(--motion-image-reveal) var(--motion-ease-out),
+        opacity var(--motion-image-reveal) var(--motion-ease-out);
+    }
+
+    &.is-revealed .media__image {
+      transform: none;
+      opacity: 1;
+    }
+
+    // A variant switch commits the revealed state in one frame (media-gallery.js
+    // `#revealOnSwap`): same 0-3-0 as the rule above, later in source, so `none` wins
+    // for the one frame the class is on. Off again by the time the load fade is needed.
+    &.is-revealed--instant .media__image {
+      transition: none;
+    }
+  }
+}
+
+// ─── Variables ────────────────────────────────────────────────────────────────
+
+.media-gallery {
+  --media-carousel-thumbs-size: 10rem;
+  --carousel-counter-min-width: var(--spacing-9);
+}
+
+// ─── Sticky offset ────────────────────────────────────────────────────────────
+
+.media-gallery--main {
+  --sticky-element-top: 3rem;
+  --carousel-controls-margin-top: 1.6rem;
+}
+
+// Thumbnail strip present — controls contain only absolute nav buttons, no margin needed
+.media-gallery__carousel-browse {
+  --carousel-controls-margin-top: 0;
+}
+
+// Exception: desktop has thumb but mobile thumbnail is hidden → counter/dots show on mobile → restore margin
+@include media-breakpoint-down(md) {
+  .media-gallery__carousel-browse:has(.media-gallery__carousel-thumbnails--mobile-hidden) {
+    --carousel-controls-margin-top: 1.6rem;
+  }
+}
+
+.header-pinned .media-gallery--main {
+  --sticky-element-top: calc(var(--header-height) + 3rem);
+}
+
+// ─── Item & Container ─────────────────────────────────────────────────────────
+
+.media-gallery__item {
+  border-radius: var(--media-radius, 0);
+}
+
+.media-gallery__item .deferred-media__poster-button {
+  height: 100%;
+}
+
+// ─── Carousel controls ────────────────────────────────────────────────────────
+
+.media-gallery__carousel {
+  .carousel__controls--absolute,
+  .carousel__controls--absolute-inside {
+    .carousel__button {
+      // --button-width: 4.8rem;
+      // --button-height: 4.8rem;
+    }
+  }
+}
+
+// ─── Zoom button ──────────────────────────────────────────────────────────────
+
+.media-gallery__zoom-dialog-button {
+  position: absolute;
+  inset-inline-end: 2rem;
+  inset-block-start: 2rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .media-gallery__zoom-dialog-button {
+    transition:
+      opacity var(--motion-ui) var(--motion-ease-fade),
+      visibility var(--motion-ui) var(--motion-ease-out);
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .product-media:hover .media-gallery__zoom-dialog-button {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// ─── Thumbnails ───────────────────────────────────────────────────────────────
+
+.media-gallery__carousel-thumbnails {
+  --thumb-ring-width: 1px;
+
+  // Mat band between 1px ring and image when active (theme background)
+  --thumb-ring-mat: 3px;
+}
+
+// WebKit mask on .media-mask-clip can square-off inset ring corners; thumbs rely on overflow + radius.
+.media-gallery__carousel-thumbnails .media-gallery__item.media-mask-clip {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+// Active ring on ::after — no padding; ring paints above media, same box inactive/active.
+.media-gallery__carousel-thumbnails .media-gallery__item {
+  --thumb-border-radius: min(0.4rem, var(--media-radius, 0));
+
+  position: relative;
+  overflow: hidden;
+  width: var(--media-carousel-thumbs-size);
+  border-radius: var(--thumb-border-radius);
+  box-sizing: border-box;
+}
+
+// The mat band's opening: an inset box whose OWN radius shapes the hole, with the
+// background painted outward from it. An inset box-shadow cannot do this — its inner
+// radius is max(0, r - spread), which squares off once the spread reaches the radius.
+// Transparent-to-opaque in the two states so the box-shadow interpolates, same as
+// ::after — which paints later and keeps the ring above this.
+.media-gallery__carousel-thumbnails .media-gallery__item::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--thumb-ring-width) + var(--thumb-ring-mat));
+  z-index: 1;
+  border-radius: var(--thumb-media-radius, var(--thumb-border-radius));
+  box-shadow: 0 0 0 100vmax transparent;
+  pointer-events: none;
+  transition: box-shadow var(--motion-ui-fast) var(--motion-ease-out);
+}
+
+.media-gallery__carousel-thumbnails .media-gallery__item.is-active::before {
+  box-shadow: 0 0 0 100vmax rgb(var(--color-background));
+}
+
+.media-gallery__carousel-thumbnails .media-gallery__item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: var(--thumb-border-radius);
+  clip-path: inset(0 round var(--thumb-border-radius));
+  pointer-events: none;
+
+  // Two inset layers in both states so box-shadow transitions interpolate
+  box-shadow:
+    inset 0 0 0 var(--thumb-ring-width) transparent,
+    inset 0 0 0 calc(var(--thumb-ring-width) + var(--thumb-ring-mat)) transparent;
+  transition: box-shadow var(--motion-ui-fast) var(--motion-ease-out);
+}
+
+.media-gallery__carousel-thumbnails .media-gallery__item.is-active::after {
+  box-shadow:
+    inset 0 0 0 var(--thumb-ring-width) rgb(var(--color-foreground)),
+    inset 0 0 0 calc(var(--thumb-ring-width) + var(--thumb-ring-mat)) rgb(var(--color-background));
+}
+
+// Horizontal thumbs: do not set min/max width on slides.
+// slidesPerView: "auto" uses .media-gallery__item { width: var(--media-carousel-thumbs-size) }.
+// Numeric slidesPerView (e.g. 6 @ 768px) needs Swiper's inline slide width — min/max would block it.
+.media-gallery__carousel-thumbnails--outside {
+  --media-carousel-thumbs-size: 6rem;
+
+  margin-block-start: var(--spacing-3);
+}
+
+@include media-breakpoint-down(md) {
+  // Horizontal thumb strip: overflow visible on mobile so partial next thumb peeks.
+  .media-gallery__carousel-thumbnails--outside {
+    .swiper {
+      overflow: visible;
+    }
+  }
+
+  // Hide thumbnail strip on mobile when carousel_thumbnail_mobile == 'none'.
+  // Uses a dedicated class instead of Tailwind `hidden` because carousel.js
+  // manages the `hidden` class via classList.toggle and would remove it at runtime.
+  .media-gallery__carousel-thumbnails--mobile-hidden {
+    display: none;
+  }
+}
+
+// ─── Browse layout ────────────────────────────────────────────────────────────
+
+.media-gallery__carousel-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  // Swiper updateSize() bails out when clientWidth === 0; grid/flex children need min-width: 0
+  width: 100%;
+  min-width: 0;
+
+  .media-gallery__carousel-container {
+    order: 1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .media-gallery__carousel-thumbnails--outside {
+    order: 2;
+    margin-block-start: 0;
+    min-width: 0;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .media-gallery__carousel-browse--desktop-vertical {
+    display: grid;
+
+    // minmax(0, 1fr) lets the main column shrink so Swiper gets a non-zero width
+    grid-template-columns: auto minmax(0, 1fr);
+
+    // Same row height as main column — thumb strip fills that height
+    align-items: stretch;
+    gap: var(--media-gallery-browse-gap, 2rem);
+
+    .media-gallery__carousel-container,
+    .media-gallery__carousel-thumbnails--outside {
+      order: unset;
+    }
+
+    .media-gallery__carousel-container {
+      min-height: 0;
+    }
+
+    // Promote thumb Swiper to same grid as main so row height = main (not wrapper min-content).
+    .media-gallery__carousel-thumbnails--outside {
+      display: contents;
+    }
+
+    .carousel__thumbnails-swiper {
+      width: var(--media-carousel-thumbs-vertical-size, 8rem);
+      min-width: 0;
+      min-height: 0;
+      align-self: stretch;
+      overflow: hidden;
+      transition: max-height var(--motion-ui) var(--motion-ease);
+    }
+  }
+}
+
+// Same vertical layout as --desktop-vertical but activates at lg (1024px) instead of md.
+// Used when the gallery is inside a constrained container (e.g. quick-view modal) where
+// vertical thumbs look unbalanced at medium viewport widths.
+@include media-breakpoint-up(lg) {
+  .media-gallery__carousel-browse--vertical-lg {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: var(--media-gallery-browse-gap, 2rem);
+
+    .media-gallery__carousel-container,
+    .media-gallery__carousel-thumbnails--outside {
+      order: unset;
+    }
+
+    .media-gallery__carousel-container {
+      min-height: 0;
+    }
+
+    .media-gallery__carousel-thumbnails--outside {
+      display: contents;
+    }
+
+    .carousel__thumbnails-swiper {
+      width: var(--media-carousel-thumbs-vertical-size, 8rem);
+      min-width: 0;
+      min-height: 0;
+      align-self: stretch;
+      overflow: hidden;
+      transition: max-height var(--motion-ui) var(--motion-ease);
+    }
+  }
+}
+
+// Vertical thumb Swiper: default .swiper-slide { height: 100% } breaks slidesPerView "auto"
+// (Swiper measures slide height; % in a column flex collapses / mis-resolves).
+.carousel__thumbnails-swiper.swiper-vertical .swiper-slide {
+  height: auto;
+  width: 100%;
+}
+
+// ─── Carousel peek mode ───────────────────────────────────────────────────────
+// overflow: visible is set via carousel--visible class on the carousel element.
+// Slide width is controlled by CSS so slidesPerView: "auto" reads the correct size.
+
+.media-gallery--carousel-peek {
+  .swiper-slide {
+    width: var(--media-carousel-peek-width, 85%);
+  }
+}
+
+// ─── Grid mode ────────────────────────────────────────────────────────────────
+
+.media-gallery__carousel-wrapper [data-media-id] {
+  scroll-margin-top: var(--sticky-element-top);
+}
+
+@include media-breakpoint-up(md) {
+  .media-gallery--grid .media-gallery__carousel-wrapper {
+    gap: var(--media-gap, 1rem);
+    grid-template-columns: var(--media-grid-columns);
+  }
+
+  // In grid mode, thumbnail strip must be hidden regardless of orientation.
+  // The vertical modifiers set display:grid on browse (overriding md:hidden via display:contents),
+  // which would leave the main container in the `auto` column at ~0 width.
+  // Reset browse to block so the main container fills full width, then hide thumbnails.
+  .media-gallery--grid .media-gallery__carousel-browse--desktop-vertical,
+  .media-gallery--grid .media-gallery__carousel-browse--vertical-lg {
+    display: block;
+  }
+
+  .media-gallery--grid .media-gallery__carousel-thumbnails--outside {
+    display: none;
+  }
+
+  .media-gallery--grid-1-column {
+    --media-grid-columns: 1fr;
+  }
+
+  .media-gallery--grid-2-column {
+    --media-grid-columns: 1fr 1fr;
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .media-gallery {
+    --carousel-controls-margin-top: var(--spacing-3);
+  }
+}

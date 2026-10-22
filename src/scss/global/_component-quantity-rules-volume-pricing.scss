@@ -1,0 +1,78 @@
+// @capability Quantity rules + volume pricing UI — bullet-separated rules list, zebra-striped price-break table with collapsible rows ([data-expanded]), loading state while a variant is fetching, and a compact tooltip variant.
+// @when Showing B2B quantity rules or volume price breaks (product page, cart, tooltip); pairs with src/js/modules/price-per-item.js. Reuse instead of a new price-break table.
+// @contract .quantity__rules (.divider), .volume-pricing[data-expanded] > .volume-pricing__row (--collapsible), .product-buy-volume-stack (its .loading-spinner shows while variant-picker.is-variant-fetching), .cart-items__vol-pricing-toggle.
+// @keywords volume pricing, quantity rules, price breaks, bulk discount, tiered pricing, B2B, min max increment, quantity discount
+
+@use "../mixins" as *;
+
+// General styles
+.quantity__rules {
+  .divider + .divider {
+    &::before {
+      content: "\2022";
+      margin-inline-end: var(--spacing-2);
+    }
+  }
+}
+
+.volume-pricing {
+  border-radius: 0.6rem;
+  padding-block: 1.6rem;
+  padding-inline: 2rem;
+  background: rgb(var(--color-foreground) / 4%);
+
+  &__row {
+    padding: 1rem 1.2rem;
+    border-radius: 0.6rem;
+
+    &:nth-child(odd) {
+      background: rgb(var(--color-background));
+    }
+  }
+
+  &[data-expanded="false"] .volume-pricing__row--collapsible {
+    display: none;
+  }
+}
+
+// Product page
+.product-buy-volume-stack {
+  margin-bottom: 1.6rem;
+
+  .loading-spinner {
+    display: none;
+  }
+}
+
+.product-information__details {
+  &:has(variant-picker.is-variant-fetching) {
+    .product-buy-volume-stack .loading-spinner {
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .price-per-item .price-per-item__current,
+    .quantity__rules-cart .quantity-cart {
+      display: none;
+    }
+  }
+}
+
+// Cart page
+.cart-items__vol-pricing-toggle {
+  width: 2.4rem;
+  height: 2.4rem;
+}
+
+@include media-breakpoint-up(md) {
+  .tooltip {
+    .volume-pricing {
+      padding-inline: 1.2rem;
+
+      &__row {
+        padding-block: 0.4rem;
+        padding-inline: 0.8rem;
+      }
+    }
+  }
+}

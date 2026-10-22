@@ -1,0 +1,765 @@
+{% doc %}
+  Outputs a <style> block containing
+
+  @font-face declarations and global CSS custom properties
+  (typography scale, spacing, layout, animation, border-radius) derived from theme settings. Iterates body and heading font roles to emit compact
+  @font-face rules, skipping duplicates.
+  Rendered once in the layout <head>.
+
+  @example
+  {% render 'css-variables' %}
+{% enddoc %}
+
+{% style %}
+  {%- comment -%}
+    Optimized font-face loading (compact)
+    - Iterate roles and variants; emit once per variant
+  {%- endcomment -%}
+
+  {%- liquid
+    assign loaded = ''
+    assign roles = 'body,head' | split: ','
+    assign font_weights = 'regular,bold' | split: ','
+    assign font_styles = 'normal,italic' | split: ','
+
+    # Body role has no letter-spacing / text-transform settings: it is always "as typed".
+    # Roles that can borrow either font (product card title, ...) fall back to these.
+    assign body_letter_spacing = 0
+    assign body_text_transform = 'none'
+
+    # Parse extra weights from settings
+    assign body_extra_weights_array = settings.body_extra_weights | strip | split: ','
+    assign heading_extra_weights_array = settings.heading_extra_weights | strip | split: ','
+
+    # Font body weight bolder
+    assign font_body_bolder = settings.type_body_font
+    for i in (1..9)
+      assign weight_modify = i | times: 100 | prepend: '+'
+      assign font_modified = settings.type_body_font | font_modify: 'weight', weight_modify
+
+      if font_modified != blank
+        assign font_body_bolder = font_modified
+        assign extra_weight = font_body_bolder.weight | split: ','
+        assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+        break
+      endif
+    endfor
+
+    # Subheading
+    if settings.subheading_font == 'body'
+      assign subheading_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign subheading_font_style = settings.type_body_font.style
+      assign subheading_font_weight = settings.subheading_font_weight | default: settings.type_body_font.weight
+
+      assign extra_weight = subheading_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign subheading_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign subheading_font_style = settings.type_heading_font.style
+      assign subheading_font_weight = settings.subheading_font_weight | default: settings.type_heading_font.weight
+
+      assign extra_weight = subheading_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Product card
+    if settings.pcard_title_font == 'body'
+      assign pcard_title_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign pcard_title_font_style = settings.type_body_font.style
+      assign pcard_title_font_weight = settings.pcard_title_font_weight | default: settings.type_body_font.weight
+
+      assign pcard_title_letter_spacing = body_letter_spacing
+      assign pcard_title_text_transform = body_text_transform
+
+      assign extra_weight = pcard_title_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign pcard_title_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign pcard_title_font_style = settings.type_heading_font.style
+      assign pcard_title_font_weight =settings.pcard_title_font_weight | default:settings.type_heading_font.weight
+      assign pcard_title_letter_spacing = settings.heading_letter_spacing
+      assign pcard_title_text_transform = settings.heading_text_transform
+
+      assign extra_weight = pcard_title_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Price
+    if settings.price_font == 'body'
+      assign price_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign price_font_style = settings.type_body_font.style
+      assign price_font_weight = settings.price_font_weight | default: settings.type_body_font.weight
+
+      assign extra_weight = price_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign price_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign price_font_style = settings.type_heading_font.style
+      assign price_font_weight =settings.price_font_weight | default:  settings.type_heading_font.weight
+
+      assign extra_weight = price_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Compare at price
+    if settings.compare_at_price_font == 'body'
+      assign compare_at_price_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign compare_at_price_font_style = settings.type_body_font.style
+      assign compare_at_price_font_weight = settings.compare_at_price_font_weight | default:settings.type_body_font.weight
+
+      assign extra_weight = compare_at_price_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign compare_at_price_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign compare_at_price_font_style = settings.type_heading_font.style
+      assign compare_at_price_font_weight = settings.compare_at_price_font_weight | default:settings.type_heading_font.weight
+
+      assign extra_weight = compare_at_price_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Badges
+    if settings.badge_font == 'body'
+      assign badge_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign badge_font_style = settings.type_body_font.style
+      assign badge_font_weight =settings.badge_font_weight | default: settings.type_body_font.weight
+
+      assign extra_weight = badge_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign badge_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign badge_font_style = settings.type_heading_font.style
+      assign badge_font_weight =settings.badge_font_weight | default: settings.type_heading_font.weight
+
+      assign extra_weight = badge_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Labels
+    if settings.label_font == 'body'
+      assign label_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign label_font_style = settings.type_body_font.style
+      assign label_font_weight = settings.label_font_weight | default:settings.type_body_font.weight
+
+      assign extra_weight = label_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign label_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign label_font_style = settings.type_heading_font.style
+      assign label_font_weight = settings.label_font_weight | default:settings.type_heading_font.weight
+
+      assign extra_weight = label_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Navigation
+    if settings.navigation_font == 'body'
+      assign navigation_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign navigation_font_style = settings.type_body_font.style
+      assign navigation_font_weight = settings.navigation_font_weight | default:  settings.type_body_font.weight
+
+      assign extra_weight = navigation_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign navigation_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign navigation_font_style = settings.type_heading_font.style
+      assign navigation_font_weight =  settings.navigation_font_weight | default: settings.type_heading_font.weight
+
+      assign extra_weight = navigation_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Button
+    if settings.button_font == 'body'
+      assign button_font_family = settings.type_body_font.family | append: ', ' | append: settings.type_body_font.fallback_families
+      assign button_font_style = settings.type_body_font.style
+      assign button_font_weight = settings.button_font_weight | default:settings.type_body_font.weight
+
+      assign extra_weight = button_font_weight | split: ','
+      assign body_extra_weights_array = body_extra_weights_array | concat: extra_weight
+    else
+      assign button_font_family = settings.type_heading_font.family | append: ', ' | append: settings.type_heading_font.fallback_families
+      assign button_font_style = settings.type_heading_font.style
+      assign button_font_weight = settings.button_font_weight | default:settings.type_heading_font.weight
+
+      assign extra_weight = button_font_weight | split: ','
+      assign heading_extra_weights_array = heading_extra_weights_array | concat: extra_weight
+    endif
+
+    # Media hover. The number lives here and nowhere else — the stylesheet reads
+    # the variable rather than carrying its own copy, so 'none' is genuinely the
+    # absence of the effect instead of a second rule competing with it.
+    assign media_hover_scale = 1.05
+    if settings.image_hover_effect == 'none'
+      assign media_hover_scale = 1
+    endif
+  %}
+
+  {%- for role in roles -%}
+    {%- liquid
+      assign base = nil
+      case role
+        when 'body'
+          assign base = settings.type_body_font
+          assign extra_weights_array = body_extra_weights_array
+        when 'head'
+          assign base = settings.type_heading_font
+          assign extra_weights_array = heading_extra_weights_array
+      endcase
+      if base == blank
+        continue
+      endif
+
+      assign weights_to_load = extra_weights_array | concat: font_weights | uniq | sort
+    -%}
+    {%- if weights_to_load != blank and weights_to_load.size > 0 -%}
+      {%- for extra_weight in weights_to_load -%}
+        {%- liquid
+          assign weight_value = extra_weight | strip
+          if weight_value == blank
+            continue
+          endif
+        -%}
+        {%- for style_value in font_styles -%}
+          {%- liquid
+            assign font_to_load = base
+            unless weight_value == 'normal'
+              assign font_to_load = font_to_load | font_modify: 'weight', weight_value
+            endunless
+            if style_value == 'italic'
+              assign font_to_load = font_to_load | font_modify: 'style', 'italic'
+            endif
+            assign url = font_to_load | font_url
+            assign key = url | default: role
+          -%}
+          {%- unless loaded contains key -%}
+            {{ font_to_load | font_face: font_display: 'swap' }}
+            {%- assign loaded = loaded | append: key | append: '|' -%}
+          {%- endunless -%}
+        {%- endfor -%}
+      {%- endfor -%}
+    {%- endif -%}
+  {%- endfor -%}
+
+  :root {
+    /* Page layout */
+    --page-width: {{ settings.page_width | divided_by: 10.0 }}rem;
+    --page-width-narrow: 88.0rem;
+
+    --logo-width: {{ settings.logo_width }}px;
+    --logo-width-mobile: {{ settings.logo_width_mobile }}px;
+    --logo-width-menu-drawer: {{ settings.logo_width_menu_drawer }}px;
+
+    /* Typography presets */
+    {%- liquid
+      assign min_breakpoint = 767
+      assign max_breakpoint = 1280
+      assign root_font_size = 10.0
+      assign breakpoint_diff = max_breakpoint | minus: min_breakpoint
+
+      # Create array of heading configurations
+      # Format: [prefix, multiplier, min_fallback, base_size_multiplier]
+      # assign heading_configs = 'hd,0.1,3.36,display|h1,0,2.8,4.0|h2,0,2.24,3.2|h3,0,1.96,2.8|h4,0,1.6,2.2' | split: '|'
+      assign heading_configs = 'hd,0,3.36,4.8|h1,0,2.8,4.0|h2,0,2.24,3.2|h3,0,1.96,2.8|h4,0,1.6,2.2|h5,0,1.6,1.8|h6,0,1.6,1.6' | split: '|'
+
+      assign desktop_scale = settings.heading_size_scale | divided_by: 100.0
+      assign mobile_scale = settings.heading_size_scale_mobile | divided_by: 100.0
+
+      for config in heading_configs
+        assign config_parts = config | split: ','
+        assign prefix = config_parts[0]
+        # assign multiplier = config_parts[1] | plus: 0
+        # min_fallback
+        assign min_size = config_parts[2] | plus: 0 | times: mobile_scale
+        # base_size
+        assign max_size = config_parts[3] | plus: 0 | times: desktop_scale
+
+        # Convert to pixels
+        assign min_px = min_size | times: root_font_size
+        assign max_px = max_size | times: root_font_size
+
+        # Calculate slope and coefficient
+        assign px_diff = max_px | minus: min_px
+        assign slope = px_diff | divided_by: breakpoint_diff
+        assign coefficient = slope | times: 100
+
+        # Calculate intercept
+        assign coefficient_times_min_breakpoint = coefficient | times: min_breakpoint
+        assign coefficient_divided = coefficient_times_min_breakpoint | divided_by: 100
+        assign intercept_px = min_px | minus: coefficient_divided
+        assign base_rem = intercept_px | divided_by: root_font_size
+
+        # Assign dynamic variables
+        assign min_var = prefix | append: '_min'
+        assign max_var = prefix | append: '_max'
+        assign coefficient_var = prefix | append: '_coefficient'
+        assign base_var = prefix | append: '_base'
+
+        assign temp = min_size
+        case min_var
+          when 'hd_min'
+            assign hd_min = temp
+          when 'h1_min'
+            assign h1_min = temp
+          when 'h2_min'
+            assign h2_min = temp
+          when 'h3_min'
+            assign h3_min = temp
+          when 'h4_min'
+            assign h4_min = temp
+          when 'h5_min'
+            assign h5_min = temp
+          when 'h6_min'
+            assign h6_min = temp
+        endcase
+
+        assign temp = max_size
+        case max_var
+          when 'hd_max'
+            assign hd_max = temp
+          when 'h1_max'
+            assign h1_max = temp
+          when 'h2_max'
+            assign h2_max = temp
+          when 'h3_max'
+            assign h3_max = temp
+          when 'h4_max'
+            assign h4_max = temp
+          when 'h5_max'
+            assign h5_max = temp
+          when 'h6_max'
+            assign h6_max = temp
+        endcase
+
+        assign temp = coefficient
+        case coefficient_var
+          when 'hd_coefficient'
+            assign hd_coefficient = temp
+          when 'h1_coefficient'
+            assign h1_coefficient = temp
+          when 'h2_coefficient'
+            assign h2_coefficient = temp
+          when 'h3_coefficient'
+            assign h3_coefficient = temp
+          when 'h4_coefficient'
+            assign h4_coefficient = temp
+          when 'h5_coefficient'
+            assign h5_coefficient = temp
+          when 'h6_coefficient'
+            assign h6_coefficient = temp
+        endcase
+
+        assign temp = base_rem
+        case base_var
+          when 'hd_base'
+            assign hd_base = temp
+          when 'h1_base'
+            assign h1_base = temp
+          when 'h2_base'
+            assign h2_base = temp
+          when 'h3_base'
+            assign h3_base = temp
+          when 'h4_base'
+            assign h4_base = temp
+          when 'h5_base'
+            assign h5_base = temp
+          when 'h6_base'
+            assign h6_base = temp
+        endcase
+      endfor
+    -%}
+    --font-size--mega-title: clamp(
+      {{hd_min}}rem,
+      calc({{hd_coefficient | round: 3}}vw + {{hd_base | round: 3}}rem),
+      {{hd_max}}rem
+    );
+    --font-size--h1: clamp(
+      {{h1_min}}rem,
+      calc({{h1_coefficient | round: 3}}vw + {{h1_base | round: 3}}rem),
+      {{h1_max}}rem
+    );
+    --font-size--h2: clamp(
+      {{h2_min}}rem,
+      calc({{h2_coefficient | round: 3}}vw + {{h2_base | round: 3}}rem),
+      {{h2_max}}rem
+    );
+    --font-size--h3: clamp(
+      {{h3_min}}rem,
+      calc({{h3_coefficient | round: 3}}vw + {{h3_base | round: 3}}rem),
+      {{h3_max}}rem
+    );
+    --font-size--h4: clamp(
+      {{h4_min}}rem,
+      calc({{h4_coefficient | round: 3}}vw + {{h4_base | round: 3}}rem),
+      {{h4_max}}rem
+    );
+    --font-size--h5: clamp(
+      {{h5_min}}rem,
+      calc({{h5_coefficient | round: 3}}vw + {{h5_base | round: 3}}rem),
+      {{h5_max}}rem
+    );
+    --font-size--h6: clamp(
+      {{h6_min}}rem,
+      calc({{h6_coefficient | round: 3}}vw + {{h6_base | round: 3}}rem),
+      {{h6_max}}rem
+    );
+    --font-size--paragraph: {{ settings.paragraph_font_size | divided_by: 10.0 }}rem;
+    --font-size--paragraph-small: {{ settings.paragraph_font_size | divided_by: 10.0 | times: 0.9 | round: 2 }}rem;
+
+    {%- liquid
+      assign type_presets = "paragraph, h1, h2, h3, h4, h5, h6" | split: ", "
+
+      for preset_name in type_presets
+        assign preset_size = '--font-size--[preset_name]' | replace: '[preset_name]', preset_name
+
+        if preset_name == 'paragraph'
+          assign preset_font = '--font-body--family'
+          assign preset_style = '--font-body--style'
+          assign preset_weight = '400'
+
+          echo '--font-[preset_name]--weight: [preset_weight];' | replace: '[preset_name]', preset_name | replace: '[preset_weight]', preset_weight
+        else
+          assign preset_font = '--font-heading--family'
+          assign preset_style = '--font-heading--style'
+          assign preset_weight = '--font-heading--weight'
+
+          echo '--font-[preset_name]--weight: var([preset_weight]);' | replace: '[preset_name]', preset_name | replace: '[preset_weight]', preset_weight
+        endif
+
+        echo '--font-[preset_name]--size: var([preset_size]);' | replace: '[preset_name]', preset_name | replace: '[preset_size]', preset_size
+        echo '--font-[preset_name]--family: var([preset_font]);' | replace: '[preset_name]', preset_name | replace: '[preset_font]', preset_font
+        echo '--font-[preset_name]--style: var([preset_style]);' | replace: '[preset_name]', preset_name | replace: '[preset_style]', preset_style
+      endfor
+    -%}
+
+    /* Line heights */
+    --font-mega-title--line-height: 1.2;
+    --font-h1--line-height: 1.2;
+    --font-h2--line-height: 1.3125;
+    --font-h3--line-height: 1.357;
+    --font-h4--line-height: 1.454;
+    --font-h5--line-height: 1.555;
+    --font-h6--line-height: 1.625;
+    --font-paragraph--line-height: 1.4;
+
+    --line-height--display-tight: 1;
+    --line-height--display-normal: 1.1;
+    --line-height--display-loose: 1.2;
+
+    --line-height--heading-tight: 1.2;
+    --line-height--heading-normal: 1.357;
+    --line-height--heading-loose: 1.625;
+
+    --line-height--subheading-tight: 1.2;
+    --line-height--subheading-normal: 1.357;
+    --line-height--subheading-loose: 1.625;
+
+    --line-height--body-tight: 1.2;
+    --line-height--body-normal: 1.4;
+    --line-height--body-loose: 1.6;
+
+    /* Spacing */
+    --spacing-scale-sm: 0.6;
+    --spacing-scale-md: 0.7;
+    --spacing-scale-default: 1.0;
+    --font-heading--spacing: clamp(2.4rem, .8em, 6rem);
+    --font-paragraph--spacing: clamp(2.4rem, .8em, 6rem);
+
+
+    /* ── Motion ───────────────────────────────────────────────────────────────
+       The whole theme's motion vocabulary. Tokens are named for WHAT THEY ARE
+       FOR, not for how long they last, so a fork can re-tune one kind of motion
+       without touching the others — re-timing every hover used to mean editing
+       113 call sites.
+
+       Durations, by intent:
+         ui-fast   micro feedback — a swatch, an icon, an underline
+         ui        the default UI response — hover, colour, border
+         overlay   dialogs and backdrops
+         swap      content the visitor just asked for — a filter, a replayed slide
+         reveal    content appearing on its own as the visitor scrolls
+         media-reveal  a hero / slide / banner image settling from oversized
+
+       Every token below is read from the ANIMATED element (entranceMotion() in
+       @theme/utilities resolves them with getComputedStyle), so any of them can
+       be scoped to a section or a component. */
+    --motion-ui-fast: 0.25s;
+    --motion-ui: 0.35s;
+    --motion-overlay: 0.5s;
+    --motion-swap: 0.6s;
+    --motion-reveal: 1.5s;
+    --motion-media-reveal: 1.3s;
+
+    --motion-ease: ease-in-out;
+    --motion-ease-out: cubic-bezier(0.3, 1, 0.3, 1);
+    --motion-ease-overlay: cubic-bezier(0.7, 0, 0.2, 1);
+
+    /* Entrances (scroll reveal, first paint, a replayed block). A long
+       exponential ease-out: most of the travel happens in the first few hundred
+       milliseconds and the rest settles slowly, which reads as content arriving
+       rather than switching on. The OPACITY runs on the same curve for the whole
+       duration (--motion-fade-ratio 1), so the fade and the rise stay in step —
+       a linear fade over half the run left most of the movement happening while
+       the element was still too faint to see it. A different curve for the
+       fade alone goes in --motion-ease-entrance-fade (unset = the same curve). */
+    --motion-ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+    --motion-fade-ratio: 1;
+
+    /* Transitions BETWEEN two states that only change opacity — a crossfade of
+       two stacked layers, an overlay, a hover tint. Linear keeps the blend
+       midpoint where it is, so two layers trading places never dip or flash. An
+       opacity change that accompanies movement rides the movement's own curve
+       instead (see above). */
+    --motion-ease-fade: linear;
+
+    /* Long media zoom (1.3s hover on a product image). Kept as its own curve
+       rather than folded into ease-out: measured against it, this one is up to
+       0.166 further along at the same moment — it has to leave quickly or a
+       1.3s zoom reads as sluggish. */
+    --motion-ease-media: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* How far a fade-up / slide-in travels. The generated start state caps it at
+       90% of the element's own height, so a short element never travels further
+       than it is tall. Same on every viewport. */
+    --motion-distance: 3.2rem;
+
+    /* Lists (motion-group): cards and rows arrive on their own, quicker rhythm —
+       a larger, shorter rise on a plain ease, one cell after another. The cells
+       on screen cascade; the ones below the fold follow together once the
+       cascade has played, instead of queueing behind it. */
+    --motion-list-distance: 5rem;
+    --motion-list-duration: 0.5s;
+    --motion-list-ease: ease;
+    --motion-stagger: 0.1s;
+
+    /* Tab panels (tabs-component). `sequence`: the outgoing panel leaves by
+       --motion-tab-distance while it fades, carrying on in the direction the
+       section's entrance travels (up for fade-up, out the far side for a slide),
+       then the incoming one enters the same way — one gesture, and the height change happens in the
+       gap between them. Any list in the incoming panel cascades in at the same
+       time. `crossfade` keeps the older behaviour: the incoming panel enters
+       over the outgoing one's --motion-exit fade. */
+    --motion-swap-mode: sequence;
+    --motion-tab-duration: 0.15s;
+    --motion-tab-distance: 2rem;
+    --motion-tab-ease: ease;
+    --motion-exit: 0.12s;
+
+    /* Text whose entrance runs split by word (motion-text.js): each word plays
+       the block's preset (a fade-up one rises out of its own clipping box), one
+       --motion-heading-stagger after the last — less when the last word would
+       start later than --motion-heading-span, so a paragraph lands as quickly
+       as a heading. The first word waits for the block's own Delay setting
+       only. */
+    --motion-heading-duration: 1s;
+    --motion-heading-stagger: 30ms;
+    --motion-heading-span: 600ms;
+    /* How far a word travels sideways when a slide-in preset runs split by
+       word — a vertical one rises 90% of the word's own height instead. */
+    --motion-split-distance: 0.5em;
+    /* An <em> highlight inside an entrance starts its sweep when its own words
+       are this fraction of the way through their entrance (expo-out: by 0.4
+       they are nearly in place) — not when the whole text has finished. */
+    --motion-highlight-start: 0.4;
+
+    /* A slideshow changes slide in sequence (slideshow.js): the outgoing
+       slide's text leaves first — word-by-word text up through its boxes, a
+       block entrance on in the direction it came — over --motion-slide-exit,
+       accelerating out; then the slide changes and the incoming text arrives. */
+    --motion-slide-exit: 0.4s;
+    --motion-slide-exit-ease: cubic-bezier(0.4, 0, 1, 1);
+    --motion-slide-exit-distance: 2rem;
+
+    /* The zoom kinds' start state. zoom-out settles a hero / slide / banner
+       image down from oversized over --motion-media-reveal; zoom-in grows a
+       faded element up into place. The zooms move on --motion-ease-zoom when it
+       is set, the entrance curve otherwise — read in JS, NOT defaulted here: a
+       var() fallback on :root would freeze the entrance curve at :root and
+       ignore a scoped override of it. */
+    --motion-zoom-in-scale: 0.95;
+    --motion-zoom-in-opacity: 0;
+    --motion-zoom-out-scale: 1.3;
+
+    /* The CSS image reveal (.image-zoom-reveal / .media-zoom-reveal): an image
+       that arrives after first paint fades in over this, on the UI ease-out.
+       Scale 1 = no zoom; the zoom belongs to the hero / slide / banner media
+       (the zoom-out kind above). */
+    --motion-image-reveal: 0.5s;
+    --motion-image-reveal-scale: 1;
+    --transform-origin-start: left;
+    --transform-origin-end: right;
+    --flip-x-factor: 1;
+
+    /* Hover is interaction response, not entrance, so it is deliberately NOT
+       governed by the Animations toggle — see _component-media.scss. This is
+       its own setting: 1 means the merchant turned the zoom off. */
+    --media-hover-scale: {{ media_hover_scale }};
+
+    /* Font families */
+    --font-body--family: {{ settings.type_body_font.family }}, {{ settings.type_body_font.fallback_families }};
+    --font-body--style: {{ settings.type_body_font.style }};
+    --font-body--weight: {{ settings.type_body_font.weight }};
+    --font-body--weight-bolder: {{ font_body_bolder.weight }};
+
+    --font-subheading--family: {{ subheading_font_family }};
+    --font-subheading--style: {{ subheading_font_style }};
+    --font-subheading--weight: {{ subheading_font_weight }};
+    --font-subheading--transform: {{ settings.subheading_text_transform }};
+    --font-subheading--letter-spacing: {{ settings.subheading_letter_spacing | divided_by: 100.0 }}em;
+    --font-subheading--size-scale: {{ settings.subheading_size_scale | divided_by: 100.0 }};
+    --font-subheading--size: {{ settings.subheading_size_scale | divided_by: 100.0 | times: settings.paragraph_font_size | divided_by: 10.0 }}rem;
+
+    --font-pcard-title--family: {{ pcard_title_font_family }};
+    --font-pcard-title--style: {{ pcard_title_font_style }};
+    --font-pcard-title--weight: {{ pcard_title_font_weight }};
+    --font-pcard-title--transform: {{ pcard_title_text_transform }};
+    --font-pcard-title--letter-spacing: {{ pcard_title_letter_spacing | divided_by: 100.0 }}em;
+    --font-pcard-title--size-scale: {{ settings.pcard_title_size_scale | divided_by: 100.0 }};
+    --font-pcard-title--size: {{ settings.pcard_title_size_scale | divided_by: 100.0 | times: settings.paragraph_font_size | divided_by: 10.0 }}rem;
+
+    --font-price--family: {{ price_font_family }};
+    --font-price--style: {{ price_font_style }};
+    --font-price--weight: {{ price_font_weight }};
+    --font-compare-at-price--family: {{ compare_at_price_font_family }};
+    --font-compare-at-price--style: {{ compare_at_price_font_style }};
+    --font-compare-at-price--weight: {{ compare_at_price_font_weight }};
+
+    --font-badge--family: {{ badge_font_family }};
+    --font-badge--style: {{ badge_font_style }};
+    --font-badge--weight: {{ badge_font_weight }};
+    --font-badge--transform: {{ settings.badge_text_transform }};
+    --font-badge--letter-spacing: {{ settings.badge_letter_spacing | divided_by: 100.0 }}em;
+
+    --font-label--family: {{ label_font_family }};
+    --font-label--style: {{ label_font_style }};
+    --font-label--weight: {{ label_font_weight }};
+    --font-label--size: {{ settings.label_font_size }}px;
+    --font-label--transform: {{ settings.label_text_transform }};
+    --font-label--letter-spacing: {{ settings.label_letter_spacing | divided_by: 100.0 }}em;
+
+    --font-navigation--family: {{ navigation_font_family }};
+    --font-navigation--style: {{ navigation_font_style }};
+    --font-navigation--weight: {{ navigation_font_weight }};
+    --font-navigation--transform: {{ settings.navigation_text_transform }};
+    --font-navigation--letter-spacing: {{ settings.navigation_letter_spacing | divided_by: 100.0 }}em;
+
+    --font-button--family: {{ button_font_family }};
+    --font-button--style: {{ button_font_style }};
+    --font-button--weight: {{ button_font_weight }};
+    --font-button--transform: {{ settings.button_text_transform }};
+    --font-button--letter-spacing: {{ settings.button_letter_spacing | divided_by: 100.0 }}em;
+
+    --font-heading--family: {{ settings.type_heading_font.family }}, {{ settings.type_heading_font.fallback_families }};
+    --font-heading--style: {{ settings.type_heading_font.style }};
+    --font-heading--weight: {{ settings.type_heading_font.weight }};
+    --font-heading--transform: {{ settings.heading_text_transform }};
+    --font-heading--letter-spacing: {{ settings.heading_letter_spacing | divided_by: 100.0 }}em;
+
+    /* Inputs */
+    --select-arrow-icon: url('{{ 'icon-select-arrow.svg' | asset_url }}');
+    --select-arrow-size: 1.2rem;
+    --select-arrow-gap: 0.6rem;
+    --input-padding-inline: 1.6rem;
+    --input-padding-block: 0.8rem;
+    --input-border-radius: {{ settings.input_corner_radius | divided_by: 10.0 }}rem;
+    --input-height: {{ settings.input_height | divided_by: 10.0 }}rem;
+    --input-border-width: {{ settings.input_border_width | divided_by: 10.0 }}rem;
+    --textareas-radius:  min({{ settings.input_corner_radius | divided_by: 10.0 }}rem, 1rem);
+
+    /* Buttons */
+    --button-corner-radius: {{ settings.button_corner_radius | divided_by: 10.0 }}rem;
+    --button-border-thickness: {{ settings.button_border_thickness | divided_by: 10.0 }}rem;
+    --button-height: {{ settings.button_height | divided_by: 10.0 }}rem;
+    --button-height-large: {{ settings.button_height | plus: 8 | divided_by: 10.0 }}rem;
+    --button-height-small: {{ settings.button_height | minus: 4 | divided_by: 10.0 }}rem;
+    --button-height-extra-small: {{ settings.button_height | minus: 12 | divided_by: 10.0 }}rem;
+
+    /* Z-index */
+    --layer-section-background: -2;
+    --layer-lowest: -1;
+    --layer-base: 0;
+    --layer-flat: 1;
+    --layer-raised: 2;
+    --layer-heightened: 4;
+    --layer-sticky: 8;
+    --layer-window-overlay: 10;
+    --layer-header-menu: 12;
+    --layer-overlay: 16;
+    --layer-menu-drawer: 18;
+    --layer-temporary: 40;
+
+    /* Badges */
+    --color-new-badge-background: {{ settings.new_badge_background.rgb }};
+    --color-new-badge-text: {{ settings.new_badge_text.rgb }};
+    --color-hot-badge-background: {{ settings.hot_badge_background.rgb }};
+    --color-hot-badge-text: {{ settings.hot_badge_text.rgb }};
+    --color-popular-badge-background: {{ settings.popular_badge_background.rgb }};
+    --color-popular-badge-text: {{ settings.popular_badge_text.rgb }};
+    --color-sale-badge-background: {{ settings.sale_badge_background.rgb }};
+    --color-sale-badge-background-alpha: {{ settings.sale_badge_background.alpha }};
+    --color-sale-badge-border-color: {{ settings.sale_badge_border_color.rgb }};
+    --color-sale-badge-text: {{ settings.sale_badge_text.rgb }};
+    --color-sold-out-badge-background: {{ settings.sold_out_badge_background.rgb }};
+    --color-sold-out-badge-text: {{ settings.sold_out_badge_text.rgb }};
+    --badge-corner-radius: {{ settings.badge_corner_radius | divided_by: 10.0 }}rem;
+    --sale-badge-border-width: {{ settings.sale_badge_border_width | divided_by: 10.0 }}rem;
+    --sale-badge-radius: {{ settings.sale_badge_radius | divided_by: 10.0 }}rem;
+
+    /* Hardcoded Color */
+    --color-white: 255 255 255;
+    --color-black: 0 0 0;
+    --color-focus-ring: 27 87 192;
+
+    /* Product card */
+    --product-card-media-radius: {{ settings.pcard_media_radius | divided_by: 10.0 }}rem;
+    /* Beside a thumbnail-sized media the card radius is capped here, and a box card's
+       media takes this share of the (capped) radius. */
+    --product-card-radius-cap: 1rem;
+    --product-card-media-radius-ratio: 0.66;
+
+    /* Dialog */
+    --dialog-radius: {{ settings.dialog_radius | divided_by: 10.0 }}rem;
+    --dialog-backdrop-opacity: 70%;
+
+    /* Cart bubble */
+    --color-cart-bubble-text: {{ settings.cart_bubble_text }};
+    --color-cart-bubble-background: {{ settings.cart_bubble_background }};
+
+    /* Labels */
+    --color-label-text: {{ settings.label_text_color.rgb }};
+    --color-label-bg: rgb({{ settings.label_background.rgb }} / {{ settings.label_background.alpha }});
+    --color-label-border: {{ settings.label_border_color.rgb }};
+    --label-border-width: {{ settings.label_border_width }}px;
+    --label-corner-radius: {{ settings.label_corner_radius | divided_by: 10.0 }}rem;
+
+    /* Flag */
+    --localization-flag-width: 2rem;
+    --localization-flag-ratio: 1;
+    --localization-flag-radius: 0;
+  }
+
+  /* linear() easing: Chrome 113, Firefox 112, Safari 17.2. Inside @supports so a
+     browser without it keeps the bezier instead of dropping the whole
+     transition. The media curve is ease-out-cubic sampled every 2.5% of the
+     run, with the last part straightened so it LANDS at 60% — the 1.3s hover
+     zoom no longer spends its last ~390ms moving an image edge by fractions of
+     a pixel, which Firefox draws as a shiver. */
+  @supports (animation-timing-function: linear(0, 1)) {
+    :root {
+      --motion-ease-media: linear(0, 0.12 2.5%, 0.23 5%, 0.33 7.5%, 0.421 10%, 0.504 12.5%, 0.578 15%, 0.645 17.5%, 0.704 20%, 0.756 22.5%, 0.802 25%, 0.841 27.5%, 0.875 30%, 0.904 32.5%, 0.928 35%, 0.947 37.5%, 0.963 40%, 0.975 42.5%, 0.984 45%, 0.991 47.5%, 0.995 50%, 0.997 52.5%, 0.998 55%, 0.999 57.5%, 1 60%, 1);
+    }
+  }
+
+  /* ── Motion on small screens ───────────────────────────────────────────────
+     Only the lists change: a shorter rise and a quicker cascade, because a card
+     is a much larger share of a phone screen and more of them come into view
+     per flick. Reveals keep their full duration and distance — the entrance is
+     the same gesture on every viewport. */
+  @media (max-width: 767.98px) {
+    :root {
+      --motion-list-distance: 3rem;
+      --motion-list-duration: 0.3s;
+      --motion-stagger: 0.05s;
+    }
+  }
+{% endstyle %}

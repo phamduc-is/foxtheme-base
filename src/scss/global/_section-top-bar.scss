@@ -1,0 +1,58 @@
+@use "../mixins" as *;
+
+// ─── Top bar ──────────────────────────────────────────────────────────────────
+
+.top-bar {
+  --font-paragraph--line-height: 1.3334;
+
+  line-height: var(--font-paragraph--line-height);
+}
+
+.top-bar--show-separator-line {
+  box-shadow: inset 0 -0.1rem 0 0 rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+.top-bar__inner {
+  display: grid;
+  grid-template-areas: "center";
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+
+.top-bar__zone {
+  min-width: 0;
+}
+
+.top-bar__zone--left {
+  grid-area: left;
+  justify-self: start;
+}
+
+.top-bar__zone--center {
+  grid-area: center;
+  justify-self: center;
+}
+
+.top-bar__zone--right {
+  grid-area: right;
+  justify-self: end;
+}
+
+.top-bar .text-block {
+  overflow-wrap: break-word;
+}
+
+@include media-breakpoint-up(lg) {
+  .top-bar__inner {
+    grid-template-areas: "left center right";
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .top-bar {
+    --font-paragraph--line-height: 1.4286;
+
+    font-size: calc(var(--font-size--paragraph) * 0.933334);
+  }
+}

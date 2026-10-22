@@ -1,0 +1,66 @@
+@use "../mixins" as *;
+
+// ─── Pickup availability ──────────────────────────────────────────────────────
+
+.pickup-availabilities__info-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.6rem;
+  padding: 1.6rem 1.2rem;
+  border: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+.pickup-availabilities__info-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.2rem;
+}
+
+.pickup-availabilities__info-description {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.dialog--local-pickup {
+  --dialog-content-padding-inline: 2.4rem;
+  --dialog-content-padding-block: 2.4rem;
+}
+
+.pickup-availabilities__dialog-header {
+  padding-inline-end: 4rem;
+  padding-block-end: 1.6rem;
+  border-block-end: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+.pickup-location__wrapper {
+  padding-top: 1.6rem;
+}
+
+.pickup-location__wrapper + .pickup-location__wrapper {
+  border-block-start: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+  margin-top: 1.6rem;
+}
+
+.pickup-location__address-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.pickup-location__availability-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.pickup-location__availability-wrapper .icon--check {
+  color: rgb(var(--color-notification-success));
+}
+
+.pickup-location__availability-wrapper .icon--close,
+.pickup-availabilities__info-content .icon--close {
+  color: rgb(var(--color-notification-error));
+}

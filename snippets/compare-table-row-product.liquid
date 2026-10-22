@@ -1,0 +1,35 @@
+<template data-compare-rows-template>
+  <table>
+    <tr>
+      {%- if product != blank -%}
+        {%- for block in section.blocks -%}
+          <td
+            class="compare-table__col compare-table__col--type-{{ block.type }}"
+            data-compare-key="{{ block.type }}"
+          >
+            {%- case block.type -%}
+              {%- when 'info' -%}
+                {% render 'compare-table-col-product-info', product: product, block: block, show_remove_button: true %}
+              {%- when 'price' -%}
+                {% render 'price', product_resource: product %}
+              {%- when 'description' -%}
+                {% render 'compare-table-col-product-description', product: product, block: block %}
+              {%- when 'vendor' -%}
+                {{- product.vendor -}}
+              {%- when 'type' -%}
+                {{- product.type -}}
+              {%- when 'variants' -%}
+                {%- unless product.has_only_default_variant -%}
+                  {% render 'compare-table-col-product-variants', product: product %}
+                {%- endunless -%}
+              {%- when 'metafield' -%}
+                {%- unless block.settings.metafield_key == blank -%}
+                  {% render 'compare-table-col-product-metafield', product: product, block: block %}
+                {%- endunless -%}
+            {%- endcase -%}
+          </td>
+        {%- endfor -%}
+      {%- endif -%}
+    </tr>
+  </table>
+</template>

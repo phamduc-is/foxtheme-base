@@ -1,0 +1,29 @@
+@use "../mixins" as *;
+@use "sass:math";
+
+$width-container: 88rem;
+$padding-container: 3.2rem;
+
+// ─── Policy Container ─────────────────────────────────────────────────────────
+
+.main-content .shopify-policy {
+  &__container {
+    padding-block: 4.8rem;
+    padding-inline: 1.6rem;
+    max-width: $width-container + $padding-container;
+  }
+
+  &__title {
+    padding-bottom: 2.4rem;
+  }
+
+  @include media-breakpoint-up(md) {
+    &__container {
+      padding-block: 6rem;
+    }
+
+    &__title {
+      padding-bottom: 4rem;
+    }
+  }
+}

@@ -1,0 +1,103 @@
+// @capability Scheme-aware gradient fade painted on both edges of a horizontal (or, via .is--axis-y, vertical) scroll row; each side hides automatically once scrolled to the beginning/end.
+// @when Any overflow-x/overflow-y row that needs a scroll hint (tab bars, filter pills, chip rows, vertical trigger stacks); pairs with src/js/modules/swipe-component.js or flex-carousel.js, which toggle is--active / is--beginning / is--end from scroll position.
+// @contract .edge__shadows wrapper around a .swiper or .swipe element; state classes .is--active, .is--beginning, .is--end drive the ::before/::after gradient opacity. Add .is--axis-y (mirrors swipe-component.js's data-axis="y") to fade top/bottom instead of left/right.
+// @keywords edge fade, scroll fade, gradient mask, overflow hint, scroll shadow, horizontal scroll, vertical scroll, fade edges
+
+@use "../mixins" as *;
+
+// ─── Edge shadows ─────────────────────────────────────────────────────────────
+// Wrap .swiper or .swipe elements to create fade-out shadows on sides.
+
+.edge__shadows {
+  position: relative;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    pointer-events: none;
+    z-index: 2;
+    width: clamp(var(--page-padding), 10%, var(--page-padding) + 6.5rem);
+    background: linear-gradient(
+      to right,
+      rgb(var(--color-background) / 100%) var(--page-padding),
+      rgb(var(--color-background) / 0%)
+    );
+    transition: opacity var(--motion-ui-fast) var(--motion-ease-fade);
+    opacity: 0;
+  }
+
+  &::before {
+    inset-inline-start: calc(var(--page-padding) * -1);
+    transform: scaleX(var(--flip-x-factor));
+  }
+
+  &::after {
+    inset-inline-end: calc(var(--page-padding) * -1);
+    transform: scaleX(calc(-1 * var(--flip-x-factor)));
+  }
+
+  &.is--active {
+    &::before,
+    &::after {
+      opacity: 1;
+    }
+  }
+
+  &.is--beginning::before {
+    opacity: 0;
+  }
+
+  &.is--end::after {
+    opacity: 0;
+  }
+
+  @media (min-width: 1200px) {
+    &::before,
+    &::after {
+      width: clamp(
+        calc(var(--page-padding) + 1.5rem),
+        calc(var(--page-padding) + 10%),
+        calc(var(--page-padding) + 6.5rem)
+      );
+    }
+  }
+
+  // ─── Per-breakpoint halves ──────────────────────────────────────────────────
+  // A carousel gets one fade wrapper per regime because each has its own driver:
+  // FlexCarousel follows Swiper's events, swipe-component follows scrollLeft once
+  // `destroyBelow` has torn Swiper down. There is deliberately NO breakpoint muting
+  // here — state is driver-owned: swipe-component calls setActive(false) above the
+  // mobile breakpoint, FlexCarousel clears its wrappers on `carousel:destroyed` (and
+  // skips any wrapper upgraded with is="swipe-component"), so whichever driver is not
+  // in charge simply holds no state classes. Muting `--desktop` below md by media query
+  // was wrong where Swiper legitimately survives there (destroyBelow is conditional on
+  // enable_swipe_on_mobile in flex-carousel and blocks/_product-recommendations): it
+  // blanked a fade whose driver was alive and correct. The `--desktop` / `--mobile`
+  // modifiers stay in the markup as driver markers only; they carry no CSS.
+
+  // Vertical scroll: fade top/bottom instead of left/right, flush with the
+  // container (no page-padding bleed — vertical isn't full-bleed). Height is
+  // a plain override var, not derived from --page-padding like the
+  // horizontal fade — set --edge-height on the element to customize.
+  &.is--axis-y {
+    &::before,
+    &::after {
+      inset-block: auto;
+      inset-inline: 0;
+      width: auto;
+      height: var(--edge-height, 4rem);
+      background: linear-gradient(to bottom, rgb(var(--color-background) / 100%), rgb(var(--color-background) / 0%));
+    }
+
+    &::before {
+      inset-block-start: 0;
+    }
+
+    &::after {
+      inset-block-end: 0;
+      transform: scaleY(-1);
+    }
+  }
+}

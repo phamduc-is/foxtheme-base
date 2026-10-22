@@ -1,0 +1,21 @@
+{% doc %}
+  Renders a flex container combining a pre-rendered icon and text, with a gap driven by block settings.
+  Used as a layout wrapper inside blocks that pair an icon with a label or description.
+
+  @param {string} [icon] - Pre-rendered icon HTML (e.g. from the icon snippet)
+  @param {string} [text] - Pre-rendered text HTML
+  @param {string} [attributes] - Raw HTML attributes string applied to the wrapper div
+  @param {string} [class] - Additional CSS classes applied to the wrapper div
+  @param {object} [settings] - Block settings object passed to gap-style snippet
+
+  @example
+  {% render 'icon-with-text', icon: icon_html, text: text_html, settings: block.settings %}
+{% enddoc %}
+<div 
+  class="icon-with-text flex items-center gap-style{% if class != blank %} {{ class }}{% endif %}" 
+  style="{% render 'gap-style', settings: settings %}"
+  {{ attributes }}
+>
+  {{ icon }}
+  {{ text }}
+</div>

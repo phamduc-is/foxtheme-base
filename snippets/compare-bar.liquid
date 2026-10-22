@@ -1,0 +1,99 @@
+{%- liquid
+  unless settings.dialog_color_scheme_inherit
+    assign color_scheme = settings.dialog_color_scheme
+  else
+    assign color_scheme = settings.color_schemes | first
+  endunless
+-%}
+{%- capture placeholder_item -%}
+  <li
+    data-compare-bar-item-placeholder
+    class="compare-bar__item compare-bar__item-placeholder"
+  >
+    {%- comment -%}
+      A dashed frame drawn as SVG, not a CSS mask: only a real <rect> can round its corners
+      with the slot (`rx` comes from the same custom properties in compare.scss).
+    {%- endcomment -%}
+    <svg class="compare-bar__item-placeholder-frame" aria-hidden="true" focusable="false">
+      <rect width="100%" height="100%"></rect>
+    </svg>
+  </li>
+{%- endcapture -%}
+<compare-bar class="compare-bar left-0 right-0 bottom-0 page-width color-{{ color_scheme }}">
+  <button
+    on:click="/handleToggleList"
+    type="button"
+    class="compare-bar__toggle btn btn--icon-only btn--secondary"
+    aria-label="{{ 'actions.toggle_compare_list' | t }}"
+  >
+    {%- render 'icon', icon: 'caret-down', size: 'semi-small' -%}
+  </button>
+  <div class="compare-bar__inner flex flex-col gap-2">
+    <div class="compare-bar__header flex items-center justify-between gap-2">
+      <div class="compare-bar__header-text flex">
+        <span class="compare-bar__header-heading h4">{{- 'content.compare' | t -}}</span>
+        <span class="compare-bar__header-count">
+          (
+          <span ref="counter" class="counter">0</span>
+          /{{ settings.compare_limit }}&nbsp;{{ 'content.compare_items' | t }})
+        </span>
+      </div>
+      <div class="compare-bar__actions flex items-center gap-3 shrink-0">
+        <button
+          is="compare-clear"
+          type="button"
+          disabled
+          class="compare-bar__clear hidden md:inline-flex text-capitalize button-unstyled reversed-link reversed-link--underline"
+        >
+          <span class="reversed-link__text">{{- 'actions.remove_all' | t -}}</span>
+        </button>
+        <button
+          is="compare-open"
+          type="button"
+          class="compare-bar__open btn btn--primary"
+          disabled
+          {% if settings.compare_type == 'page' %}
+            {% if settings.compare_page != blank %}
+              data-page-url="{{ settings.compare_page.url }}"
+            {% endif %}
+          {% else %}
+            aria-controls="compare-drawer-dialog"
+            aria-haspopup="dialog"
+          {% endif %}
+        >
+          <span class="btn__text" data-label="{{ 'content.compare' | t | escape }}">{{- 'content.compare' | t -}}</span>
+        </button>
+      </div>
+    </div>
+    <div class="compare-bar__collapse">
+      <div class="compare-bar__collapse-inner flex flex-col gap-2">
+        <div class="compare-bar__list-wrap swipe-all swipe-all--auto-cols">
+          <ul
+            ref="compareList"
+            class="compare-bar__list swipe__inner"
+            style="{% render 'gap-style', column_gap_mobile: 8, column_gap: 10 %}"
+          >
+            {%- for i in (1..5) -%}
+              {{ placeholder_item }}
+            {%- endfor -%}
+          </ul>
+        </div>
+        {%- comment -%}
+          Outside the list on purpose: compare.js rebuilds the list with `innerHTML`, which
+          would take a template inside it down with the old slots.
+        {%- endcomment -%}
+        <template data-compare-bar-placeholder-template>{{ placeholder_item }}</template>
+        <div class="compare-bar__clear-mobile flex md:hidden">
+          <button
+            is="compare-clear"
+            type="button"
+            disabled
+            class="compare-bar__clear text-capitalize button-unstyled reversed-link reversed-link--underline"
+          >
+            <span class="reversed-link__text">{{- 'actions.remove_all' | t -}}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</compare-bar>

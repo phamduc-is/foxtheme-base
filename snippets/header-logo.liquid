@@ -1,0 +1,62 @@
+{% doc %}
+  Renders the header logo as either an image or a text fallback.
+  On the homepage the wrapper is an <h1>; on all other pages it is a <div>.
+  Supports separate desktop and mobile logo images with responsive srcset.
+  The mobile logo is hidden on desktop via CSS; desktop logo is hidden on mobile.
+
+  @example
+  {% render 'header-logo' %}
+{% enddoc %}
+
+{%- liquid
+  assign wrapper_tag = 'div'
+  if request.page_type == 'index'
+    assign wrapper_tag = 'h1'
+  endif
+-%}
+<{{ wrapper_tag }} class="header__logo flex justify-center items-center m-0">
+  <a
+    href="{{ routes.root_url }}"
+    class="h3 relative flex{% unless settings.logo %} header__logo--text{% else %} header__logo--image{% endunless %}"
+  >
+    {%- if settings.logo != blank -%}
+      {%- liquid
+        assign logo = settings.logo
+        assign logo_width = settings.logo_width
+        assign logo_width_2x = logo_width | times: 2
+
+        assign logo_mobile = settings.logo_mobile
+        assign logo_width_mobile = settings.logo_width_mobile
+        assign logo_width_mobile_2x = logo_width_mobile | times: 2
+
+        if logo_mobile == blank
+          assign logo_mobile = logo
+        endif
+      -%}
+      {%- if logo_mobile -%}
+        <img
+          srcset="{{ logo_mobile | image_url: width: logo_width_mobile }} 1x, {{ logo_mobile | image_url: width: logo_width_mobile_2x }} 2x"
+          src="{{ logo_mobile | image_url: width: logo_width_mobile }}"
+          loading="eager"
+          width="{{ logo_mobile.width }}"
+          height="{{ logo_mobile.height }}"
+          alt="{{ logo_mobile.alt | default: shop.name | escape }}"
+          class="logo header__logo--mobile lg:hidden"
+          sizes="{{ logo_width_mobile }}px"
+        >
+      {%- endif -%}
+      <img
+        srcset="{{ logo | image_url: width: logo_width }} 1x, {{ logo | image_url: width: logo_width_2x }} 2x"
+        src="{{ logo | image_url: width: logo_width }}"
+        loading="eager"
+        width="{{ logo.width }}"
+        height="{{ logo.height }}"
+        alt="{{ logo.alt | default: shop.name | escape }}"
+        class="logo header__logo--desktop lg:block hidden"
+        sizes="{{ logo_width }}px"
+      >
+    {%- else -%}
+      {{ shop.name }}
+    {%- endif -%}
+  </a>
+</{{ wrapper_tag }}>

@@ -1,0 +1,72 @@
+{% liquid
+  assign placement = block.settings.placement | default: 'media'
+%}
+{% render 'label', text: block.settings.text, placement: placement, shopify_attributes: block.shopify_attributes, settings: block.settings %}
+
+{% schema %}
+{
+  "name": "t:names.label",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "text",
+      "label": "t:settings.text"
+    },
+    {
+      "type": "select",
+      "id": "placement",
+      "label": "t:settings.placement",
+      "options": [
+        {
+          "value": "media",
+          "label": "t:options.label_on_media"
+        },
+        {
+          "value": "content",
+          "label": "t:options.label_in_content"
+        }
+      ],
+      "default": "media"
+    },
+    {
+      "type": "header",
+      "content": "t:content.margin",
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    },
+    {
+      "type": "range",
+      "id": "mobile-margin-scale",
+      "label": "t:settings.mobile_scale",
+      "min": 20,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 80,
+      "visible_if": "{{ block.settings.placement == 'content' }}"
+    }
+  ]
+}
+{% endschema %}

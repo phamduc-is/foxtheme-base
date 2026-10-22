@@ -1,0 +1,41 @@
+{% doc %}
+  A card-shaped skeleton shown while a product list is fetched (product
+  recommendations section/block). Media box at the card's aspect ratio plus a
+  title line and a price line, so the fetched card lands close to the same
+  height — a bare ratio box is far shorter than a card with its text.
+
+  @param {string} [image_ratio] - Card aspect ratio; blank → global card ratio, `auto` → 3/4
+  @param {string} [mode] - `vertical` (default) or `horizontal`: thumbnail beside the two lines,
+
+  the shape of a horizontal card (a `list` layout). The thumbnail reads the same `--media-width` / `--media-width-mobile` the real card does, so
+  wherever the card's width is set, the skeleton follows.
+
+  @example
+  {% render 'product-card-placeholder', image_ratio: block.settings.pcard_image_ratio %}
+  {% render 'product-card-placeholder', image_ratio: block.settings.pcard_image_ratio, mode: 'horizontal' %}
+{% enddoc %}
+
+{%- liquid
+  assign ratio = image_ratio
+  if ratio == blank
+    assign ratio = settings.pcard_aspect_ratio
+  endif
+  if ratio == blank or ratio == 'auto'
+    assign ratio = '3/4'
+  endif
+-%}
+{%- if mode == 'horizontal' -%}
+  <div class="product-card-placeholder product-card-placeholder--horizontal" style="--ratio: {{ ratio }};" aria-hidden="true">
+    <div class="product-card-placeholder__media"></div>
+    <div class="product-card-placeholder__text">
+      <div class="product-card-placeholder__line"></div>
+      <div class="product-card-placeholder__line product-card-placeholder__line--short"></div>
+    </div>
+  </div>
+{%- else -%}
+  <div class="product-card-placeholder" style="--ratio: {{ ratio }};" aria-hidden="true">
+    <div class="product-card-placeholder__media"></div>
+    <div class="product-card-placeholder__line"></div>
+    <div class="product-card-placeholder__line product-card-placeholder__line--short"></div>
+  </div>
+{%- endif -%}

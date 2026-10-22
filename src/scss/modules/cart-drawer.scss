@@ -1,0 +1,205 @@
+@use "../mixins" as *;
+
+// ─── Cart drawer ──────────────────────────────────────────────────────────────
+
+.cart-items-component {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+// ─── Layout ───────────────────────────────────────────────────────────────────
+
+.cart-drawer__inner {
+  height: 100%;
+  overflow: hidden;
+}
+
+.cart-drawer__content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.cart-drawer__header {
+  min-height: 6rem;
+  padding: var(--padding-block, 1rem) var(--padding-inline, 1.6rem);
+  border-bottom: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+.cart-drawer__items {
+  padding: var(--padding-block, 2rem) var(--padding-inline, 1.6rem);
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-drawer__empty {
+  padding: var(--padding-block, 6rem) var(--padding-inline, 1.6rem);
+}
+
+.cart-drawer__summary {
+  margin-top: auto;
+}
+
+// ─── Summary ──────────────────────────────────────────────────────────────────
+
+.cart-drawer-summary__inner {
+  padding: var(--padding-block, 2rem) var(--padding-inline, 1.6rem);
+}
+
+.cart-drawer-summary__container:not(:has([data-has-recommendations="false"])) {
+  background-color: rgb(var(--color-background-secondary));
+}
+
+.cart-drawer-summary__addons {
+  gap: 0.6rem;
+  background: transparent;
+  color: inherit;
+}
+
+.cart-drawer__addon-inner {
+  padding: var(--padding-top, 2rem) var(--padding-inline, 1.6rem) var(--padding-bottom, 2.4rem);
+}
+
+.cart-drawer__free-shipping-goal {
+  padding: var(--padding-block, 2rem) var(--padding-inline, 1.6rem) var(--padding-bottom, 0);
+}
+
+// ─── Recommendations ──────────────────────────────────────────────────────────
+
+.cart-drawer__recommendation-wrapper {
+  padding: var(--padding-block, 2rem) var(--padding-inline, 1.6rem);
+}
+
+.cart-drawer__recommendation-wrapper[data-has-recommendations="false"] {
+  display: none;
+}
+
+.cart-drawer__recommendation .carousel__controls--group {
+  --carousel-controls-margin-top: 0;
+}
+
+.cart-drawer__recommendation .product-card--horizontal {
+  --product-card-media-width: 6.2rem;
+}
+
+.cart-drawer__recommendation-product {
+  flex: 0 0 var(--cart-recommendation-product-width, 88%);
+}
+
+.cart-drawer__recommendation-products .product-card--horizontal {
+  padding: 0.8rem 1.6rem 0.8rem 0.8rem;
+  background-color: rgb(var(--color-background));
+  border-radius: min(1rem, var(--cart-thumbnail-border-radius));
+}
+
+.cart-drawer__recommendation-heading {
+  padding-bottom: 1.2rem;
+}
+
+// Skeleton of the horizontal card that replaces it: thumbnail at the card's media width, then a
+// title line and a price line. The old single box was 12rem tall at 2.5% opacity — invisible, and
+// the wrong height — so the list looked like it grew out of nothing.
+.cart-drawer__recommendation-placeholder {
+  --cart-recommendation-thumb: 7rem;
+
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.cart-drawer__recommendation-placeholder-thumb,
+.cart-drawer__recommendation-placeholder-line {
+  background-color: rgb(var(--color-foreground) / 10%);
+}
+
+.cart-drawer__recommendation-placeholder-thumb {
+  flex: 0 0 var(--cart-recommendation-thumb);
+  aspect-ratio: 1;
+  border-radius: min(1rem, var(--cart-thumbnail-border-radius));
+}
+
+.cart-drawer__recommendation-placeholder-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.cart-drawer__recommendation-placeholder-line {
+  height: 1.4rem;
+  width: 70%;
+  border-radius: 0.4rem;
+
+  &--short {
+    width: 40%;
+  }
+}
+
+.cart-drawer__recommendation--single .cart-drawer__recommendation-product {
+  --cart-recommendation-product-width: 100%;
+}
+
+.cart-summary__inner.show-seperator-line {
+  border-top: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(xl) {
+  .cart-drawer__header {
+    --padding-block: 1.6rem;
+    --padding-inline: 2.4rem;
+  }
+
+  .cart-drawer-summary__inner,
+  .cart-drawer__recommendation-wrapper,
+  .cart-drawer__items {
+    --padding-block: 2.4rem;
+    --padding-inline: 2.4rem;
+  }
+
+  .cart-drawer__empty {
+    --padding-block: 6rem;
+    --padding-inline: 2.4rem;
+  }
+
+  .cart-drawer__addon-inner {
+    --padding-top: 2.4rem;
+    --padding-bottom: 4rem;
+    --padding-inline: 2.4rem;
+  }
+
+  .cart-drawer__free-shipping-goal {
+    --padding-block: 2.4rem;
+    --padding-inline: 2.4rem;
+  }
+
+  .cart-drawer__recommendation .product-card--horizontal {
+    --product-card-media-width: 8rem;
+  }
+
+  .cart-drawer__recommendation-product {
+    --cart-recommendation-product-width: 72%;
+  }
+}
+
+@include media-breakpoint-down(lg) {
+  .cart-drawer-summary__inner {
+    border-radius: 2rem 2rem 0 0;
+  }
+
+  .cart-drawer__close:not(.cart-drawer__close--addon) {
+    position: absolute;
+    top: 0;
+    inset-inline-end: 0;
+    width: 6rem;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-inline-start: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+  }
+}

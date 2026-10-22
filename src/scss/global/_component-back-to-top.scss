@@ -1,0 +1,32 @@
+// @capability Fixed bottom-corner "back to top" button that fades/slides in once the page is scrolled, and auto-hides while the sticky add-to-cart bar is visible.
+// @when Any scroll-to-top affordance; pairs with src/js/modules/back-to-top.js (the back-to-top custom element toggles the .show class on scroll).
+// @contract <back-to-top> element with class .back-to-top containing a .btn; visible state via .show; auto-hidden when body has .sticky-add-to-cart__wrapper[data-sticky="true"].
+// @keywords back to top, scroll to top, scroll up button, floating button, fixed corner button, fade in on scroll
+
+// ─── Back to top ─────────────────────────────────────────────────────────────
+
+.back-to-top {
+  bottom: 2.4rem;
+  inset-inline-end: 2.4rem;
+  transition-property: opacity, visibility, transform;
+  transition-duration: var(--motion-ui);
+  transition-timing-function: var(--motion-ease-fade), var(--motion-ease), var(--motion-ease);
+  z-index: var(--layer-sticky);
+  transform: translateY(2rem);
+
+  &.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateZ(0);
+  }
+
+  .btn {
+    box-shadow: 0 0 15px rgb(var(--color-primary-button-text) / 20%);
+  }
+
+  body:has(.sticky-add-to-cart__wrapper[data-sticky="true"]) & {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(2rem);
+  }
+}

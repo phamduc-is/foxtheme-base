@@ -1,0 +1,264 @@
+{% liquid
+  assign image = block.settings.image
+  assign image_mobile = block.settings.image_mobile
+  assign toggle_overlay = block.settings.toggle_overlay
+  assign overlay_color = block.settings.overlay_color
+  assign aspect_ratio = image.aspect_ratio | default: '16/9'
+  assign aspect_ratio_mobile = image_mobile.aspect_ratio | default: aspect_ratio
+
+  capture priority
+    render 'image-priority', section: section, preload: block.settings.enable_preload_image
+  endcapture
+  assign priority = priority | split: ','
+  assign loading = priority[0]
+  assign fetchpriority = priority[1]
+
+  # Exactly one image per page carries fetchpriority=high (image-priority's
+  # design) — that is the LCP candidate. No Link-header preload for it: Chrome
+  # evaluates a responsive preload's imagesizes against the 980px default
+  # viewport before <meta viewport>, so phones fetched a desktop candidate on
+  # top of the real one (see product-media.liquid).
+%}
+
+{%- comment -%}
+  Parallax is scroll-driven decoration, so it sits under the theme's "Scroll
+  animations" switch the way every other scroll effect does — a merchant who
+  turns that off and still sees the banner drift would file it as a bug. The
+  user-level opt-out (prefers-reduced-motion) is enforced in the component, not
+  here, because it is not the merchant's to overrule.
+{%- endcomment -%}
+{%- liquid
+  assign parallax = false
+  if settings.animations_enabled and block.settings.enable_parallax
+    assign parallax = true
+  endif
+
+  # With parallax on, parallax-component plays the zoom-out ITSELF, on the
+  # individual `scale` property — see its #startEntrance. So the wrapping
+  # motion-component goes for EVERY parallax mode, not only `fixed`: under `fixed`
+  # its transform would become the containing block the pinned media is held
+  # against (which is why that mode used to lose the entrance entirely), and in
+  # the moving modes it would only zoom the same picture twice. Videos get the
+  # entrance too now; they never had one here.
+  assign entrance = settings.animations_enabled
+  if parallax
+    assign entrance = false
+  endif
+-%}
+
+{%- capture sizes -%}{% if section.settings.container == 'full' %}100vw{% else %}min({{ settings.page_width }}px, 100vw){% endif %}{%- endcapture -%}
+
+{%- comment -%}
+  `fixed` pins the media to the VIEWPORT, so left alone it is sized to the
+  viewport too — and in a boxed section on a wide screen that scales the photo
+  up to cover the whole window while the frame reveals only its middle, pushing
+  whatever the picture is of out of the opening.
+
+  The frame's width is exact rather than approximated: `.section-grid` lays its
+  child out as `var(--page-padding) minmax(0, 1fr) var(--page-padding)` and a
+  boxed section takes the middle column, so the frame is the container minus
+  twice that padding. `100%` is the right base because a fixed element resolves
+  percentages against the initial containing block — the viewport WITHOUT the
+  scrollbar, which is exactly the container's width (measured: 100% = 1617 where
+  100vw = 1632).
+{%- endcomment -%}
+{%- liquid
+  assign parallax_frame_width = '100%'
+  if section.settings.container != 'full'
+    assign parallax_frame_width = 'calc(100% - 2 * var(--page-padding))'
+  endif
+-%}
+{%- if parallax -%}
+  <parallax-component
+    class="block w-full h-full"
+    data-parallax="{{ block.settings.parallax_intensity }}"
+    data-parallax-direction="{{ block.settings.parallax_direction }}"
+    data-parallax-entrance
+    style="--parallax-frame-width: {{ parallax_frame_width }};"
+  >
+{%- endif -%}
+{% if block.settings.type == 'image' %}
+  {%- if entrance -%}
+    <motion-component
+      data-motion="zoom-out"
+      class="media block w-full h-full"
+      style="--ratio: {{ aspect_ratio }};--ratio-mobile: {{ aspect_ratio_mobile }};"
+      {{ block.shopify_attributes }}
+    >
+  {%- else -%}
+    <div
+      class="media block w-full h-full"
+      style="--ratio: {{ aspect_ratio }};--ratio-mobile: {{ aspect_ratio_mobile }};"
+      {{ block.shopify_attributes }}
+    >
+  {%- endif -%}
+  {%- if image != blank -%}
+    <picture class="media-wrapper block w-full h-full relative overflow-hidden">
+      {%- if image_mobile -%}
+        <source
+          media="(max-width: 767px)"
+          srcset="{{ image_mobile | image_url: width: '400x' }} 400w, {{ image_mobile | image_url: width: '600x' }} 600w, {{ image_mobile | image_url: width: '800x' }} 800w, {{ image_mobile | image_url: width: '1000x' }} 1000w"
+          width="{{ image_mobile.width }}"
+          height="{{ image_mobile.height }}"
+        >
+      {%- endif -%}
+      {% assign alt = image.alt | default: shop.name | escape %}
+      {{-
+        image
+        | image_url: width: image.width
+        | image_tag:
+          loading: loading,
+          fetchpriority: fetchpriority,
+          sizes: sizes,
+          widths: '300,400,500,600,700,800,900,1000,1200,1400,1600,1800,2000,2200,2400,2600,2800,3000,3200',
+          alt: alt
+      -}}
+    </picture>
+  {%- else -%}
+    <div class="media-wrapper h-full overflow-hidden">
+      {{- 'lifestyle-1' | placeholder_svg_tag: 'placeholder w-full h-full' -}}
+    </div>
+  {%- endif -%}
+  {%- if entrance -%}
+    </motion-component>
+  {%- else -%}
+    </div>
+  {%- endif -%}
+{% else %}
+  {% render 'video-markup',
+    player_only: true,
+    video: block.settings.video,
+    video_loop: true,
+    video_autoplay: true,
+    video_ratio: 'auto',
+    disable_controls: true,
+    loading: loading,
+    fetchpriority: fetchpriority,
+    section_id: section.id
+  %}
+{% endif %}
+
+{%- if parallax -%}
+  </parallax-component>
+{%- endif -%}
+
+{%- if toggle_overlay -%}
+  {% render 'overlay',
+    overlay_type: block.settings.overlay_type,
+    overlay_color: overlay_color,
+    overlay_gradient: block.settings.overlay_gradient
+  %}
+{%- endif -%}
+{% schema %}
+{
+  "name": "t:content.media",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "type",
+      "label": "t:settings.type",
+      "options": [
+        { "value": "image", "label": "t:options.image" },
+        { "value": "video", "label": "t:options.video" }
+      ],
+      "default": "image"
+    },
+    {
+      "type": "header",
+      "content": "t:content.media"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "t:settings.image",
+      "visible_if": "{{ block.settings.type == 'image' }}"
+    },
+    {
+      "type": "image_picker",
+      "id": "image_mobile",
+      "label": "t:settings.image_mobile",
+      "visible_if": "{{ block.settings.type == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "t:settings.video",
+      "visible_if": "{{ block.settings.type == 'video' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "toggle_overlay",
+      "label": "t:settings.media_overlay",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "overlay_type",
+      "label": "t:settings.overlay_style",
+      "options": [
+        { "value": "color", "label": "t:options.color" },
+        { "value": "gradient", "label": "t:options.gradient" }
+      ],
+      "default": "color",
+      "visible_if": "{{ block.settings.toggle_overlay }}"
+    },
+    {
+      "type": "color",
+      "id": "overlay_color",
+      "label": "t:settings.overlay_color",
+      "alpha": true,
+      "default": "#00000033",
+      "visible_if": "{{ block.settings.toggle_overlay and block.settings.overlay_type == 'color' }}"
+    },
+    {
+      "type": "color_background",
+      "id": "overlay_gradient",
+      "label": "t:settings.gradient_color",
+      "default": "linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.75) 100%)",
+      "visible_if": "{{ block.settings.toggle_overlay and block.settings.overlay_type == 'gradient' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.parallax"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_parallax",
+      "label": "t:settings.enable_parallax",
+      "info": "t:info.enable_parallax",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "parallax_direction",
+      "label": "t:settings.parallax_direction",
+      "options": [
+        { "value": "vertical", "label": "t:options.vertical" },
+        { "value": "horizontal", "label": "t:options.horizontal" },
+        { "value": "zoom", "label": "t:options.zoom" },
+        { "value": "fixed", "label": "t:options.fixed" }
+      ],
+      "default": "vertical",
+      "visible_if": "{{ block.settings.enable_parallax }}"
+    },
+    {
+      "type": "range",
+      "id": "parallax_intensity",
+      "label": "t:settings.parallax_intensity",
+      "min": 0.3,
+      "max": 1,
+      "step": 0.1,
+      "default": 0.6,
+      "visible_if": "{{ block.settings.enable_parallax and block.settings.parallax_direction != 'fixed' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_preload_image",
+      "label": "t:settings.enable_preload_image",
+      "info": "t:info.enable_preload_image"
+    }
+  ],
+  "presets": []
+}
+{% endschema %}

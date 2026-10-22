@@ -1,0 +1,23 @@
+{% doc %}
+  Renders a product metafield value in a compare table column.
+  Splits `block.settings.metafield_key` into namespace + key (e.g. "custom.storage_size"),
+  reads the metafield from the product, and outputs it via the `metafield_tag` filter.
+
+  Note: `metafield_tag` does not support list metafields other than a list of
+  'Single line text' values, and metaobjects are not supported.
+
+  @param {product} product - The product to read the metafield from
+  @param {object} block - The compare-table metafield block (provides settings.metafield_key)
+
+  @example
+  {% render 'compare-table-col-product-metafield', product: product, block: block %}
+{% enddoc %}
+{%- liquid
+  assign parts = block.settings.metafield_key | split: '.'
+  assign mf_namespace = parts[0]
+  assign mf_key = parts[1]
+  assign metafield = product.metafields[mf_namespace][mf_key]
+-%}
+{%- if metafield != blank -%}
+  {{- metafield | metafield_tag -}}
+{%- endif -%}

@@ -1,0 +1,87 @@
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.idea/
+# No trailing slash: build worktrees get node_modules as a SYMLINK, and a
+# `dir/` pattern only ever matches a real directory.
+node_modules
+.github
+
+# Shopify CLI files
+.shopify/
+shopify.theme.toml
+assets/
+
+# Generated languages files
+languages/
+
+# Generated codebase map — derived from source via `yarn map`; regenerated on
+# install (postinstall) + after structural changes. Local-only to avoid merge
+# conflicts and staleness in VCS.
+PROJECT-MAP.md
+
+## Release files
+release
+*.zip
+
+# Residue from the pre-worktree test-presets, which swapped preset JSON over the working tree.
+# Nothing writes it any more; the ignore stays so an old leftover cannot be committed.
+.json_backup/
+
+## Terser name cache (for deterministic minification)
+.terser-name-cache.json
+
+# Agent skills — node_modules only, skill files are committed
+.agents/skills/*/node_modules/
+.claude/skills/*/node_modules/
+
+# Claude session locks (per-process, never commit)
+.claude/*.lock
+
+# Parallel-build worktrees (created by /build-batch, per-machine, never commit).
+# Kept OUTSIDE .claude/ so Cursor/VS Code auto-detects them in Source Control:
+# `git.repositoryScanMaxDepth` is 2 here (see .vscode/settings.json), and
+# .claude/worktrees/<slug> sat one level too deep. It also keeps a checked-out
+# copy of the theme out of Claude's own config namespace.
+.worktrees/
+.claude/worktrees/
+
+# L2 runtime-tester evidence (screenshots) — throwaway, agent should delete it
+.l2-evidence/
+
+# Section/block briefs — per-dev scratch specs (Phase 1 Think), not shared. The
+# `_TEMPLATE.md` stays tracked as the format reference; everything else is local.
+# EXCEPT archive/: `wt:clean` moves a merged feature's brief there — the agreed
+# spec of live code IS shared (committed), so /revise works from the real spec.
+# Kept OUTSIDE .claude/ (moved from .claude/briefs/): Claude Code gates every
+# edit under .claude/ behind the "edit its own settings" confirm, which
+# permissions.allow cannot silence — briefs must live elsewhere to be
+# editable silently by design-to-brief and /revise.
+.briefs/*
+!.briefs/_TEMPLATE.md
+!.briefs/archive
+!.briefs/archive/**
+
+# Claude toolkit: per-developer local overrides — never commit (kept out of the
+# core→child sync). The rest of .claude/ IS committed and inherited from core.
+.claude/settings.local.json
+
+# Local-only: overview giữa các chat (không commit)
+.cursor/chat-summary-latest.md
+.cursor/chat-summaries/
+
+# Generated from the motion registry — yarn motion:manifest
+.motion-manifest.json
+
+
+# audit-coverage fixtures + reports (scripts/audit-coverage.mjs) — generated, never commit
+templates/*.audit-*.json
+layout/audit.liquid
+.audit-coverage/
+.audit-url/

@@ -1,0 +1,72 @@
+{%- capture toggle_button_class -%}
+  {%- unless block.settings.button_style == 'plain' -%}{{ block.settings.button_size }}{%- endunless -%}
+{%- endcapture -%}
+<div
+  class="localization-block"
+  {{ block.shopify_attributes }}
+>
+  {%- render 'dropdown-localization',
+    block_id: block.id,
+    show_country: block.settings.enable_country_selector,
+    show_language: block.settings.enable_language_selector,
+    show_country_flag: true,
+    toggle_button_style: block.settings.button_style,
+    toggle_button_class: toggle_button_class
+  -%}
+</div>
+{% schema %}
+{
+  "name": "t:names.localization",
+  "tag": null,
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enable_country_selector",
+      "label": "t:settings.enable_country_selector",
+      "info": "t:info.enable_country_selector",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_language_selector",
+      "label": "t:settings.enable_language_selector",
+      "info": "t:info.enable_language_selector",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.button",
+      "visible_if": "{{ block.settings.enable_country_selector }}"
+    },
+    {
+      "type": "select",
+      "id": "button_style",
+      "label": "t:settings.style",
+      "options": [
+        { "value": "plain", "label": "t:options.plain" },
+        { "value": "outline", "label": "t:options.outline" }
+      ],
+      "default": "plain",
+      "visible_if": "{{ block.settings.enable_country_selector }}"
+    },
+    {
+      "type": "select",
+      "id": "button_size",
+      "label": "t:settings.size",
+      "options": [
+        { "value": "btn--extra-small", "label": "t:options.extra_small" },
+        { "value": "btn--small", "label": "t:options.small" },
+        { "value": "btn--medium", "label": "t:options.medium" },
+        { "value": "btn--large", "label": "t:options.large" }
+      ],
+      "default": "btn--small",
+      "visible_if": "{{ block.settings.enable_country_selector and block.settings.button_style != 'plain' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.localization"
+    }
+  ]
+}
+{% endschema %}

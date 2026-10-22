@@ -1,0 +1,19 @@
+{% render 'cart-summary-addons-accordion', section: section, block_attributes: block.shopify_attributes, color_scheme: block.settings.color_scheme, parent_color_scheme: section.settings.color_scheme %}
+{% schema %}
+{
+  "name": "t:names.addons",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-2"
+    }
+  ]
+}
+{% endschema %}

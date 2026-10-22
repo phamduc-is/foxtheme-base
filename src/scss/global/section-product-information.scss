@@ -1,0 +1,119 @@
+@use "../mixins" as *;
+@use "./component-product";
+@use "./section-product-recommendations";
+@use "./sticky-add-to-cart";
+
+// ─── Product Information Grid ─────────────────────────────────────────────────
+
+.product-information--main {
+  contain: layout;
+}
+
+.product-information__grid {
+  --details-offset-left: 0;
+  --details-offset-right: 0;
+  --sticky-element-top: 3rem;
+
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1/-1;
+}
+
+.product-information__media,
+.product-information__details {
+  min-width: 0;
+}
+
+.header-pinned .product-information__grid {
+  --sticky-element-top: calc(var(--header-height) + var(--spacing-6));
+}
+
+@include media-breakpoint-up(md) {
+  .product-information__below-gallery:not(:empty) {
+    margin-block-start: 4rem;
+  }
+
+  .product-information__grid {
+    --details-offset-left: min(5rem, var(--gap));
+
+    grid-column: 2;
+  }
+
+  .product-information__grid--media-left {
+    grid-template-columns: minmax(0, var(--product-media-column, 55%)) minmax(0, 1fr);
+  }
+
+  .product-information__grid--media-left .product-information__details {
+    padding-inline: var(--details-offset-left) var(--details-offset-right);
+  }
+
+  .product-information__grid--media-right {
+    // Column order inverted so media (order: 1) lands in the wider right column
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--product-media-column, 55%));
+  }
+
+  .product-information__grid--media-right .product-information__media {
+    order: 1;
+  }
+
+  .product-information__grid--media-right .product-information__details {
+    padding-inline: var(--details-offset-right) var(--details-offset-left);
+  }
+
+  .section--full .product-information__grid.product-information__grid--media-left,
+  .section--full .product-information__grid.product-information__grid--media-right {
+    grid-column: 1/-1;
+    padding-inline: 1.5rem;
+  }
+
+  // Custom container: the page column, capped at `container_custom_width`
+  // (--page-width-custom) and centred. Narrower viewports never reach the cap.
+  .section--custom .product-information__grid {
+    justify-self: center;
+    width: 100%;
+    max-width: var(--page-width-custom, 124rem);
+  }
+
+  // The page padding centres on the custom width at every breakpoint (floored
+  // on --page-gutter, then 13.5rem past 1536px), so past 1536px a width wider than the
+  // theme's page width widens the column too (see .section-grid--custom).
+  .section--custom {
+    --page-padding: max(
+      var(--page-gutter),
+      50vw - var(--scrollbar-width, 15px) / 2 - var(--page-width-custom, 124rem) / 2
+    );
+
+    @media (min-width: 1536px) {
+      --page-padding: max(13.5rem, 50vw - var(--scrollbar-width, 15px) / 2 - var(--page-width-custom, 124rem) / 2);
+    }
+  }
+
+  .product-information__grid.product-information__grid--media-none {
+    grid-template-columns: auto;
+  }
+
+  .product-information__grid.product-information__grid--media-none .product-information__details {
+    width: var(--page-width-narrow);
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 1440px) {
+  .product-information__grid {
+    --details-offset-left: var(--gap);
+    --details-offset-right: 2rem;
+  }
+
+}
+
+@include media-breakpoint-down(md) {
+  .product-information__grid .product-information__media,
+  .product-information__grid .product-information__details {
+    grid-column: 2/3;
+  }
+
+  .product-information__media + .product-information__details {
+    margin-block-start: var(--spacing-6);
+  }
+}
+

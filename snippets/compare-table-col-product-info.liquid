@@ -1,0 +1,60 @@
+{% doc %}
+  Renders the product info cell (media + title + optional view-details button) in a
+  compare table column. The remove button is only rendered when `show_remove_button` is true.
+
+  @param {product} product - The product to render
+  @param {object} block - The compare-table info block (provides settings.enable_view_details_button, settings.image_border_radius)
+  @param {boolean} [show_remove_button] - Whether to render the remove-from-compare button
+
+  @example
+  {% render 'compare-table-col-product-info', product: product, block: block, show_remove_button: true %}
+{% enddoc %}
+{%- liquid
+  assign featured_media = product.featured_media
+  # Non-image media (video / external_video / model) only expose dimensions via preview_image.
+  if featured_media.media_type != 'image'
+    assign featured_media = product.featured_media.preview_image
+  endif
+-%}
+<div class="compare-table__col-media relative">
+  {%- comment -%}
+    The radius lives on this inner wrapper, not on __col-media: border-style adds
+    `overflow: hidden` and the remove button below hangs outside the media box.
+  {%- endcomment -%}
+  <div
+    class="compare-table__col-image border-style"
+    style="{% render 'border-style', border_radius: block.settings.image_border_radius %}"
+  >
+    {% render 'responsive-image',
+      image: featured_media,
+      image_ratio: '1',
+      sizes: '400px',
+      svg_placeholder: 'product-1'
+    %}
+  </div>
+  {%- if show_remove_button -%}
+    <button
+      type="button"
+      is="compare-remove"
+      data-product-id="{{ product.id }}"
+      class="compare-table__col-remove btn btn--white rounded btn--no-label"
+      aria-label="{{ 'accessibility.remove_item' | t: title: product.title }}"
+    >
+      {% render 'icon', icon: 'close', size: 'extra-small' %}
+    </button>
+  {%- endif -%}
+</div>
+<div class="compare-table__col-info text-center">
+  <h3 class="product-card__title">
+    <a class="reversed-link block" href="{{ product.url }}">
+      <span class="reversed-link__text">{{- product.title -}}</span>
+    </a>
+  </h3>
+  {%- if block.settings.enable_view_details_button -%}
+    <a href="{{ product.url }}" class="btn btn--primary w-full">
+      <span class="btn__text flex gap-1 items-center" data-label="{{ 'actions.view_details' | t | escape }}">
+        {{- 'actions.view_details' | t -}}
+      </span>
+    </a>
+  {%- endif -%}
+</div>

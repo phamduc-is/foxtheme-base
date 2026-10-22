@@ -1,0 +1,58 @@
+{% doc %}
+  Static "Message" textarea for the contact form. Rendered by
+  `blocks/contact-form.liquid` via `content_for 'block'` from INSIDE its
+  `{% form 'contact' %}` tag, so the field posts as part of that form.
+
+  Always spans the full grid width (`form-field--full`) — a message box in one
+  of two columns is not a layout the merchant should be able to pick, so this
+  block carries no Size group.
+
+  @param {string} [parent_id] - Unique id of the hosting contact-form block. A
+  static child's own block.id is the literal static id — identical for every
+  form instance — so two contact forms on one page would collide without it.
+
+  @example
+  {% content_for 'block', type: '_contact-field-body', id: 'contact-field-body', parent_id: block.id %}
+{% enddoc %}
+
+{%- liquid
+  assign uid = parent_id | default: block.id
+  assign field_id = 'ContactForm-body-' | append: uid
+  assign label = 'blocks.contact_form.your_message' | t
+-%}
+
+<div
+  class="form-field form-field--full form-field--body"
+  {{ block.shopify_attributes }}
+>
+  <label class="form-label" for="{{ field_id }}">
+    {{- label -}}
+  </label>
+  <textarea
+    rows="5"
+    id="{{ field_id }}"
+    class="form-control form-control--textarea w-full"
+    name="contact[{{ label }}]"
+    {% if block.settings.placeholder != blank %}
+      placeholder="{{ block.settings.placeholder }}"
+    {% endif %}
+  >
+    {%- # theme-check-disable -%}
+    {{- form.body -}}
+    {%- # theme-check-enable -%}
+  </textarea>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.contact_field_body",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "placeholder",
+      "label": "t:settings.placeholder"
+    }
+  ]
+}
+{% endschema %}

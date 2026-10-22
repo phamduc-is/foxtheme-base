@@ -1,0 +1,503 @@
+// @capability Swiper carousel chrome — prev/next nav buttons (inline group, absolute overlay revealed on hover/focus, nav-end layout), slide counter, every pagination style (bullets, dynamic bullets, pill, pill-autoplay fill, scale, progress bar + autoplay variant), controls alignment, and whether the strip overflows its box or is clipped. Mobile-only overrides throughout.
+// @when Any Swiper-based slider/carousel controls; pairs with src/js/modules/carousel.js and flex-carousel.js (Swiper init, --autoplay-progress). Never restyle Swiper bullets or hand-roll nav arrows. Sections drive all of this from the shared `carousel_*` settings via snippets/carousel-controls.liquid + snippets/carousel-class.liquid — reach for those before emitting these classes by hand.
+// @contract .carousel (--visible | --hidden) wrapping .swiper; controls in .carousel__controls (--group | --absolute | --absolute-inside | --align-start/-center/-end | --nav-end | mobile variants) with .carousel__button--prev/--next, .carousel__counter, .carousel__pagination--style-pill/-pill-autoplay/-scale/-progress/-progress-autoplay; Swiper-injected .swiper-pagination-bullet classes. --align-* is emitted only for a non-default alignment, so an unaligned row keeps its layout's own justification and loses cleanly to a .justify-* utility.
+// @keywords carousel, slider, swiper, nav arrows, prev next, pagination dots, bullets, progress bar, autoplay indicator, slide counter, hover reveal arrows
+
+@use "../mixins" as *;
+
+// ─── Base ─────────────────────────────────────────────────────────────────────
+
+.carousel {
+  display: block;
+  position: relative;
+  contain: layout;
+
+  .swiper {
+    container-type: inline-size;
+  }
+
+  &--visible .swiper {
+    overflow: visible;
+  }
+
+  // The counterpart is stated rather than left implicit. Sections emit one of the two
+  // classes from the `carousel_overflow` setting, and `carousel--hidden` used to be
+  // emitted with no rule behind it anywhere — it read as dead markup while actually
+  // being load-bearing, since it doubles as a scoping hook and relied on Swiper's own
+  // `overflow: hidden` default to do the clipping.
+  &--hidden .swiper {
+    overflow: hidden;
+  }
+}
+
+// ─── Nav button ───────────────────────────────────────────────────────────────
+
+.carousel__button {
+  --button-height: 4.4rem;
+
+  &.swiper-button-disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed;
+  }
+
+  // `watchOverflow` lock (on by default in Swiper): the nav elements get this class when
+  // every slide already fits, so there is nothing to navigate — a blog row filtered down
+  // below slidesPerView, a collection list with fewer cards than columns. The rule that
+  // hides them normally ships in Swiper's own stylesheet, which this theme never links:
+  // `assets/swiper.css` is dead weight and `critical-css.liquid` is the live copy, which
+  // lacks it. Without this the arrows stayed visible and inert.
+  // `!important` because the group layout sets `display: flex` at higher specificity.
+  &.swiper-button-lock {
+    display: none !important;
+  }
+}
+
+.carousel__counter {
+  min-width: var(--carousel-counter-min-width, 3.2rem);
+  text-align: center;
+}
+
+.carousel__pagination {
+  position: relative;
+
+  // Same lock as the nav buttons above, pagination flavour.
+  &.swiper-pagination-lock {
+    display: none !important;
+  }
+}
+
+// ─── Controls wrapper ─────────────────────────────────────────────────────────
+
+.carousel__controls {
+  &.hidden-control {
+    display: none;
+  }
+
+  // Group: buttons inline, flanking combined/pagination slots
+  &--group {
+    margin-top: var(--carousel-controls-margin-top, 3.2rem);
+    display: flex;
+    align-items: center;
+    gap: var(--carousel-controls-gap, 1.2rem);
+
+    .carousel__button:not(.btn) {
+      display: flex;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+
+      // Expanded tap target
+      &::before {
+        content: "";
+        position: absolute;
+        inset: calc(var(--carousel-controls-gap, 0.8rem) / 2 * -1);
+      }
+    }
+  }
+
+  // Absolute: buttons float over carousel, hidden until hover/focus
+  &--absolute-inside {
+    display: flex;
+    align-items: center;
+    justify-content: var(--carousel-controls-justify, center);
+    margin-block-start: var(--carousel-controls-margin-top, 0);
+
+    // The floating layout normally contributes no row of its own — the buttons are
+    // absolute, so a top margin would only push empty space. Add dots and there IS a row,
+    // sitting directly under the content with nothing between them. Match the inline
+    // group's 3.2rem rather than inventing a second number. The :has() lands at 0-2-0 and
+    // so beats the 0-1-0 rule above, which is what lets the two cases share one class.
+    &:has(.carousel__pagination) {
+      margin-block-start: var(--carousel-controls-margin-top, 3.2rem);
+    }
+  }
+
+  // Alignment — emitted only when the merchant picks something other than the layout's own
+  // default, so a row with no modifier keeps exactly the justification it had before this
+  // existed: flex-start for --group (no declaration at all), center for --absolute-inside.
+  // `justify-content` is declared here directly rather than through
+  // --carousel-controls-justify. Setting the variable would have meant giving --group a
+  // `justify-content` of its own, which lands at 0-1-0 — the same weight as the `.justify-*`
+  // utilities several call sites pass through `class:`, leaving source order as the only
+  // tiebreak. Declaring it only on the modifier means an unaligned row declares nothing and
+  // the utility wins outright.
+  // Placed after --absolute-inside on purpose: that block reads the variable at the same
+  // 0-1-0, so this has to come later to win when both classes are present.
+  &--align-start {
+    justify-content: flex-start;
+  }
+
+  &--align-center {
+    justify-content: center;
+  }
+
+  &--align-end {
+    justify-content: flex-end;
+  }
+
+  &--absolute,
+  &--absolute-inside {
+    .carousel__button {
+      position: absolute;
+      top: var(--nav-top, 50%);
+      transform: translate(var(--nav-offset-x, 0), calc(var(--button-height) / 2 * -1));
+      background: rgb(var(--carousel-nav-background, var(--color-background)));
+      box-shadow: 0 4px 10px 0 rgb(var(--color-foreground) / 12%);
+      z-index: 1;
+      border: none;
+      opacity: 0 !important;
+      transition-property: opacity, transform, top;
+      transition-duration: var(--motion-ui);
+      transition-timing-function: var(--motion-ease-fade), var(--motion-ease), var(--motion-ease);
+
+      // Sizing comes from `btn btn--outline btn--icon-only`, but the floating
+      // variants paint their own surface (scheme/white background + shadow, no
+      // border) — the outline variant's brand-colored `.icon` rule belongs to
+      // that bordered look, not here. Inherit the button's own color (0-3-0
+      // beats `.btn--outline .icon` at 0-2-0); the outline hover state (0-4-0)
+      // still wins, so the hover fill keeps its matching icon color.
+      .icon {
+        color: inherit;
+      }
+    }
+
+    // Hidden start position (slide fully off-screen)
+    .carousel__button--prev {
+      --nav-offset-x: calc(-100% * var(--flip-x-factor));
+
+      inset-inline-start: 0;
+    }
+
+    .carousel__button--next {
+      --nav-offset-x: calc(100% * var(--flip-x-factor));
+
+      inset-inline-end: 0;
+    }
+  }
+
+  // Float buttons on medias always white.
+  &--absolute-inside {
+    .carousel__button {
+      color: rgb(var(--color-black));
+      background: rgb(var(--carousel-nav-background, var(--color-white)));
+      box-shadow: 0 4px 10px 0 rgb(var(--color-black) / 12%);
+    }
+  }
+}
+
+// ─── Absolute nav reveal (hover + focus) ──────────────────────────────────────
+// --nav-edge: how far outside (absolute) or inside (absolute-inside) the
+//             buttons land when revealed. Caller can override via CSS variable.
+
+@mixin carousel-nav-revealed {
+  .carousel__controls--absolute,
+  .carousel__controls--absolute-inside {
+    .carousel__button {
+      opacity: 1 !important;
+
+      &.swiper-button-disabled {
+        opacity: 0.5 !important;
+      }
+    }
+  }
+
+  .carousel__controls--absolute {
+    .carousel__button--prev {
+      --nav-offset-x: calc(var(--nav-edge, calc(var(--button-height) / 2)) * -1 * var(--flip-x-factor));
+    }
+
+    .carousel__button--next {
+      --nav-offset-x: calc(var(--nav-edge, calc(var(--button-height) / 2)) * var(--flip-x-factor));
+    }
+  }
+
+  .carousel__controls--absolute-inside {
+    .carousel__button--prev {
+      --nav-offset-x: calc(var(--nav-edge, 2rem) * var(--flip-x-factor));
+    }
+
+    .carousel__button--next {
+      --nav-offset-x: calc(var(--nav-edge, 2rem) * -1 * var(--flip-x-factor));
+    }
+  }
+}
+
+@media (hover: hover) {
+  .carousel:hover {
+    @include carousel-nav-revealed;
+  }
+}
+
+@media (hover: none) {
+  .carousel {
+    @include carousel-nav-revealed;
+  }
+}
+
+.carousel:has(.carousel__button:focus-visible) {
+  @include carousel-nav-revealed;
+}
+
+// Single page: both prev + next disabled → nothing to navigate, keep nav hidden
+// even on hover/focus (overrides the reveal above).
+.carousel__controls--absolute,
+.carousel__controls--absolute-inside {
+  &:has(.carousel__button--prev.swiper-button-disabled):has(.carousel__button--next.swiper-button-disabled) {
+    .carousel__button {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+  }
+}
+
+// ─── Nav-end layout ───────────────────────────────────────────────────────────
+// Pagination/counter fills left, both buttons stack at the right end
+
+.carousel__controls--nav-end {
+  .carousel__button {
+    order: 1;
+  }
+
+  .carousel__counter {
+    flex-shrink: 0;
+    text-align: start;
+  }
+
+  .carousel__pagination {
+    flex: 1;
+    flex-shrink: 1;
+  }
+}
+
+// ─── Mobile-only overrides ────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  // Switch absolute nav to inline group layout on mobile
+  .carousel__controls-mobile--group {
+    margin-top: var(--carousel-controls-margin-top, 3.2rem);
+    display: flex;
+    align-items: center;
+    gap: var(--carousel-controls-gap, 1.2rem);
+
+    .carousel__button {
+      position: relative;
+      inset: auto;
+      opacity: 1 !important;
+      transform: none;
+      background: transparent;
+      box-shadow: none;
+    }
+  }
+
+  // Nav-end layout on mobile only
+  .carousel__controls--mobile-nav-end {
+    .carousel__button {
+      order: 1;
+    }
+
+    .carousel__counter {
+      flex-shrink: 0;
+      text-align: start;
+    }
+
+    .carousel__pagination {
+      flex: 1;
+      flex-shrink: 1;
+    }
+  }
+
+  // Progress pagination on mobile only
+  .carousel__pagination--style-mobile-progress {
+    flex: 1;
+    max-width: var(--carousel-progress-width, none);
+    height: var(--carousel-progress-height, 0.2rem);
+    border-radius: 2rem;
+    background: rgb(var(--color-foreground) / 15%);
+    overflow: hidden;
+    position: relative;
+
+    .swiper-pagination-bullet {
+      display: none;
+    }
+
+    .swiper-pagination-progressbar-fill {
+      background: rgb(var(--color-foreground));
+      position: absolute;
+      inset: 0;
+      transform: scale(0);
+      transform-origin: var(--transform-origin-start) top;
+      transition: transform var(--motion-ui) var(--motion-ease);
+    }
+  }
+}
+
+// ─── Pagination bullets ───────────────────────────────────────────────────────
+
+.swiper-pagination {
+  &.swiper-pagination-hidden {
+    opacity: 0;
+  }
+
+  &.swiper-pagination-disabled {
+    display: none !important;
+  }
+
+  &-bullets {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  &-bullet {
+    position: relative;
+    flex-shrink: 0;
+    width: var(--swiper-pagination-bullet-width, var(--swiper-pagination-bullet-size, 0.8rem));
+    height: var(--swiper-pagination-bullet-height, var(--swiper-pagination-bullet-size, 0.8rem));
+    border-radius: var(--swiper-pagination-bullet-border-radius, 50%);
+    background: var(--swiper-pagination-bullet-inactive-color, rgb(var(--color-foreground)));
+    opacity: var(--swiper-pagination-bullet-inactive-opacity, 0.35);
+    transition-property: background-color, opacity, width, border-radius;
+    transition-duration: var(--motion-ui);
+    transition-timing-function: var(--motion-ease), var(--motion-ease-fade), var(--motion-ease), var(--motion-ease);
+
+    &:only-child {
+      display: none !important;
+    }
+
+    // Expanded click area — paints nothing, pointer-only. -0.8rem lifts the
+    // default 8px bullet to a 24x24px target (Theme Store a11y floor); the
+    // visible dot is untouched.
+    &::before {
+      content: "";
+      position: absolute;
+      inset: -0.8rem;
+    }
+
+    &-active {
+      opacity: var(--swiper-pagination-bullet-opacity, 1);
+      background: var(--swiper-pagination-color, rgb(var(--color-foreground)));
+    }
+
+    .swiper-pagination-clickable & {
+      cursor: pointer;
+    }
+
+    .swiper-pagination-horizontal & {
+      margin-inline: var(--swiper-pagination-bullet-horizontal-gap, 0.6rem);
+    }
+  }
+
+  &-lock {
+    display: none;
+  }
+
+  &-bullets-dynamic {
+    overflow: hidden;
+    flex-wrap: nowrap;
+
+    .swiper-pagination-bullet {
+      transform: scale(0.33);
+      transition-property: background-color, opacity, width, border-radius, transform, left;
+    }
+
+    .swiper-pagination-bullet-active-main {
+      transform: scale(1);
+    }
+
+    .swiper-pagination-bullet-active-prev,
+    .swiper-pagination-bullet-active-next {
+      transform: scale(0.66);
+    }
+
+    .swiper-pagination-bullet-active-prev-prev,
+    .swiper-pagination-bullet-active-next-next {
+      transform: scale(0.33);
+    }
+  }
+}
+
+// ─── Pagination style variants ────────────────────────────────────────────────
+
+.carousel__pagination--style-pill,
+.carousel__pagination--style-pill-autoplay {
+  .swiper-pagination-bullet-active {
+    // One width for both. `pill-autoplay` used to hardcode 3.2rem of its own on top of this,
+    // which left the plain pill a third shorter for no reason other than that it has no bar to
+    // fill — and made `--carousel-pagination-pill-width` unable to reach the autoplay variant
+    // at all, since a hardcoded value beats a variable's fallback.
+    width: var(--carousel-pagination-pill-width, 3.2rem);
+    border-radius: 2rem;
+  }
+}
+
+.carousel__pagination--style-pill-autoplay {
+  .swiper-pagination-bullet-active {
+    height: var(--swiper-pagination-bullet-height, var(--swiper-pagination-bullet-size, 0.8rem));
+    border-radius: 3rem;
+    overflow: hidden;
+    position: relative;
+
+    // Lighter base reveals contrast as ::after fills up
+
+    background: rgb(var(--color-foreground) / 25%);
+    opacity: 1;
+
+    // Fills left→right while autoplay runs (--autoplay-progress: 1→0).
+    // Default scaleX(1) = solid pill when autoplay is off.
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgb(var(--color-foreground));
+      transform-origin: var(--transform-origin-start) center;
+      transform: scaleX(calc(1 - var(--autoplay-progress, 0)));
+    }
+  }
+}
+
+.carousel__pagination--style-scale {
+  .swiper-pagination-bullet-active {
+    transform: scale(1.5);
+  }
+}
+
+.carousel__pagination--style-progress,
+.carousel__pagination--style-progress-autoplay {
+  flex: 1;
+  max-width: var(--carousel-progress-width, none);
+  height: var(--carousel-progress-height, 0.2rem);
+  border-radius: 2rem;
+  background: rgb(var(--color-foreground) / 15%);
+  overflow: hidden;
+  position: relative;
+}
+
+.carousel__pagination--style-progress {
+  .swiper-pagination-bullet {
+    display: none;
+  }
+
+  .swiper-pagination-progressbar-fill {
+    background: rgb(var(--color-foreground));
+    position: absolute;
+    inset: 0;
+    transform: scale(0);
+    transform-origin: var(--transform-origin-start) top;
+    transition: transform var(--motion-ui) var(--motion-ease);
+  }
+}
+
+.carousel__pagination--style-progress-autoplay {
+  .swiper-pagination-bullet {
+    display: none;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgb(var(--color-foreground));
+    transform-origin: var(--transform-origin-start) center;
+    transform: scaleX(calc(1 - var(--autoplay-progress, 0)));
+  }
+}

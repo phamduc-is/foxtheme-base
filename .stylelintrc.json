@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/stylelintrc",
+  "extends": ["stylelint-config-standard-scss"],
+  "rules": {
+    "declaration-block-no-redundant-longhand-properties": null,
+    "media-feature-range-notation": null,
+    "length-zero-no-unit": [true, { "ignore": ["custom-properties"] }],
+
+    "selector-max-id": null,
+    "selector-max-compound-selectors": 5,
+    "selector-no-qualifying-type": null,
+    "declaration-no-important": null,
+    "selector-class-pattern": "^[a-z!]([a-z0-9_-]+)?(__([a-z0-9_-]+-?)+)?(--([a-z0-9_-]+-?)+){0,2}$",
+    "custom-property-pattern": "^[a-z]([a-z0-9-]+)?(--([a-z0-9]+-?)+)*$",
+    "no-duplicate-selectors": null,
+    "no-descending-specificity": null,
+    "block-no-empty": null,
+    "scss/operator-no-newline-after": null,
+    "declaration-block-no-shorthand-property-overrides": null,
+    "keyframes-name-pattern": null,
+    "number-max-precision": 6,
+    "declaration-block-no-duplicate-properties": null,
+    "property-no-vendor-prefix": null,
+    "value-no-vendor-prefix": null
+  }
+}

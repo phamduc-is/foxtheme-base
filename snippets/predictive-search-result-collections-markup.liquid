@@ -1,0 +1,32 @@
+{% doc %}
+  Collections list for predictive search results.
+  Reads `predictive_search.resources.collections`; renders nothing when empty.
+
+  @example
+  {% render 'predictive-search-result-collections-markup' %}
+{% enddoc %}
+{%- if predictive_search.resources.collections.size > 0 -%}
+  <div class="search__result search__result--collections w-full flex flex-col gap-3">
+    <h4 class="search__result-heading h6">
+      {{- 'content.search_results_resource_collections' | t -}}
+    </h4>
+    <ul
+      role="group"
+      class="search__result-list search__result-list--vertical flex flex-col list-unstyled"
+    >
+      {%- for collection in predictive_search.resources.collections -%}
+        <li
+          class="search__result-list-item flex"
+          role="option"
+          aria-selected="false"
+        >
+          <a href="{{ collection.url }}" class="reversed-link color-subtext">
+            <span class="reversed-link__text">
+              {{- collection.title | escape -}}
+            </span>
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}

@@ -1,0 +1,200 @@
+<compare-dialog
+  id="CompareDrawer"
+  shopify-design-mode
+>
+  <dialog
+    id="compare-drawer-dialog"
+    ref="dialog"
+    aria-label="{{ 'accessibility.compare' | t }}"
+    class="compare-drawer dialog dialog--modal dialog--drawer-mobile-right overflow-hidden{% unless settings.dialog_color_scheme_inherit %} color-{{ settings.dialog_color_scheme }}{% endunless %}"
+    scroll-lock
+  >
+    <button
+      class="dialog__close dialog__close--absolute"
+      on:click="/closeDialog"
+      aria-label="{{ 'accessibility.close_dialog' | t }}"
+    >
+      {% render 'icon', icon: 'close', size: 'large' %}
+    </button>
+    <div class="dialog__inner v-scrollable">
+      <div class="dialog__content">
+        {%- if section.settings.heading != blank or section.settings.show_clear_button -%}
+          <div class="compare-table__header flex flex-col items-center gap-2">
+            {%- if section.settings.heading != blank -%}
+              <h3 class="compare-table__title {{ section.settings.heading_size }} text-center">
+                {{- section.settings.heading -}}
+              </h3>
+            {%- endif -%}
+            {%- if section.settings.show_clear_button -%}
+              <button
+                is="compare-clear"
+                type="button"
+                disabled
+                class="compare-table__clear text-capitalize button-unstyled reversed-link reversed-link--underline"
+              >
+                <span class="reversed-link__text">{{- 'actions.remove_all' | t -}}</span>
+              </button>
+            {%- endif -%}
+          </div>
+        {%- endif -%}
+        {% render 'compare-table', section: section, product: product, defer: true %}
+      </div>
+    </div>
+  </dialog>
+</compare-dialog>
+{% schema %}
+{
+  "name": "t:names.product_compare",
+  "class": "shopify-section-group-overlay-compare-dialog",
+  "blocks": [
+    {
+      "type": "info",
+      "limit": 1,
+      "name": "t:names.product_information",
+      "settings": [
+        {
+          "type": "checkbox",
+          "id": "enable_view_details_button",
+          "label": "t:settings.enable_view_details_button",
+          "default": true
+        },
+        {
+          "type": "header",
+          "content": "t:content.media"
+        },
+        {
+          "type": "range",
+          "id": "image_border_radius",
+          "label": "t:settings.border_radius",
+          "min": 0,
+          "max": 32,
+          "step": 1,
+          "unit": "px",
+          "default": 0
+        }
+      ]
+    },
+    {
+      "type": "description",
+      "limit": 1,
+      "name": "t:names.description",
+      "settings": [
+        {
+          "type": "select",
+          "id": "text_line_limit",
+          "label": "t:settings.text_line_limit",
+          "options": [
+            {
+              "value": "none",
+              "label": "t:options.no_limit"
+            },
+            {
+              "value": "1-line",
+              "label": "t:options.1_line"
+            },
+            {
+              "value": "2-lines",
+              "label": "t:options.2_lines"
+            },
+            {
+              "value": "3-lines",
+              "label": "t:options.3_lines"
+            },
+            {
+              "value": "4-lines",
+              "label": "t:options.4_lines"
+            },
+            {
+              "value": "5-lines",
+              "label": "t:options.5_lines"
+            }
+          ],
+          "default": "3-lines"
+        },
+        {
+          "type": "checkbox",
+          "id": "show_view_more_button",
+          "label": "t:settings.show_view_more_button",
+          "default": false,
+          "visible_if": "{{ block.settings.text_line_limit != 'none' }}"
+        }
+      ]
+    },
+    {
+      "type": "price",
+      "limit": 1,
+      "name": "t:names.product_price"
+    },
+    {
+      "type": "vendor",
+      "limit": 1,
+      "name": "t:names.product_vendor"
+    },
+    {
+      "type": "type",
+      "limit": 1,
+      "name": "t:names.product_type"
+    },
+    {
+      "type": "variants",
+      "limit": 1,
+      "name": "t:names.product_variants"
+    },
+    {
+      "type": "metafield",
+      "name": "t:names.product_metafield",
+      "settings": [
+        {
+          "type": "paragraph",
+          "content": "t:info.product_metafield"
+        },
+        {
+          "type": "text",
+          "id": "metafield_key",
+          "label": "t:settings.metafield_key",
+          "info": "t:info.metafield_key"
+        },
+        {
+          "type": "header",
+          "content": "t:content.compare_settings"
+        },
+        {
+          "type": "text",
+          "id": "row_label",
+          "label": "t:settings.label"
+        }
+      ]
+    }
+  ],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.heading"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "t:settings.heading",
+      "default": "Compare products"
+    },
+    {
+      "type": "select",
+      "id": "heading_size",
+      "label": "t:settings.heading_size",
+      "options": [
+        { "value": "h1", "label": "t:options.h1" },
+        { "value": "h2", "label": "t:options.h2" },
+        { "value": "h3", "label": "t:options.h3" },
+        { "value": "h4", "label": "t:options.h4" }
+      ],
+      "default": "h3"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_clear_button",
+      "label": "t:settings.show_clear_button",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

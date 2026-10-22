@@ -1,0 +1,24 @@
+<div
+  class="top-bar__zone top-bar__zone--center flex flex-wrap items-center justify-center text-center gap-x-6 gap-y-2"
+  {{ block.shopify_attributes }}
+>
+  {%- content_for 'blocks' -%}
+</div>
+{% schema %}
+{
+  "name": "t:names.center_column",
+  "tag": null,
+  "settings": [],
+  "blocks": [
+    {
+      "type": "_menu"
+    },
+    {
+      "type": "_localization"
+    },
+    {
+      "type": "_simple-text"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,71 @@
+{%- if block.settings.menu != blank -%}
+  <ul
+    class="menu-block list-unstyled flex items-center gap-style"
+    style="{% render 'gap-style', settings: block.settings %}"
+    {{ block.shopify_attributes }}
+  >
+    {%- for link in block.settings.menu.links -%}
+      <li class="menu-block__item">
+        <a
+          class="menu-block__link reversed-link"
+          href="{{ link.url }}"
+          {% if link.active %}
+            aria-current="page"
+          {% endif %}
+        >
+          <span class="paragraph reversed-link__text">
+            {{- link.title -}}
+          </span>
+        </a>
+      </li>
+    {%- endfor -%}
+  </ul>
+{%- endif -%}
+{% schema %}
+{
+  "name": "t:names.menu",
+  "tag": null,
+  "settings": [
+    {
+      "type": "link_list",
+      "id": "menu",
+      "label": "t:settings.menu",
+      "info": "t:info.menu_top_level_only",
+      "default": "main-menu"
+    },
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_settings"
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.menu"
+    }
+  ]
+}
+{% endschema %}

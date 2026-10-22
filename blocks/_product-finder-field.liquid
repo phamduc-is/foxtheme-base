@@ -1,0 +1,58 @@
+{% doc %}
+  Internal cascade field for `product-finder`.
+
+  Renders ONE native `<select>` (styled via `.select` + `form-control`) as an empty placeholder. The
+  `<product-finder>` custom element populates its `<option>`s on connect from the target collection's live
+  storefront filters (fetched via the Section Rendering API), matching this field's `data-filter` against
+  the response's `data-filter-name` (the filter's `param_name`), else `data-filter-label`. Has no presets —
+  only placed inside a `product-finder` parent.
+
+  @example
+  {% content_for 'block', type: '_product-finder-field', id: 'make' %}
+{% enddoc %}
+
+{%- liquid
+  assign settings = block.settings
+  assign label = settings.label | default: 'Select option'
+  assign filter = settings.filter
+-%}
+
+<div class="product-finder__field select" {{ block.shopify_attributes }}>
+  <label class="visually-hidden" for="ProductFinderField-{{ block.id }}">{{ label }}</label>
+  <select
+    ref="fields[]"
+    id="ProductFinderField-{{ block.id }}"
+    class="product-finder__select form-control"
+    data-filter="{{ filter | escape }}"
+    disabled
+  >
+    <option value="" disabled selected>{{ label }}</option>
+  </select>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.product_finder_field",
+  "tag": null,
+  "settings": [
+    { "type": "header", "content": "t:content.content" },
+    {
+      "type": "text",
+      "id": "label",
+      "label": "t:settings.label",
+      "default": "Select option"
+    },
+    {
+      "type": "text",
+      "id": "filter",
+      "label": "t:settings.filter",
+      "info": "t:info.product_finder_filter"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.product_finder_field"
+    }
+  ]
+}
+{% endschema %}

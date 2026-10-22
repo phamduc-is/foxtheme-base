@@ -1,0 +1,156 @@
+{% doc %}
+  Results screen of the product quiz, shared by `blocks/_product-quiz-results.liquid` (the full
+  screen, from its settings) and `snippets/product-quiz-shell.liquid` (a BARE screen when the
+  merchant hid the Results block: the list + Retake only, so the quiz never dead-ends).
+
+  The runtime fills the list with rows fetched from sections/section-rendering-product-quiz.liquid,
+  wrapping each in `rowTemplate`. Heading and description keep their original HTML in
+  `data-template` / `data-fallback-template` so `[question_id]` tokens can be re-rendered on every
+  run and restored on Retake. In the theme editor the list is pre-filled with the fallback products
+  (or placeholder cards) so the screen previews without a quiz run.
+
+  Rows are box product cards. The endpoint cannot read the results block, so the list carries the
+  row look: `--product-quiz-row-radius` + `--product-quiz-row-image[-mobile|-radius]` (CSS) and `data-row-scheme` (the runtime swaps each fetched
+  card's `color-*` class for it). Editor preview rows get the scheme directly here.
+
+  Without a block there is no heading, so the screen itself takes focus (`data-quiz-focus`) and the
+  runtime announces its `data-quiz-label`. Every other default mirrors the block's setting defaults.
+
+  @param {object} section - The quiz section (its `results_limit`).
+  @param {object} [block] - The results block. Blank renders the bare screen.
+
+  @example
+  {% render 'product-quiz-results-markup', section: section, block: block %}
+{% enddoc %}
+
+{%- liquid
+  assign results_limit = section.settings.results_limit | default: 3
+  assign retake_label = 'blocks.product_quiz.retake' | t
+  assign retake_style = 'secondary'
+  assign show_vendor = false
+  assign show_summary = false
+  assign title_line_limit = '1-line'
+  assign row_color_scheme = 'scheme-1'
+  assign row_radius = 0
+  assign image_width = 90
+  assign image_width_mobile = 70
+  assign image_radius = 0
+  assign fallback_products = nil
+  assign fallback_ids = ''
+
+  if block
+    assign heading_size = block.settings.heading_size | default: 'h1'
+    assign retake_style = block.settings.retake_button_style | default: 'secondary'
+    assign show_vendor = block.settings.show_vendor
+    assign show_summary = block.settings.show_summary
+    assign title_line_limit = block.settings.title_line_limit
+    assign row_color_scheme = block.settings.row_color_scheme | default: 'scheme-1'
+    assign row_radius = block.settings.row_radius | default: 0
+    assign image_width = block.settings.image_width | default: 90
+    assign image_width_mobile = block.settings.image_width_mobile | default: 70
+    assign image_radius = block.settings.image_radius | default: 0
+    assign fallback_products = block.settings.fallback_products
+    assign fallback_ids = fallback_products | map: 'id' | join: ','
+  endif
+
+  assign list_class = 'product-quiz-results__list list-unstyled'
+  unless show_vendor
+    assign list_class = list_class | append: ' product-quiz-results__list--no-vendor'
+  endunless
+
+  assign line_clamp = 'unset'
+  case title_line_limit
+    when '1-line'
+      assign line_clamp = 1
+    when '2-lines'
+      assign line_clamp = 2
+  endcase
+-%}
+<div
+  class="product-quiz__screen product-quiz-results"
+  ref="results"
+  data-fallback-ids="{{ fallback_ids }}"
+  data-show-summary="{{ show_summary }}"
+  {% if block %}
+    {{ block.shopify_attributes }}
+  {% else %}
+    tabindex="-1"
+    data-quiz-focus
+    data-quiz-label="{{ 'blocks.product_quiz.your_results' | t | escape }}"
+  {% endif %}
+  hidden
+>
+  {%- if block -%}
+    <div class="product-quiz-results__header">
+      <h2
+        class="product-quiz-results__heading {{ heading_size }}"
+        tabindex="-1"
+        data-quiz-focus
+        ref="resultsHeading"
+        data-template="{{ block.settings.heading | escape }}"
+        data-fallback-template="{{ block.settings.fallback_heading | escape }}"
+      >
+        {{- block.settings.heading -}}
+      </h2>
+      <div
+        class="product-quiz-results__description paragraph color-{{ block.settings.description_color | default: 'text' }}"
+        ref="resultsDescription"
+        data-template="{{ block.settings.description | escape }}"
+        data-fallback-template="{{ block.settings.fallback_description | escape }}"
+      >
+        {{- block.settings.description -}}
+      </div>
+      <p class="product-quiz-results__summary paragraph" ref="resultsSummary" hidden></p>
+      <p class="product-quiz-results__discount paragraph" ref="resultsDiscount" hidden></p>
+    </div>
+  {%- endif -%}
+
+  <div class="product-quiz-results__body">
+    <div class="product-quiz-results__loading" ref="resultsLoading" hidden>
+      {% render 'loading-spinner', size: 'large' %}
+      <span class="visually-hidden">{{ 'accessibility.loading' | t }}</span>
+    </div>
+    <p class="product-quiz-results__empty paragraph" ref="resultsEmpty" hidden>{{ 'content.no_products_found' | t }}</p>
+    <div class="product-quiz-results__error" ref="resultsError" hidden>
+      <p class="form-message form-message--error" role="alert">{{ 'blocks.product_quiz.fetch_error' | t }}</p>
+      <button type="button" class="btn btn--outline btn--small" on:click="product-quiz/retry">
+        <span class="btn__text">{{ 'blocks.product_quiz.retry' | t }}</span>
+      </button>
+    </div>
+    <ul
+      class="{{ list_class }}"
+      ref="resultsList"
+      data-row-scheme="{{ row_color_scheme }}"
+      style="--line-clamp: {{ line_clamp }}; --product-quiz-row-radius: {{ row_radius }}px; --product-quiz-row-image: {{ image_width }}px; --product-quiz-row-image-mobile: {{ image_width_mobile }}px; --product-quiz-row-image-radius: {{ image_radius }}px;"
+    >
+      {%- if request.design_mode -%}
+        {%- if fallback_products != blank -%}
+          {%- for product in fallback_products limit: results_limit -%}
+            <li class="product-quiz-results__row">
+              {% render 'product-quiz-row', product: product, color_scheme: row_color_scheme %}
+            </li>
+          {%- endfor -%}
+        {%- else -%}
+          {%- for i in (1..results_limit) -%}
+            <li class="product-quiz-results__row">
+              {% render 'product-quiz-row', product: null, color_scheme: row_color_scheme %}
+            </li>
+          {%- endfor -%}
+        {%- endif -%}
+      {%- endif -%}
+    </ul>
+    <template ref="rowTemplate">
+      <li class="product-quiz-results__row"></li>
+    </template>
+  </div>
+
+  <button
+    type="button"
+    class="product-quiz-results__retake btn btn--{{ retake_style }}"
+    on:click="product-quiz/retake"
+  >
+    <span class="btn__text" data-label="{{ retake_label | escape }}">
+      {{- retake_label | escape -}}
+    </span>
+  </button>
+</div>

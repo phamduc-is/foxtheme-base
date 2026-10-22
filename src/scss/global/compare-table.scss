@@ -1,0 +1,324 @@
+@use "../mixins" as *;
+
+.compare-table {
+  --heading-col-width: 18rem;
+  --product-col-width: 23.2rem;
+
+  &__container {
+    max-width: 100%;
+  }
+
+  &__table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    border: 0;
+  }
+
+  th,
+  td {
+    position: relative;
+    z-index: 0;
+    text-align: start;
+    vertical-align: top;
+    padding: var(--col-gap-y, 2rem) var(--col-gap-x, 2rem);
+    width: var(--product-col-width);
+
+    &::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border: 0 solid rgb(var(--color-border) / var(--color-border-alpha));
+      pointer-events: none;
+    }
+
+    &:first-child {
+      width: var(--heading-col-width);
+    }
+  }
+
+  .td-label {
+    background-color: rgb(var(--color-background));
+  }
+
+  tr:not(:first-child) td::before {
+    border-top-width: 0.1rem;
+  }
+
+  tr[data-compare-key="info"] {
+    td {
+      padding-block: 2rem;
+    }
+  }
+
+  &__col-info {
+    padding-top: 1.2rem;
+
+    .btn {
+      margin-top: 1.2rem;
+    }
+  }
+
+  &__col-remove {
+    position: absolute;
+    top: -0.8rem;
+    inset-inline-end: -1rem;
+    z-index: 1;
+    padding: 0;
+    height: 2.4rem;
+    width: 2.4rem;
+    box-shadow: 0 0 8px rgb(var(--color-foreground) / 15%);
+  }
+
+  // The remove button hangs 1rem past its cell. Every cell is its own stacking context
+  // (z-index: 0 above), so the next column's cell — later in the DOM — sits on top of that
+  // overhang and takes the hover; with `gap_start` there is no end padding left to hold it.
+  // Dropping the context on the cell lets the button's z-index: 1 clear its neighbours,
+  // while the sticky label column (z-index: 9) still covers it when scrolled under.
+  td:has(.compare-table__col-remove) {
+    z-index: auto;
+  }
+
+  &__col-swatch {
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+  }
+
+  &__col--type-description .rte {
+    color: var(--color-foreground-secondary);
+  }
+
+  &__col--type-vendor,
+  &__col--type-type,
+  &__col--type-metafield {
+    color: var(--color-foreground-secondary);
+  }
+
+  // Only until the skeleton is in. Between the server render and the first render()
+  // call the table holds nothing but its label column, and a lone column of labels
+  // reads as a broken table rather than as a loading one.
+  &[data-compare-loading]:not([data-compare-skeleton]) {
+    .compare-table__container,
+    .compare-table__empty {
+      display: none;
+    }
+  }
+
+  // ─── Loading skeleton ────────────────────────────────────────────────────
+  // Every bar is sized against the cell it stands in for (media ratio, button
+  // height, line count), so the fetched columns replace it without reflowing
+  // the table under the visitor.
+  &__skeleton {
+    display: block;
+    border-radius: 0.4rem;
+    background-color: rgb(var(--color-foreground) / 8%);
+    animation: compareSkeletonPulse 1.4s var(--motion-ease-fade) infinite;
+
+    &--media {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 0;
+    }
+
+    &--line {
+      width: var(--skeleton-width, 100%);
+      height: 1.2rem;
+    }
+
+    &--button {
+      width: 100%;
+      height: var(--button-height);
+      margin-top: 1.2rem;
+      border-radius: var(--button-corner-radius, 0);
+    }
+
+    &--swatch {
+      width: 2.4rem;
+      height: 2.4rem;
+      border-radius: 50%;
+    }
+  }
+
+  // The info cell is centred, and a bar narrower than its cell has to be centred
+  // with it — text-align cannot reach a block-level bar.
+  &__col-info .compare-table__skeleton {
+    margin-inline: auto;
+  }
+
+  // Shared by the page section and the drawer: the header stacks the heading over
+  // the "Remove all" button and owns the gap to the table, so the heading only
+  // spaces itself from the button (via the wrapper's flex gap).
+  &__header {
+    margin-bottom: 1.6rem;
+  }
+
+  &__title {
+    margin-block: 0;
+  }
+
+  &__empty {
+    padding-block: 4rem;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .compare-table {
+    th,
+    td {
+      &:first-child {
+        // Make sure greater than btn, less than tooltip
+        z-index: 9;
+        position: sticky;
+        inset-inline-start: 0;
+      }
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .compare-table {
+    --heading-col-width: 10rem;
+    --product-col-width: 16rem;
+    --col-gap-x: 0.8rem;
+    --col-gap-y: 1.2rem;
+
+    font-size: calc(var(--font-size--paragraph) * 0.933334);
+    line-height: 2rem;
+
+    th,
+    td {
+      &:first-child {
+        padding-inline-start: 0;
+      }
+    }
+
+    &--remove {
+      top: -0.8rem;
+      inset-inline-end: -1.1rem;
+      width: 2.4rem;
+      height: 2.4rem;
+    }
+
+    &__header {
+      margin-bottom: 0.8rem;
+    }
+  }
+}
+
+// ─── Opt-in layout modifiers (snippets/compare-table.liquid params) ─────────
+
+// `gap_start`: each product column carries its whole column gap before it, none after,
+// so the last column ends on the container edge instead of one gap short of it.
+@include media-breakpoint-up(md) {
+  .compare-table--gap-start td:not(:first-child) {
+    padding-inline: calc(var(--col-gap-x, 2rem) * 2) 0;
+  }
+}
+
+// `fluid`: product columns share whatever the label column leaves instead of a fixed
+// --product-col-width. Up to --compare-visible of them fill the container; past that each
+// keeps the width of one of those (never under --compare-col-min) and the table scrolls —
+// so exactly four columns show from md, five from xl.
+// --compare-columns is that count. The `:has()` ladder reads it off the rendered columns,
+// which holds through the skeleton and through an in-place removal — the
+// `data-compare-results` attribute compare.js sets does neither. A caller that knows the
+// count up front (a section rendering its own columns) can set the property directly.
+@include media-breakpoint-up(md) {
+  .compare-table--fluid {
+    --compare-col-min: 19rem;
+    --compare-visible: 4;
+
+    // The percentage resolves on the table, where the property is used, not here.
+    --compare-table-width: calc(
+      var(--heading-col-width) + var(--compare-columns, 3) *
+        max((100% - var(--heading-col-width)) / var(--compare-visible), var(--compare-col-min))
+    );
+
+    .compare-table__table {
+      min-width: var(--compare-table-width);
+    }
+
+    td:not(:first-child) {
+      width: auto;
+    }
+  }
+
+  // Up to three product columns the table is exactly that wide and centres itself, instead
+  // of the fixed layout handing the leftover width to the columns. nth-child(5) is the
+  // fourth product column, past the label one.
+  .compare-table--fluid:not(:has(tr:first-child > td:nth-child(5))) .compare-table__table {
+    width: var(--compare-table-width);
+    margin-inline: auto;
+  }
+
+  // Ascending, so the highest count that matches wins (same specificity throughout).
+  // From 1, or a table down to its last column falls back to 3 and stretches that column
+  // over the width of three. 15 = the compare_limit setting's maximum.
+  @for $count from 1 through 15 {
+    .compare-table--fluid:has(tr:first-child > td:nth-child(#{$count + 1})) {
+      --compare-columns: #{$count};
+    }
+  }
+}
+
+// A fifth column from xl, which only fits once the floor drops below
+// (container - label) / 5 — at 1200px that is 173px against a 17rem floor.
+@include media-breakpoint-up(xl) {
+  .compare-table--fluid {
+    --compare-col-min: 17rem;
+    --compare-visible: 5;
+  }
+}
+
+// `bleed`: out of the page gutter, gutter put back as padding, so the columns scroll to
+// the viewport edge. Fixed-width sections only — a full-width one has no gutter to
+// escape and would scroll the page sideways.
+@include media-breakpoint-down(lg) {
+  .compare-table__container--bleed {
+    max-width: none;
+    margin-inline: calc(var(--page-padding) * -1);
+    padding-inline: var(--page-padding);
+    scroll-padding-inline: var(--page-padding);
+
+    // md–lg: the label column is sticky there and sticks at the scroller's padding edge,
+    // so columns scrolling past it show through the gutter on its left. Same fill as the
+    // compare drawer (compare.scss); `::after` because `::before` draws the row border.
+    @include media-breakpoint-up(md) {
+      .td-label::after {
+        content: "";
+        position: absolute;
+        inset-block: 0;
+        inset-inline: calc(var(--page-padding) * -1) 0;
+        z-index: -2;
+        background: inherit;
+      }
+    }
+  }
+}
+
+// From lg the bleed is off, and with no end padding on the last column its remove button
+// (`inset-inline-end: -1rem`) hangs past the scroller and scrolls the table by 1rem. The
+// scroller takes that 1rem out of the gutter instead, so the content still ends flush.
+@include media-breakpoint-up(lg) {
+  .compare-table--gap-start .compare-table__container--bleed {
+    max-width: none;
+    margin-inline-end: -1rem;
+    padding-inline-end: 1rem;
+  }
+}
+
+// Opacity only, on a linear curve (--motion-ease-fade) — see check-motion-easing.
+// The global reduced-motion floor clamps it; the pulse is decoration, not content,
+// so it deliberately carries no data-motion-essential opt-out.
+@keyframes compareSkeletonPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}

@@ -1,0 +1,160 @@
+{% doc %}
+  Private header mega-menu block: a products panel rendered inside `_mega-menu-sidebar`.
+  One carousel serves both contexts: a slider on desktop (>= 1024px) and a native swipe
+  on the mega-menu drawer (<= 1023px, via `destroyBelow: 1024` + `.swipe-tablet`).
+  The parent captures `content_for 'blocks'` once and embeds it in both the desktop panel
+  and the mobile drawer. With no products selected it renders onboarding placeholder cards.
+{% enddoc %}
+{%- liquid
+  assign products = block.settings.product_list
+  assign columns = block.settings.columns
+  assign columns_mobile = block.settings.columns_mobile | plus: 0
+  assign column_gap = block.settings.column_gap
+  assign column_gap_mobile = block.settings.column_gap_mobile
+
+  if products == blank
+    assign products_to_display = columns
+  else
+    assign products_to_display = products.count
+  endif
+-%}
+<div
+  class="menu-mega-products"
+  {{ block.shopify_attributes }}
+>
+  <carousel-slider
+    class="carousel relative"
+    style="{% render 'gap-style', column_gap: column_gap, column_gap_mobile: column_gap_mobile %}"
+  >
+    <script type="application/json" ref="config">
+      {
+        "loop": false,
+        "slidesPerView": {{ columns }},
+        "slidesPerGroup": {% render 'carousel-slides-per-group' %},
+        "spaceBetween": {{ column_gap }},
+        "pagination": false,
+        "counter": false,
+        "destroyBelow": 1024,
+        "navigationPosition": {
+          "enabled": true,
+          "selector": ".product-card__media"
+        }
+      }
+    </script>
+    <div ref="container" class="swiper swipe-tablet swipe-tablet--{{ columns_mobile }}-cols">
+      <div class="swiper-wrapper swipe__inner">
+        {%- if products == blank -%}
+          {%- for i in (1..products_to_display) -%}
+            <div class="swiper-slide">
+              {%- render 'product-card-markup', product: null -%}
+            </div>
+          {%- endfor -%}
+        {%- else -%}
+          {%- for product in products -%}
+            <div class="swiper-slide">
+              {%- render 'product-card-markup',
+                product: product,
+                view_event_context: 'none',
+                show_vendor: block.settings.show_product_vendor,
+                show_type: block.settings.show_product_type,
+                show_badges: block.settings.show_product_badges
+              -%}
+            </div>
+          {%- endfor -%}
+        {%- endif -%}
+      </div>
+    </div>
+    {% render 'carousel-controls', navigation: 'absolute-inside', navigation_size: 'small', pagination: 'none' %}
+  </carousel-slider>
+</div>
+{% schema %}
+{
+  "name": "t:names.products",
+  "tag": null,
+  "settings": [
+    {
+      "type": "product_list",
+      "id": "product_list",
+      "label": "t:settings.products",
+      "limit": 6
+    },
+    {
+      "type": "checkbox",
+      "id": "show_product_vendor",
+      "label": "t:settings.show_product_vendor",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_product_type",
+      "label": "t:settings.show_product_type",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_product_badges",
+      "label": "t:settings.show_product_badges",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "range",
+      "id": "columns",
+      "label": "t:settings.columns",
+      "min": 2,
+      "max": 4,
+      "step": 1,
+      "default": 3
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 10
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_layout"
+    },
+    {
+      "type": "select",
+      "id": "columns_mobile",
+      "label": "t:settings.columns",
+      "options": [
+        {
+          "value": "1",
+          "label": "t:options.grid_1_column"
+        },
+        {
+          "value": "2",
+          "label": "t:options.grid_2_column"
+        }
+      ],
+      "default": "2"
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.products",
+      "category": "t:categories.product"
+    }
+  ]
+}
+{% endschema %}

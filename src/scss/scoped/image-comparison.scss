@@ -1,0 +1,315 @@
+@use "sass:math";
+@use "../mixins" as *;
+
+// ─── Image comparison ─────────────────────────────────────────────────────────
+
+$drag-area-size: 2.8rem;
+
+.image-comparison {
+  --drag-thickness: 0.055rem;
+  --button-width: 6.2rem;
+  --button-height: 4.6rem;
+  --heading-offset-x: 1.6rem;
+  --heading-offset-y: 1.6rem;
+
+  &[is-visible] {
+    --percent: 50%;
+  }
+
+  &__animation-trigger {
+    display: block;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0.1rem;
+    pointer-events: none;
+  }
+
+  &__image {
+    display: block;
+    position: relative;
+    overflow: hidden;
+    background: rgb(var(--color-background));
+
+    img {
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+  }
+
+  &__image-before {
+    .placeholder {
+      background-color: rgb(var(--color-foreground) / 20%);
+    }
+  }
+
+  &__image-after {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  &__button {
+    cursor: pointer;
+    z-index: 2;
+    color: inherit;
+    background-color: transparent;
+    border: none;
+    padding: 0;
+    transition: none;
+
+    &::before {
+      content: "";
+      position: absolute;
+      background-color: rgb(var(--color-foreground));
+      pointer-events: none;
+      box-shadow: 0 0 8px rgb(0 0 0 / 11%);
+    }
+
+    &-range {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: var(--button-width);
+      height: var(--button-height);
+      border-radius: var(--button-height);
+      color: rgb(var(--color-foreground));
+      background: linear-gradient(
+        111.49deg,
+        rgb(var(--color-foreground), 40%) -8.95%,
+        rgb(var(--color-foreground), 1%) 114%
+      );
+      backdrop-filter: blur(50px);
+      box-shadow: 0 9px 11px rgb(0 0 0 / 11%);
+    }
+  }
+
+  &__heading {
+    inset-block: auto var(--heading-offset-y);
+    inset-inline: var(--heading-offset-x) auto;
+    user-select: none;
+    transition: opacity var(--motion-ui) var(--motion-ease-fade);
+
+    .image-comparison__image-after & {
+      inset-inline: auto var(--heading-offset-x);
+    }
+
+    .image-comparison--heading-style-badge & {
+      padding: 0.3rem 0.9rem;
+      border-radius: 99rem;
+      color: rgb(var(--color-foreground));
+      background: linear-gradient(
+        111.49deg,
+        rgb(var(--color-foreground) / 40%) -8.95%,
+        rgb(var(--color-foreground) / 1%) 114%
+      );
+      backdrop-filter: blur(50px);
+
+      &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        padding: 0.1rem;
+        border-radius: inherit;
+        background: linear-gradient(
+          -45deg,
+          rgb(var(--color-foreground) / 50%) 0%,
+          rgb(var(--color-foreground) / 10%) 50%,
+          rgb(var(--color-foreground) / 50%) 100%
+        );
+        mask:
+          linear-gradient(#000 0 0) exclude,
+          linear-gradient(#000 0 0) content-box;
+      }
+    }
+  }
+
+  &[data-direction="horizontal"] {
+    .image-comparison {
+      &__image-after {
+        clip-path: inset(0 0 0 var(--percent, 50%));
+      }
+
+      &__button {
+        top: 0;
+        inset-inline-start: var(--percent, 50%);
+        margin-inline-start: math.div($drag-area-size, -2);
+        height: 100%;
+        width: $drag-area-size;
+        cursor: col-resize;
+
+        &::before {
+          top: 0;
+          left: 50%;
+          height: 100%;
+          width: var(--drag-thickness);
+          margin-left: calc(var(--drag-thickness) / -2);
+        }
+      }
+    }
+  }
+
+  &[data-direction="vertical"] {
+    .image-comparison {
+      &__image-before {
+        .image-comparison__heading {
+          inset-block: var(--heading-offset-y) auto;
+        }
+
+        .image-comparison__scrim {
+          inset-block: 0 auto;
+          background-image: linear-gradient(to bottom, rgb(var(--color-black) / 80%), rgb(var(--color-black) / 0%));
+        }
+      }
+
+      &__image-after {
+        clip-path: inset(var(--percent, 50%) 0 0 0);
+
+        .image-comparison__heading {
+          inset-inline: var(--heading-offset-x) auto;
+        }
+      }
+
+      &__button {
+        left: 0;
+        top: var(--percent, 50%);
+        width: 100%;
+        height: $drag-area-size;
+        margin-top: math.div($drag-area-size, -2);
+        cursor: row-resize;
+
+        &::before {
+          top: 50%;
+          left: 0;
+          width: 100%;
+          height: var(--drag-thickness);
+          margin-top: calc(var(--drag-thickness) / -2);
+        }
+
+        &-range {
+          transform: translate(-50%, -50%) rotate(90deg);
+        }
+      }
+    }
+  }
+
+  &.is-animating {
+    .image-comparison {
+      &__image-after {
+        transition-property: clip-path;
+        transition-duration: 1s;
+        transition-timing-function: ease;
+      }
+
+      &__button {
+        transition-property: top, left, right;
+        transition-duration: 1s;
+        transition-timing-function: ease;
+      }
+    }
+  }
+
+  &.is-dragging {
+    .image-comparison {
+      &__heading,
+      &__scrim {
+        opacity: 0;
+      }
+    }
+  }
+
+  @include media-breakpoint-up(md) {
+    --drag-thickness: 0.1rem;
+    --heading-offset-x: 2rem;
+    --heading-offset-y: 2rem;
+  }
+
+  // After the base md overrides above: same specificity, so source order decides.
+  // Plain label on a dark scrim: the label sits on the photo, not on the scheme
+  // background, so its colours are fixed white/black rather than scheme roles.
+  &--heading-style-text {
+    --heading-offset-x: 2rem;
+    --heading-offset-y: 2rem;
+
+    .image-comparison__heading {
+      color: rgb(var(--color-white));
+      font-size: 1.5rem;
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    @include media-breakpoint-up(md) {
+      --heading-offset-x: 3.2rem;
+      --heading-offset-y: 3.2rem;
+    }
+  }
+
+  &__scrim {
+    inset-inline: 0;
+    inset-block: auto 0;
+    height: clamp(6rem, 18%, 12rem);
+    background-image: linear-gradient(to top, rgb(var(--color-black) / 80%), rgb(var(--color-black) / 0%));
+    pointer-events: none;
+    transition: opacity var(--motion-ui) var(--motion-ease-fade);
+  }
+
+  // Solid round handle with a grip icon, on a 2px divider in the scheme background.
+  &--handle-circle {
+    --drag-thickness: 0.2rem;
+    --button-width: 4rem;
+    --button-height: 4rem;
+
+    .image-comparison__button::before {
+      background-color: rgb(var(--color-background));
+    }
+
+    .image-comparison__button-range {
+      color: rgb(var(--color-foreground));
+      background: rgb(var(--color-background));
+      backdrop-filter: none;
+      // stylelint-disable declaration-block-no-redundant-longhand-properties
+      border-width: 0.1rem;
+      border-style: solid;
+      border-color: rgb(var(--color-foreground) / 10%);
+      // stylelint-enable declaration-block-no-redundant-longhand-properties
+
+      // The grip's 20-unit viewBox scales its stroke; keep the bars 2px at both sizes.
+      --icon-size: 1.4rem;
+      --icon-stroke-width: 2.8;
+    }
+
+    @include media-breakpoint-up(md) {
+      --drag-thickness: 0.2rem;
+      --button-width: 6rem;
+      --button-height: 6rem;
+
+      .image-comparison__button-range {
+        --icon-size: 2rem;
+        --icon-stroke-width: 2;
+      }
+    }
+  }
+}
+
+// ─── Reduced motion ───────────────────────────────────────────────────────────
+
+@media (prefers-reduced-motion: no-preference) {
+  .image-comparison:not([is-visible]) {
+    --percent: 95%;
+
+    @include media-breakpoint-up(md) {
+      --percent: 97.8%;
+    }
+  }
+}

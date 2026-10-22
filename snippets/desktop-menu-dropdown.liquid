@@ -1,0 +1,61 @@
+{% doc %}
+  Renders a standard desktop navigation dropdown for a top-level menu link
+  that has child links (but is not a mega menu).
+  Outputs a `<details is="details-dropdown">` with the top link as summary and
+  its child/grandchild links nested inside `.dropdown`.
+
+  @param {object} link - A Shopify menu link object with child links (`link.links`).
+  @param {string} menu_trigger - The dropdown trigger mode (e.g. 'hover' or 'click'), from `section.settings.menu_trigger`.
+
+  @example
+  {% render 'desktop-menu-dropdown', link: link, menu_trigger: section.settings.menu_trigger %}
+{% enddoc %}
+<details
+  is="details-dropdown"
+  level="top"
+  trigger="{{ menu_trigger }}"
+>
+  <summary data-link="{{ link.url }}">
+    <span class="menu__item reversed-link">
+      <span class="reversed-link__text">{{- link.title | escape -}}</span>
+      {%- render 'icon', icon: 'caret-down', size: 'extra-small' -%}
+    </span>
+  </summary>
+  <div class="dropdown{% unless settings.dialog_color_scheme_inherit %} color-{{ settings.dialog_color_scheme }}{% endunless %}">
+    <div class="dropdown__container">
+      <ul class="dropdown__list list-unstyled" role="list">
+        {%- for childlink in link.links -%}
+          {%- if childlink.links != blank -%}
+            <li class="dropdown__item relative color-subtext">
+              <details level="child" trigger="hover" is="details-dropdown">
+                <summary data-link="{{ childlink.url }}">
+                  <a
+                    class="dropdown__link flex items-center justify-between gap-x-1 reversed-link text-decoration-none color-current"
+                    href="{{ childlink.url }}"
+                    tabindex="-1"
+                  >
+                    <span class="reversed-link__text">
+                      {{- childlink.title | escape -}}
+                    </span>
+                    {%- render 'icon', icon: 'caret-right', size: 'extra-small' -%}
+                  </a>
+                </summary>
+                <div class="dropdown">
+                  <div class="dropdown__container">
+                    <ul class="dropdown__list list-unstyled" role="list">
+                      {%- for grandchildlink in childlink.links -%}
+                        {% render 'desktop-menu-dropdown-item', link: grandchildlink %}
+                      {%- endfor -%}
+                    </ul>
+                  </div>
+                </div>
+              </details>
+            </li>
+          {%- else -%}
+            {% render 'desktop-menu-dropdown-item', link: childlink %}
+          {%- endif -%}
+        {%- endfor -%}
+      </ul>
+    </div>
+  </div>
+</details>

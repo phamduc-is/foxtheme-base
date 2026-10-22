@@ -1,0 +1,95 @@
+@use "../mixins" as *;
+
+// ─── Text block ───────────────────────────────────────────────────────────────
+
+:root {
+  --text-align: start;
+}
+
+[style*="--horizontal-alignment: flex-start"],
+[style*="--horizontal-alignment: space-between"] {
+  --text-align: start;
+  --text-align-mobile: start;
+}
+
+[style*="--horizontal-alignment: center"] {
+  --text-align: center;
+  --text-align-mobile: center;
+}
+
+[style*="--horizontal-alignment: flex-end"] {
+  --text-align: end;
+  --text-align-mobile: end;
+}
+
+[style*="--horizontal-alignment-mobile: flex-start"],
+[style*="--horizontal-alignment-mobile: space-between"] {
+  --text-align-mobile: start;
+}
+
+[style*="--horizontal-alignment-mobile: center"] {
+  --text-align-mobile: center;
+}
+
+[style*="--horizontal-alignment-mobile: flex-end"] {
+  --text-align-mobile: end;
+}
+
+.reset-text-alignment {
+  --text-align: start;
+  --text-align-mobile: start;
+}
+
+// ─── Text block element ───────────────────────────────────────────────────────
+
+.text-block {
+  width: var(--width);
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: var(--horizontal-alignment);
+}
+
+.text-block > * {
+  width: var(--width);
+  max-width: var(--max-width, 100%);
+  text-align: var(--text-align-revert, var(--text-align));
+  text-wrap: var(--text-wrap);
+}
+
+// Emitted next to every `<br>` by `text-markup.liquid` when "Disable line break on mobile"
+// is on. Hiding a `<br>` removes the break but leaves no word gap, so "Big Summer<br>Sale"
+// runs together; this marker carries the missing space. `<br>` is a void element and cannot
+// host a pseudo-element, which is why the space needs its own box. Inert until the option
+// takes effect.
+.br-space {
+  display: none;
+
+  &::after {
+    content: " ";
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .text-block {
+    align-items: var(--horizontal-alignment-mobile, var(--horizontal-alignment));
+
+    > * {
+      width: var(--width-mobile, var(--width));
+      max-width: var(--max-width-mobile, var(--max-width, 100%));
+      text-align: var(--text-align-revert, var(--text-align-mobile, var(--text-align)));
+    }
+  }
+
+  .mobile-no-br {
+    br {
+      display: none;
+    }
+
+    .br-space {
+      display: inline;
+    }
+  }
+}

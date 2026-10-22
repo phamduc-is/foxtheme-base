@@ -1,0 +1,6 @@
+#!/bin/sh
+# Keep the generated, gitignored PROJECT-MAP.md fresh after a pull/merge.
+# Pulled add/delete changes are committed, so the Claude stop-validate hook
+# can't see them (it reads `git status`). Regenerate here instead.
+# Best-effort — post-merge can't abort the merge, and we never want to.
+yarn map >/dev/null 2>&1 || true

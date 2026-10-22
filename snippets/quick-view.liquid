@@ -1,0 +1,25 @@
+{% doc %}
+  Renders a quick view button that opens the quick view dialog (drawer or modal, determined by section setting).
+
+  @param {object} product - The product object
+  @param {string} [color_scheme] - The color scheme of the component
+  @param {string} [class] - Extra CSS classes
+{% enddoc %}
+
+<quick-view-component
+  class="quick-add quick-view{% if color_scheme %} !bg-none color-{{ color_scheme }}{% endif %}{% if class %} {{ class }}{% endif %}"
+  ref="quickView"
+  data-product-url="{{ product.url }}"
+  data-product-title="{{ product.title }}"
+>
+  <button
+    class="btn btn--icon-only btn--primary quick-view__button button-choose-options"
+    data-quick-view-trigger
+    type="button"
+    on:click="quick-view-component/handleClick"
+    aria-label="{{ 'actions.quick_view' | t }}"
+  >
+    {% render 'icon', icon: 'search', size: 'medium' %}
+    {% render 'loading-spinner', class: 'quick-view__button-spinner hidden', attributes: 'data-quick-view-spinner' %}
+  </button>
+</quick-view-component>

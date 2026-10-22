@@ -1,0 +1,105 @@
+@use "../mixins" as *;
+
+// ─── Product bundle ───────────────────────────────────────────────────────────
+
+.product-bundle {
+  --number-size: 3rem;
+
+  &__number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    width: var(--number-size);
+    aspect-ratio: 1;
+    border-radius: 50%;
+  }
+
+  &__hotspot {
+    --factor-x: -1;
+
+    top: var(--offset-top-mobile);
+    left: var(--offset-left-mobile);
+    transform: translate(calc(var(--offset-left-mobile) * var(--factor-x)), calc(var(--offset-top-mobile) * -1));
+    transform-origin: center;
+    cursor: pointer;
+    background-color: rgb(var(--color-background));
+    border: 1px solid rgb(var(--color-border) / var(--color-border-alpha));
+    transition-property: color, background-color;
+    transition-duration: var(--motion-ui);
+    transition-timing-function: var(--motion-ease);
+
+    &.is-selected {
+      color: rgb(var(--color-background));
+      background: rgb(var(--color-foreground));
+    }
+  }
+
+  &__product {
+    transition: opacity var(--motion-ui) var(--motion-ease-fade);
+  }
+
+  &__product-number {
+    background: rgb(var(--color-background-secondary));
+  }
+
+  &__content {
+    padding: var(--content-padding, 2.4rem 1.6rem);
+  }
+
+  &.is-hover &__product-block:not(.is-selected) &__product {
+    opacity: 0.5;
+  }
+
+  &-section.color-scheme-in-container--no {
+    --content-padding: 2.4rem 0 0;
+  }
+
+  @include media-breakpoint-up(md) {
+    &__hotspot {
+      top: var(--offset-top);
+      left: var(--offset-left);
+      transform: translate(calc(var(--offset-left) * var(--factor-x)), calc(var(--offset-top) * -1));
+    }
+
+    &__banner-wrap {
+      width: 50%;
+    }
+
+    &__content {
+      width: 50%;
+      padding: var(--content-padding-y, 3.2rem) var(--content-padding-x);
+    }
+
+    &--image-right &__banner-wrap {
+      order: 9;
+    }
+
+    &--image-height-full {
+      .product-bundle {
+        align-items: stretch;
+
+        &__banner {
+          height: 100%;
+
+          .media {
+            height: 100%;
+            width: 100%;
+          }
+        }
+      }
+    }
+  }
+
+  @include media-breakpoint-down(md) {
+    .swiper-wrapper {
+      flex-direction: column;
+    }
+
+    .swiper-slide + .swiper-slide {
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+    }
+  }
+}

@@ -1,0 +1,81 @@
+{% doc %}
+  Outputs non-critical CSS <link> tags loaded asynchronously via the print/onload pattern.
+  Covers photoswipe, non-critical components, menu drawer, cart drawer, and template-specific stylesheets.
+  Rendered once in the layout <head>.
+
+  @example
+  {% render 'styles' %}
+{% enddoc %}
+
+{% # Non-critical CSS %}
+<link
+  rel="stylesheet"
+  href="{{ 'photoswipe.css' | asset_url }}"
+  media="print"
+  onload="this.media='all'"
+>
+<link
+  rel="stylesheet"
+  href="{{ 'component-non-critical.css' | asset_url }}"
+  media="print"
+  onload="this.media='all'"
+>
+<link
+  rel="stylesheet"
+  href="{{ 'menu-drawer.css' | asset_url }}"
+  media="print"
+  onload="this.media='all'"
+>
+<link
+  rel="stylesheet"
+  href="{{ 'header-menu.css' | asset_url }}"
+  media="print"
+  onload="this.media='all'"
+>
+{% comment %}
+  The per-template stylesheets are INLINED, not linked. A linked stylesheet in
+  <head> is a render-blocking request AND Shopify adds a Link preload hint for it
+  whether or not `preload: true` is passed; Shopify's own RUM ("Early Hints at
+  Shopify", 2025-06) shows mobile LCP degrading from 4 hints up. Inline costs
+  ~1.5–2.5 KB gzipped per page and leaves theme.css (+ Shopify's own
+  accelerated-checkout.css) as the only hints. `inline_asset_content` refuses
+  files of 15 KB and above — keep these two small (product ~6 KB, collection
+  ~13 KB); a forked theme that grows one past the limit must link it again.
+{% endcomment %}
+{% if template.name == 'product' %}
+  <style>
+    {{ 'section-product-information.css' | inline_asset_content }}
+  </style>
+{% endif %}
+
+{% if template.name == 'collection' or template.name == 'search' %}
+  <style>
+    {{ 'template-collection.css' | inline_asset_content }}
+  </style>
+{% endif %}
+
+{% if template.directory == 'customers' %}
+  {{ 'customer.css' | asset_url | stylesheet_tag }}
+{% endif %}
+
+{% comment %}
+  Compare styles are not on the critical path: the compare bar/dialog only appears after an
+  interaction, and the sections that render a comparison table in the page (compare-table,
+  compare-quick-table) load compare-table.css themselves, blocking, only where they render.
+  Measured on the Motrix demo (Lighthouse mobile): these two links were 2 of the 3
+  render-blocking requests on every page, ~500 ms each on slow 4G.
+{% endcomment %}
+<link
+  rel="stylesheet"
+  href="{{ 'compare-table.css' | asset_url }}"
+  media="print"
+  onload="this.media='all'"
+>
+{% if settings.compare_enabled %}
+  <link
+    rel="stylesheet"
+    href="{{ 'compare.css' | asset_url }}"
+    media="print"
+    onload="this.media='all'"
+  >
+{% endif %}

@@ -1,0 +1,52 @@
+{% doc %}
+  Renders the expandable submenu panel (back button + scrollable body) inside the mobile menu
+  drawer for a nav link with children. The caller supplies the body via `content`: `menu-drawer`
+  passes the link's sublinks, header mega-menu drawer panels pass their own markup (e.g. the banner
+  grid) plus a `content_class` variant modifier. Mega-menu links inline this via the `_mega-menu-*`
+  block, between the `<!--
+
+  @megaMenu/context/mobile -->` markers.
+
+  @param {object} link - The navigation link (used for the summary heading, link URL and with-links state).
+  @param {string} content - The submenu body HTML, rendered inside the `.v-scrollable` panel.
+  @param {string} [content_class] - Optional extra CSS classes for the submenu panel, inserted right after the base `menu-drawer__submenu` class (e.g. a `menu-drawer__submenu--banner` variant modifier).
+
+  @example
+  {% render 'menu-drawer-details', link: link, content: submenu_content %}
+  {% render 'menu-drawer-details', link: mobile_link, content: details_content_html, content_class: 'menu-drawer__submenu--banner' %}
+{% enddoc %}
+<details
+  is="menu-drawer-details"
+  level="top"
+>
+  <summary
+    class="menu-drawer__item-link menu-drawer__item-link--lv1 flex items-center justify-between gap-4"
+    data-link-url="{{ link.url }}"
+  >
+    <span class="h3">{{- link.title | escape -}}</span>
+    <button
+      type="button"
+      data-menu-drawer-item-open
+      class="menu-drawer__item-link-arrow button-unstyled flex items-center justify-center cursor-pointer"
+    >
+      {%- render 'icon', icon: 'caret-right', size: 'extra-medium' -%}
+    </button>
+  </summary>
+  <div
+    data-menu-drawer-item-submenu
+    data-parent
+    class="menu-drawer__submenu{% if content_class != blank %} {{ content_class }}{% endif %} absolute flex flex-col w-full h-full{% if link.links != blank %} menu-drawer__submenu--with-links{% else %} menu-drawer__submenu--no-links{% endif %}"
+  >
+    <button
+      type="button"
+      data-menu-drawer-item-back
+      class="menu-drawer__item-link menu-drawer__item-link--back flex items-center gap-3 w-full button-unstyled cursor-pointer color-subtext focus-visible--inset"
+    >
+      {%- render 'icon', icon: 'arrow-left', size: 'extra-medium' -%}
+      {{ link.title | escape }}
+    </button>
+    <div class="v-scrollable v-scrollable--hidden h-full flex flex-col gap-6">
+      {{ content }}
+    </div>
+  </div>
+</details>

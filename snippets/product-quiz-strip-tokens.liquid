@@ -1,0 +1,55 @@
+{% doc %}
+  Removes `[question_id]` tokens from a product-quiz question heading / subtext for the server-side
+  first paint, so a raw `[make]` never shows before (or without) JavaScript. The runtime re-renders
+  the copy from `data-template` with the shopper's answers each time the question is shown.
+
+  Mirrors `applyTokens()` in `product-quiz.js` with no answers: every `[token]` (no spaces inside)
+  is dropped, then, only if something was dropped, the result is tidied: no double space, no space
+  before `.,!?;:`, no leading/trailing space. A `[` without a closing `]`, `[]` and a bracketed
+  phrase with a space stay as typed. Outputs the input's own format: both the heading and the
+  subtext are inline richtext, so the result is HTML the caller renders unescaped (and strips with
+  `strip_html` wherever it needs plain text).
+
+  @param {string} text - The raw setting value, e.g. "So we can match parts to your [make] [model]."
+
+  @example
+  {%- capture heading_text -%}{% render 'product-quiz-strip-tokens', text: block.settings.heading %}{%- endcapture -%}
+{% enddoc -%}
+{%- liquid
+  assign parts = text | split: '['
+  assign result = ''
+  assign removed = false
+
+  for part in parts
+    if forloop.first
+      assign result = part
+      continue
+    endif
+
+    assign token = part | split: ']' | first
+    assign is_token = false
+    if part contains ']' and token != blank
+      assign is_token = true
+      if token contains ' '
+        assign is_token = false
+      endif
+    endif
+
+    if is_token
+      assign rest = part | remove_first: token | remove_first: ']'
+      assign result = result | append: rest
+      assign removed = true
+    else
+      assign result = result | append: '[' | append: part
+    endif
+  endfor
+
+  if removed
+    assign result = result | replace: '  ', ' ' | replace: '  ', ' ' | replace: '  ', ' '
+    assign result = result | replace: ' .', '.' | replace: ' ,', ',' | replace: ' !', '!'
+    assign result = result | replace: ' ?', '?' | replace: ' ;', ';' | replace: ' :', ':'
+    assign result = result | strip
+  endif
+
+  echo result
+-%}

@@ -1,0 +1,77 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash|Skill|mcp__.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/agent-auto-approve.mjs\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-edit-guard.mjs\"",
+            "timeout": 45
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/stop-validate.mjs\"",
+            "timeout": 90
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-context.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(yarn check-liquid:*)",
+      "Bash(yarn check-missing-translate:*)",
+      "Bash(yarn check-unused-translate:*)",
+      "Bash(yarn check-template-refs:*)",
+      "Bash(yarn check-js-contract:*)",
+      "Bash(yarn check-settings-schema:*)",
+      "Bash(yarn map:*)",
+      "Bash(node scripts/check-liquid.mjs:*)",
+      "Bash(yarn check-range-steps:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git check-ignore:*)",
+
+      "Read(.briefs/**)",
+      "Edit(.briefs/**)",
+      "Write(.briefs/**)",
+
+      "Read(.worktrees/**)",
+      "Edit(.worktrees/**)",
+      "Write(.worktrees/**)",
+      "Bash(yarn --cwd .worktrees:*)",
+      "Bash(yarn wt:add:*)"
+    ]
+  }
+}

@@ -1,0 +1,42 @@
+@use "../mixins" as *;
+
+// ─── Collection item ──────────────────────────────────────────────────────────
+
+.collection-item {
+  width: var(--width-mobile, var(--width, 100%));
+
+  &--shadow {
+    .collection-item {
+      &__link {
+        border: 0;
+        box-shadow: inset 0 0 0 var(--border-width) var(--border-color);
+      }
+    }
+  }
+
+  &__link {
+    padding: calc(0.7rem + var(--border-width, 0.1rem));
+    transition: box-shadow var(--motion-ui) var(--motion-ease-out);
+  }
+
+  &__image {
+    width: var(--c-media-width, 4rem);
+    border-radius: min(var(--border-radius), 1rem);
+  }
+
+  @include media-breakpoint-up(md) {
+    --c-media-width: 5rem;
+
+    width: var(--width, 100%);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      .collection-item {
+        &__link {
+          box-shadow: inset 0 0 0 max(0.1rem, var(--border-width, 0px)) rgb(var(--color-foreground));
+        }
+      }
+    }
+  }
+}

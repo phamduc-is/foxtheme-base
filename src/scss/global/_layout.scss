@@ -1,0 +1,363 @@
+// @capability Core layout system — .section-grid (+--full/--fixed section width), .page-width, .layout-panel-flex/.layout-panel-grid (+ mobile variants) consuming the *-style snippet CSS vars, .gap-style, .spacing-style, .custom-typography/.custom-font-size scopes, .group-block containers.
+// @when Every section/block layout builds on these classes paired with the spacing-style/gap-style/layout-panel-style snippets — never write a bespoke container/row/grid wrapper; PROJECT-ANATOMY §2 shows the canonical shell.
+// @contract Classes consume CSS vars emitted by the matching snippets (spacing-style → --spacing-*, gap-style → --gap-*, layout-panel-style → --layout-panel-*); .section-grid--{{ container }} comes from the section's `container` select.
+// @keywords layout, container, section grid, page width, panel, flex layout, grid layout, wrapper, full width, fixed width, group block
+
+@use "../mixins" as *;
+
+// ─── Page width / padding ─────────────────────────────────────────────────────
+
+:root {
+  // The page's side gutter below 1536px. A fork changes the gutter here, never
+  // --page-padding directly: the Custom containers floor their own padding on it.
+  --page-gutter: 1.6rem;
+  --page-padding: var(--page-gutter);
+
+  @include media-breakpoint-up(xl) {
+    --page-gutter: 5rem;
+  }
+
+  // Center content within max page width beyond 1536px
+  @media (min-width: 1536px) {
+    --page-padding: max(13.5rem, 50vw - var(--scrollbar-width, 15px) / 2 - var(--page-width) / 2);
+  }
+}
+
+.section-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: var(--page-padding) minmax(0, 1fr) var(--page-padding);
+
+  &--full {
+    > * {
+      grid-column: 1/-1;
+    }
+  }
+
+  &--fixed {
+    > * {
+      grid-column: 2;
+    }
+  }
+
+  // Fixed, capped at a merchant width (a section's `container_custom_width`,
+  // emitted as --page-width-custom) and centred in the content column.
+  // The page padding itself centres on the custom width at every breakpoint
+  // (floored on --page-gutter, then 13.5rem past 1536px), so children that bleed by
+  // --page-padding still reach the screen edge, and past 1536px a custom width
+  // wider than the theme's page width widens the column.
+  &--custom {
+    --page-padding: max(
+      var(--page-gutter),
+      50vw - var(--scrollbar-width, 15px) / 2 - var(--page-width-custom, 124rem) / 2
+    );
+
+    @media (min-width: 1536px) {
+      --page-padding: max(13.5rem, 50vw - var(--scrollbar-width, 15px) / 2 - var(--page-width-custom, 124rem) / 2);
+    }
+
+    > * {
+      grid-column: 2;
+      justify-self: center;
+      width: 100%;
+      max-width: var(--page-width-custom, 124rem);
+    }
+  }
+}
+
+.page-width {
+  margin: 0 auto;
+  padding-inline: var(--page-padding);
+
+  &--narrow {
+    max-width: var(--page-width-narrow);
+  }
+
+  &--custom {
+    .page-width__inner {
+      margin: 0 auto;
+      max-width: var(--page-width-custom, 88rem);
+    }
+
+    @media (min-width: 1536px) {
+      --page-padding: max(13.5rem, 50vw - var(--scrollbar-width, 15px) / 2 - var(--page-width-custom, 88rem) / 2);
+    }
+  }
+}
+
+// ─── Gap style ────────────────────────────────────────────────────────────────
+
+.gap-style {
+  gap: var(--f-row-gap-mobile, var(--f-row-gap, 0)) var(--f-column-gap-mobile, var(--f-column-gap, 0));
+
+  @include media-breakpoint-up(md) {
+    gap: var(--f-row-gap, 0) var(--f-column-gap, 0);
+  }
+}
+
+// ─── Layout panel — flex ──────────────────────────────────────────────────────
+
+.layout-panel-flex {
+  display: flex;
+  height: 100%;
+}
+
+.layout-panel-flex--row {
+  flex-flow: row var(--flex-wrap, nowrap);
+  justify-content: var(--horizontal-alignment);
+  align-items: var(--vertical-alignment);
+}
+
+.layout-panel-flex--column {
+  flex-flow: column var(--flex-wrap, nowrap);
+  align-items: var(--horizontal-alignment);
+  justify-content: var(--vertical-alignment);
+}
+
+@include media-breakpoint-down(md) {
+  .layout-panel-flex--row {
+    justify-content: var(--horizontal-alignment-mobile);
+    align-items: var(--vertical-alignment-mobile);
+  }
+
+  .layout-panel-flex--row:not(.layout-panel-flex--column-mobile) {
+    .text-block {
+      flex: 1 1 var(--max-width--display-tight);
+    }
+
+    .image-block {
+      flex: 1 1 var(--size-style-width-mobile-min);
+    }
+
+    .btn {
+      flex: 0 0 fit-content;
+    }
+  }
+
+  .layout-panel-flex--column {
+    align-items: var(--horizontal-alignment-mobile);
+    justify-content: var(--vertical-alignment-mobile);
+  }
+
+  .layout-panel-flex--column-mobile {
+    flex-flow: column nowrap;
+    align-items: var(--horizontal-alignment-mobile);
+    justify-content: var(--vertical-alignment-mobile);
+  }
+
+  .layout-panel-flex--row-mobile {
+    flex-flow: row nowrap;
+    justify-content: var(--horizontal-alignment-mobile);
+    align-items: var(--vertical-alignment-mobile);
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .layout-panel-flex {
+    flex-direction: var(--flex-direction);
+  }
+}
+
+// ─── Layout panel — grid ──────────────────────────────────────────────────────
+
+.layout-panel-grid {
+  --f-grid-columns: var(--f-columns-mobile);
+  --f-grid-template: auto-flow dense/repeat(var(--f-grid-columns), minmax(0, 1fr));
+
+  display: grid;
+  grid: var(--f-grid-template);
+  align-items: var(--f-align-items, start);
+
+  @include media-breakpoint-up(md) {
+    --f-grid-columns: var(--f-columns-md, var(--f-columns-mobile));
+  }
+
+  @include media-breakpoint-up(lg) {
+    --f-grid-columns: var(--f-columns-lg, var(--f-columns-md, var(--f-columns-mobile)));
+  }
+
+  @include media-breakpoint-up(xl) {
+    --f-grid-columns: var(--f-columns-xl, var(--f-columns-lg, var(--f-columns-md, var(--f-columns-mobile))));
+  }
+
+  @include media-breakpoint-up(xxl) {
+    --f-grid-columns: var(
+      --f-columns-xxl,
+      var(--f-columns-xl, var(--f-columns-lg, var(--f-columns-md, var(--f-columns-mobile))))
+    );
+  }
+}
+
+.layout-panel-grid-mobile {
+  @include media-breakpoint-down(md) {
+    --f-grid-columns: var(--f-columns-mobile);
+    --f-grid-template: auto-flow dense/repeat(var(--f-grid-columns), minmax(0, 1fr));
+
+    align-items: start;
+    display: grid;
+    grid: var(--f-grid-template);
+  }
+}
+
+// ─── Group block ──────────────────────────────────────────────────────────────
+
+.group-block,
+.group-block-content {
+  position: relative;
+
+  @include media-breakpoint-down(md) {
+    order: var(--order-mobile, unset);
+  }
+}
+
+// ─── Custom typography ────────────────────────────────────────────────────────
+
+.custom-typography,
+.custom-typography > *,
+.custom-typography :is(ul, ol) :is(h1, h2, h3, h4, h5) {
+  font-family: var(--font-family);
+  font-weight: var(--font-weight);
+  line-height: var(--line-height);
+}
+
+// Casing is the one custom-typography property whose "unset" value is not the same
+// everywhere, so it gets its own pair of rules instead of joining the block above.
+// `--text-transform` is emitted only when the merchant picks a transform (see
+// `typography-style.liquid`); the fallback is what already cased the element, so leaving
+// the setting on Inherit changes nothing.
+.custom-typography,
+.custom-typography > * {
+  text-transform: var(--text-transform, inherit);
+}
+
+// A heading keeps the global heading casing. It has to be restated here: the rules above
+// are 0-1-0 and out-specify the `h1`-`h6` rule in _typography.scss (0-0-1), so without
+// this the fallback would silently strip the uppercase off every custom-preset title —
+// the class lands directly on the `<h1>` in `_article-title` / `_blog-post-title`, and on
+// an `html_tag` heading or a heading typed into the richtext one level down.
+:is(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6).custom-typography,
+.custom-typography > :is(h1, h2, h3, h4, h5, h6),
+.custom-typography :is(ul, ol) :is(h1, h2, h3, h4, h5, h6) {
+  text-transform: var(--text-transform, var(--font-heading--transform));
+}
+
+.custom-font-size,
+.custom-font-size > *,
+.custom-font-size :is(ul, ol) :is(h1, h2, h3, h4, h5) {
+  font-size: var(--font-size);
+
+  @include media-breakpoint-down(md) {
+    font-size: var(--font-size-mobile, --font-size);
+  }
+}
+
+// ─── Spacing style ────────────────────────────────────────────────────────────
+// 0px (not 0) required: these vars are used in calc() with other units,
+// and unitless 0 causes calc() to fail.
+
+.spacing-style {
+  --padding-block: 0px;
+  --padding-block-start: var(--padding-block, 0px);
+  --padding-block-end: var(--padding-block, 0px);
+  --padding-block-start-mobile: var(--padding-block-start, 0px);
+  --padding-block-end-mobile: var(--padding-block-end, 0px);
+  --padding-inline: 0px;
+  --padding-inline-start: var(--padding-inline, 0px);
+  --padding-inline-end: var(--padding-inline, 0px);
+  --padding-inline-start-mobile: var(--padding-inline-start, 0px);
+  --padding-inline-end-mobile: var(--padding-inline-end, 0px);
+  --margin-block: 0px;
+  --margin-block-start: var(--margin-block, 0px);
+  --margin-block-end: var(--margin-block, 0px);
+  --margin-block-start-mobile: var(--margin-block-start, 0px);
+  --margin-block-end-mobile: var(--margin-block-end, 0px);
+  --margin-inline: 0px;
+  --margin-inline-start: var(--margin-inline, 0px);
+  --margin-inline-end: var(--margin-inline, 0px);
+  --margin-inline-start-mobile: var(--margin-inline-start, 0px);
+  --margin-inline-end-mobile: var(--margin-inline-end, 0px);
+
+  padding-block: calc(var(--padding-block-start-mobile, var(--padding-block-start)) + var(--section-top-offset, 0px))
+    var(--padding-block-end-mobile, var(--padding-block-end));
+  padding-inline: var(--padding-inline-start-mobile, var(--padding-inline-start))
+    var(--padding-inline-end-mobile, var(--padding-inline-end));
+  margin-block: var(--margin-block-start-mobile, var(--margin-block-start))
+    var(--margin-block-end-mobile, var(--margin-block-end));
+  margin-inline: var(--margin-inline-start-mobile, var(--margin-inline-start))
+    var(--margin-inline-end-mobile, var(--margin-inline-end));
+
+  @include media-breakpoint-up(sm) {
+    --spacing-scale: var(--spacing-scale-sm);
+  }
+
+  @include media-breakpoint-up(md) {
+    --spacing-scale: var(--spacing-scale-md);
+
+    padding-block: calc(var(--padding-block-start) + var(--section-top-offset, 0px)) var(--padding-block-end);
+    padding-inline: var(--padding-inline-start) var(--padding-inline-end);
+    margin-block: var(--margin-block-start) var(--margin-block-end);
+    margin-inline: var(--margin-inline-start) var(--margin-inline-end);
+  }
+
+  @include media-breakpoint-up(xl) {
+    --spacing-scale: var(--spacing-scale-default);
+  }
+}
+
+// ─── Border style ─────────────────────────────────────────────────────────────
+
+.border-style {
+  border-width: var(--border-width);
+  border-style: var(--border-style);
+  border-color: var(--border-color);
+  border-radius: var(--border-radius);
+}
+
+// ─── Size style ───────────────────────────────────────────────────────────────
+
+// Intentional custom breakpoint — aligns with common desktop design breakpoint
+$size-style-desktop-breakpoint: 1366px;
+
+.size-style {
+  width: var(--size-style-width-mobile, var(--size-style-width));
+  height: var(--size-style-height-mobile, var(--size-style-height));
+
+  // Only the `pixel` width branch of `size-style.liquid` sets this; every other
+  // width keeps `none`, i.e. exactly what this rule did before. It exists so a
+  // pixel width can be capped WITHOUT a percentage inside `width`, which would
+  // otherwise poison any ancestor that sizes itself intrinsically.
+  max-width: var(--size-style-max-width, none);
+
+  @include media-breakpoint-up(md) {
+    width: var(--size-style-width-tablet, var(--size-style-width));
+    height: var(--size-style-height-tablet, var(--size-style-height));
+  }
+
+  @media screen and (min-width: $size-style-desktop-breakpoint) {
+    width: var(--size-style-width);
+    height: var(--size-style-height);
+  }
+}
+
+// ─── Content overlay ──────────────────────────────────────────────────────────
+
+.content-overlay-style {
+  display: flex;
+  align-items: var(--v-alignment);
+  justify-content: var(--h-alignment);
+
+  @include media-breakpoint-down(md) {
+    align-items: var(--v-alignment-mobile);
+    justify-content: var(--h-alignment-mobile);
+  }
+}
+
+// ─── Section header ───────────────────────────────────────────────────────────
+
+.section__header {
+  margin-block-end: 4rem;
+
+  @include media-breakpoint-down(md) {
+    margin-block-end: 2.4rem;
+  }
+}

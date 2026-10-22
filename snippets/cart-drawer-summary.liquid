@@ -1,0 +1,16 @@
+{% doc %}
+  Renders the cart drawer summary container, including product recommendations carousel
+  and the cart-summary totals.
+
+  @param {object} section - The cart drawer section
+  @param {string} [cart_recommendations] - Pre-rendered `_cart-recommendations` static block. The
+    section captures it, because `content_for` belongs to a section or block, not a snippet.
+
+  @example
+  {% render 'cart-drawer-summary', section: section, cart_recommendations: cart_recommendations %}
+{% enddoc %}
+
+<div class="cart-drawer-summary__container">
+  {{ cart_recommendations }}
+  {% render 'cart-summary', section: section, context: 'drawer' %}
+</div>

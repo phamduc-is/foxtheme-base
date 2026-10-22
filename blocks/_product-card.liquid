@@ -1,0 +1,25 @@
+{%- doc -%}
+  @param {string} [media_sizes] - Sizes for media
+  @param {boolean} [height_balance] - Whether to balance the height of the card
+  @param {boolean} [show_view_details] - Whether to show the view details link
+  @param {boolean} [show_compare_checkbox] - Show product compare checkbox on card media (default: false)
+  @param {string} [loading] - `loading` for the card's first image; the host decides (a first-row card in a grid the merchant marked preload)
+  @param {string} [fetchpriority] - `fetchpriority` for the card's first image; `high` for the one LCP candidate only
+{%- enddoc -%}
+{% render 'product-card-markup',
+  children: '',
+  product: product,
+  media_sizes: media_sizes,
+  height_balance: height_balance,
+  show_view_details: show_view_details,
+  show_compare_checkbox: show_compare_checkbox,
+  loading: loading,
+  fetchpriority: fetchpriority,
+  badge_placement: 'on-media'
+%}
+{% schema %}
+{
+  "name": "t:names.product_card",
+  "tag": null
+}
+{% endschema %}

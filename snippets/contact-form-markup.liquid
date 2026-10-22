@@ -1,0 +1,79 @@
+{% doc %}
+  Markup for the contact-form theme block (no schema).
+
+  The `{% form 'contact' %}` tag itself lives in `blocks/contact-form.liquid`, NOT
+  here: `content_for` only works in a section/block file, and the three static
+  field blocks have to be captured INSIDE the form tag to see its `form` object.
+  That is also why `form` arrives as a param instead of being in scope.
+
+  @param {object} settings - Block settings (size, gaps, submit-button alignment and gap).
+  @param {object} [form] - The `{% form 'contact' %}` object from the block file.
+  @param {string} name_field_html - Captured `_contact-field-name` block output.
+  @param {string} email_field_html - Captured `_contact-field-email` block output.
+  @param {string} body_field_html - Captured `_contact-field-body` block output.
+  @param {string} inner_blocks_html - Captured `content_for 'blocks'` output.
+{% enddoc %}
+{{ 'scoped-contact-form.css' | asset_url | stylesheet_tag }}
+{%- liquid
+  assign content_alignment = settings.content_alignment | default: 'left'
+  assign content_alignment_mobile = settings.content_alignment_mobile | default: content_alignment
+  assign button_gap = settings.button_gap | default: 24
+  assign button_gap_mobile = settings.button_gap_mobile | default: 20
+-%}
+{%- if form.posted_successfully? -%}
+  <div class="form-status-list" role="status">
+    <h3
+      class="form-message alert alert--success h6 flex gap-2"
+      tabindex="-1"
+      autofocus
+    >
+      {% render 'icon', icon: 'check', size: 'small', class: 'shrink-0' %}
+      {{- 'blocks.contact_form.post_success' | t -}}
+    </h3>
+  </div>
+{%- elsif form.errors -%}
+  <div class="form-error alert alert--error">
+    <h3
+      class="form-message form-message--error h6 flex gap-2"
+      role="alert"
+      tabindex="-1"
+      autofocus
+    >
+      {% render 'icon', icon: 'warning', size: 'small', class: 'shrink-0' %}
+      {{- 'blocks.contact_form.error_heading' | t -}}
+    </h3>
+
+    <ul role="list">
+      <li>
+        <a href="#ContactForm-email" class="reversed-link">
+          {{ form.errors.translated_fields.email | capitalize }}
+          {{ form.errors.messages.email }}
+        </a>
+      </li>
+    </ul>
+  </div>
+{%- endif -%}
+
+{% comment %} form fields {% endcomment %}
+<div
+  class="contact__fields layout-panel-grid gap-style"
+  style="{% render 'layout-panel-style', type: 'grid', columns_md: '2' %}{% render 'gap-style', settings: settings %}"
+>
+  {{ name_field_html }}
+  {{ email_field_html }}
+
+  {% comment %} Blocks custom field {% endcomment %}
+  {{ inner_blocks_html }}
+
+  {{ body_field_html }}
+</div>
+
+{% comment %} button submit {% endcomment %}
+<div
+  class="contact__button form-footer text-{{ content_alignment_mobile }} md:text-{{ content_alignment }}"
+  style="{% render 'clamp-calculate-style', property_name: 'contact-button-gap', min_value: button_gap_mobile, max_value: button_gap %}"
+>
+  <button type="submit" class="btn btn--primary btn--large">
+    <span class="btn__text" data-label="{{ 'blocks.contact_form.send_message' | t | escape }}">{{ 'blocks.contact_form.send_message' | t }}</span>
+  </button>
+</div>

@@ -1,0 +1,104 @@
+{% doc %}
+  Theme block entry for `blocks/accordion.liquid` (no schema). Nested `_accordion-row` blocks must be captured in the theme block file (`{% render row_block %}`).
+
+  @param {object} settings - Block settings (`block.settings`).
+  @param {string} attributes - Theme editor attributes (`block.shopify_attributes`).
+  @param {string} section_id - Parent section id (`section.id`).
+  @param {string} block_id - Theme block id (`block.id`).
+  @param {string} accordion_rows - Captured row wrapper HTML.
+  @param {string} [motion_attrs] - Pre-built `is="motion-group"` + motion attribute string from the block file — built THERE because the global `settings` is shadowed by the block settings param here.
+
+  The root is a `<div>` carrying every class, style and editor attribute, and `<accordion-component>` sits inside it as `display: contents`. Two
+  reasons the custom element cannot be the root: motion-group is a customized built-in on `div` only, and the block's parent aligns it with
+  `align-items`, so an extra wrapper OUTSIDE would break `fit-content` / custom widths. With `contents` the rows still take part in the root's flex
+  column + gap, `:first-child` still matches, and the component keeps its refs.
+{% enddoc %}
+{% liquid
+  # `paragraph` and `rte` set no case or tracking, and `paragraph` would pass a
+  # `contains 'h'` test — hence the explicit list.
+  assign heading_presets = 'h1,h2,h3,h4,h5,h6' | split: ','
+  assign is_heading = false
+  if heading_presets contains settings.type_preset
+    assign is_heading = true
+  endif
+
+  assign divider_class = ''
+  if settings.style == 'card' and settings.divider
+    assign divider_class = ' accordion--divider'
+  endif
+
+  # Vertical padding for all rows; horizontal padding only for card style.
+  # Mobile padding values are separate settings, not scales.
+  # `| default:` on every one: a missing key reads as nil, and nil through this
+  # arithmetic is 0 — a silently collapsed row, not a fallback to the CSS
+  # literal (the var is emitted either way).
+  assign row_gap_px = settings.row_gap | default: 10
+  assign row_gap_mobile_px = settings.row_gap_mobile | default: 8
+  assign row_radius_px = settings.row_border_radius | default: 10
+  assign block_pad_px = settings.vertical_padding | default: 16
+  assign block_pad_mobile_px = settings.vertical_padding_mobile | default: 16
+  assign inline_pad_px = settings.horizontal_padding | default: 16
+  assign inline_pad_mobile_px = settings.horizontal_padding_mobile | default: 16
+  assign content_top_px = settings.content_padding_top | default: 0
+  assign content_bottom_px = settings.content_padding_bottom | default: 0
+  assign content_top_mobile_px = settings.content_padding_top_mobile | default: 0
+  assign content_bottom_mobile_px = settings.content_padding_bottom_mobile | default: 0
+
+  assign row_gap = row_gap_px | divided_by: 10.0
+  assign row_gap_mobile = row_gap_mobile_px | divided_by: 10.0
+  assign row_radius = row_radius_px | divided_by: 10.0
+  assign block_pad = block_pad_px | divided_by: 10.0
+  assign block_pad_mobile = block_pad_mobile_px | divided_by: 10.0
+  assign inline_pad = inline_pad_px | divided_by: 10.0
+  assign inline_pad_mobile = inline_pad_mobile_px | divided_by: 10.0
+  assign content_top = content_top_px | divided_by: 10.0
+  assign content_top_mobile = content_top_mobile_px | divided_by: 10.0
+  assign content_bottom = content_bottom_px | divided_by: 10.0
+  assign content_bottom_mobile = content_bottom_mobile_px | divided_by: 10.0
+%}
+{% capture styles %}
+  --summary-font-family: var(--font-{{ settings.type_preset }}--family);
+  --summary-font-style: var(--font-{{ settings.type_preset }}--style);
+  --summary-font-weight: var(--font-{{ settings.type_preset }}--weight);
+  --summary-font-size: var(--font-{{ settings.type_preset }}--size);
+  --summary-line-height: var(--font-{{ settings.type_preset }}--line-height);
+  {%- if is_heading -%}
+    --summary-letter-spacing: var(--font-heading--letter-spacing, 0);
+    --summary-text-transform: var(--font-heading--transform, none);
+  {%- endif -%}
+  --accordion-row-padding-block: {{ block_pad }}rem;
+  --accordion-row-padding-block-mobile: {{ block_pad_mobile }}rem;
+  {%- if settings.style == 'card' -%}
+    --accordion-row-padding-inline: {{ inline_pad }}rem;
+    --accordion-row-padding-inline-mobile: {{ inline_pad_mobile }}rem;
+  {%- endif -%}
+  --accordion-content-padding-top: {{ content_top }}rem;
+  --accordion-content-padding-top-mobile: {{ content_top_mobile }}rem;
+  --accordion-content-padding-bottom: {{ content_bottom }}rem;
+  --accordion-content-padding-bottom-mobile: {{ content_bottom_mobile }}rem;
+  --accordion-row-gap: {{ row_gap }}rem;
+  --accordion-row-gap-mobile: {{ row_gap_mobile }}rem;
+  {%- if settings.style == 'card' -%}
+    --accordion-row-radius: {{ row_radius }}rem;
+  {%- endif -%}
+{% render 'spacing-style', settings: settings %}
+{% render 'border-style', settings: settings %}
+{% render 'size-style', settings: settings %}
+{% endcapture %}
+
+<div
+  class="accordion block-accordion accordion--{{ settings.style }} reset-text-alignment accordion--icon-{{ settings.icon_style }} accordion--arrow-{{ settings.icon_arrow }}{{ divider_class }} accrodion--{{ block_id }} spacing-style size-style min-w-0{% if settings.inherit_color_scheme == false %} color-{{ settings.color_scheme }}{% endif %}{% if settings.inherit_color_scheme == false or settings.border != 'none' %} border-style{% endif %}"
+  style="{{ styles | strip | strip_newlines }}"
+  {{ attributes }}
+  {{- motion_attrs -}}
+>
+  <accordion-component
+    class="accordion__rows"
+    {% if settings.open_behavior == 'single' %}
+      data-single-open="true"
+    {% endif %}
+    data-section-id="{{ section_id }}"
+  >
+    {{- accordion_rows -}}
+  </accordion-component>
+</div>

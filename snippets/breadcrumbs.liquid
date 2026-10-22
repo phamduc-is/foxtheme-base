@@ -1,0 +1,106 @@
+{% doc %}
+  Renders a breadcrumb navigation trail.
+  Accepts text alignment for desktop and mobile independently.
+  Values 'left'/'right' are normalized to 'start'/'end'; mobile defaults to inherit from desktop.
+  The glyph between crumbs is the `breadcrumbs_divider` theme setting, not a param — every
+  caller shares one trail style.
+
+  @param {string} [text_align] - Desktop alignment: 'start' | 'left' | 'right' (default: 'start')
+  @param {string} [text_align_mobile] - Mobile alignment: 'start' | 'left' | 'right' | 'inherit' (default: 'inherit')
+
+  @example
+  {% render 'breadcrumbs', text_align: 'start', text_align_mobile: 'inherit' %}
+{% enddoc %}
+
+{%- liquid
+  assign text_align = text_align | default: 'start'
+  assign text_align_mobile = text_align_mobile | default: 'inherit'
+
+  if text_align_mobile == 'inherit'
+    assign text_align_mobile = text_align
+  endif
+
+  assign justify = text_align | replace: 'left', 'start' | replace: 'right', 'end'
+  assign justify_mobile = text_align_mobile | replace: 'left', 'start' | replace: 'right', 'end'
+
+  # The modifier rides on each separator rather than on the nav, so the variant rules stay a
+  # single class (0-1-0) instead of a descendant pair. `default` covers a settings_data.json
+  # saved before this setting existed.
+  assign divider = settings.breadcrumbs_divider | default: 'slash'
+  assign sep_class = 'breadcrumbs__sep breadcrumbs__sep--' | append: divider
+-%}
+<nav
+  class="breadcrumbs flex items-center justify-{{ justify_mobile }} md:justify-{{ justify }} gap-x-3"
+  role="navigation"
+  aria-label="breadcrumbs"
+>
+  <a
+    href="{{ routes.root_url }}"
+    title="{{- 'content.home' | t -}}"
+    class="reversed-link"
+  >
+    {{- 'content.home' | t -}}
+  </a>
+  {%- if template contains 'page' -%}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    <span class="breadcrumbs__last color-subtext text-ellipsis">{{ page.title }}</span>
+  {%- elsif template contains 'product' -%}
+    {%- liquid
+      assign product_collection = product.metafields.breadcrumbs.primary_collection.value
+      if product_collection == blank
+        assign product_collection = product.collections | first
+      endif
+    -%}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    {%- if product_collection != blank -%}
+      <a href="{{ product_collection.url }}" class="reversed-link">
+        {{- product_collection.title -}}
+      </a>
+    {%- else -%}
+      <a href="{{ routes.all_products_collection_url }}" class="reversed-link">
+        {{- 'content.collection' | t -}}
+      </a>
+    {%- endif -%}
+    <span aria-hidden="true" class="{{ sep_class }} breadcrumbs__sep--last"></span>
+    <span class="breadcrumbs__last color-subtext text-ellipsis">{{ product.title }}</span>
+  {%- elsif template contains 'collection' and collection.handle -%}
+    {%- if collection.handle != 'all' -%}
+      <span aria-hidden="true" class="{{ sep_class }}"></span>
+      <a href="{{ routes.all_products_collection_url }}" class="reversed-link">
+        {{- 'content.collection' | t -}}
+      </a>
+    {% endif %}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    {%- if current_tags -%}
+      {%- capture url -%}{{ routes.collections_url }}/{{ collection.handle }}{%- endcapture -%}
+      {{ collection.title | link_to: url, class: 'reversed-link' }}
+      <span aria-hidden="true" class="{{ sep_class }}"></span>
+      <span class="breadcrumbs__last color-subtext text-ellipsis">{{ current_tags | join: ' + ' }}</span>
+    {%- else -%}
+      <span class="breadcrumbs__last color-subtext text-ellipsis">{{ collection.title }}</span>
+    {%- endif -%}
+  {%- elsif template == 'list-collections' -%}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    <span class="breadcrumbs__last color-subtext text-ellipsis">{{ 'content.collections' | t }}</span>
+  {%- elsif template == 'blog' -%}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    {%- if current_tags -%}
+      {{ blog.title | link_to: blog.url, class: 'reversed-link' }}
+      <span aria-hidden="true" class="{{ sep_class }}"></span>
+      <span class="breadcrumbs__last color-subtext text-ellipsis">{{ current_tags | join: ' + ' }}</span>
+    {%- else -%}
+      <span>{{ blog.title }}</span>
+    {%- endif -%}
+  {%- elsif template == 'article' -%}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    {{ blog.title | link_to: blog.url, class: 'reversed-link' }}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    <span class="breadcrumbs__last color-subtext text-ellipsis">{{ article.title }}</span>
+  {%- elsif template == 'cart' -%}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    <span class="breadcrumbs__last color-subtext text-ellipsis">{{ 'content.cart' | t }}</span>
+  {%- else -%}
+    <span aria-hidden="true" class="{{ sep_class }}"></span>
+    <span class="breadcrumbs__last color-subtext text-ellipsis">{{ page_title }}</span>
+  {%- endif -%}
+</nav>

@@ -1,0 +1,43 @@
+{% doc %}
+  Products carousel for predictive search results.
+  Reads `predictive_search.resources.products`; renders nothing when empty.
+
+  @param {number} columns_xxl - Slides per view on desktop (≥1440px).
+  @param {number} [columns_xl] - Slides per view at ≥1200px.
+  @param {number} [columns_lg] - Slides per view at ≥1024px.
+  @param {number} [columns_md] - Slides per view at ≥768px.
+  @param {number} columns_mobile - Slides per view on mobile (`swipe-mobile` cols).
+  @param {number} column_gap - Gap (px) between slides on desktop.
+  @param {number} column_gap_mobile - Gap (px) between slides on mobile.
+  @param {string} media_sizes - `sizes` attribute forwarded to `product-card-markup`.
+
+  @example
+  {% render 'predictive-search-result-products-markup',
+    columns_xxl: columns_xxl,
+    columns_xl: columns_xl,
+    columns_lg: columns_lg,
+    columns_md: columns_md,
+    columns_mobile: columns_mobile,
+    column_gap: column_gap,
+    column_gap_mobile: column_gap_mobile,
+    media_sizes: media_sizes
+  %}
+{% enddoc %}
+{%- if predictive_search.resources.products.size > 0 -%}
+  <div class="search__result search__result--products w-full flex flex-col gap-3">
+    <h4 class="search__result-heading h6">
+      {{- 'content.search_results_resource_products' | t -}}
+    </h4>
+    {% render 'predictive-search-products-carousel-markup',
+      products: predictive_search.resources.products,
+      columns_xxl: columns_xxl,
+      columns_xl: columns_xl,
+      columns_lg: columns_lg,
+      columns_md: columns_md,
+      columns_mobile: columns_mobile,
+      column_gap: column_gap,
+      column_gap_mobile: column_gap_mobile,
+      media_sizes: media_sizes
+    %}
+  </div>
+{%- endif -%}

@@ -1,0 +1,93 @@
+// @capability Highlighted text runs — styles the italic (<em>) runs of rich text as highlights: a text color only (--text-color), a solid shape behind the text (--solid-background) that can sweep in along the reading direction when scrolled into view (--reveal), or an inline badge (--badge).
+// @when Rich text whose italic runs should stand out (text-like blocks and section headings with a "Highlight style" setting). The markup is produced by snippets/highlight-text.liquid (blocks go through text-highlight-markup.liquid); the scroll reveal is driven by src/js/modules/highlight-text.js.
+// @contract <em class="highlight-text highlight-text--{text-color|solid-background|badge} [badge] [highlight-text--slanted] [highlight-text--reveal]" [is="highlight-text"] style="--hl-font-style; [--hl-text-color; --hl-text-rgb]; [--hl-shape-color]">; each style sets --hl-shape-alpha for a shape with no color of its own; --solid-background wraps its text in an inner <span>; --badge also carries `.badge`, which supplies the badge type, padding, border and corner radius. --reveal opts the run into the in-view reveal (highlight-text.js adds is-in-view); each style defines its own reveal inside its modifier block, so a new style that animates adds its own `&.highlight-text--reveal` rules.
+// @keywords highlight, highlighted text, text highlight, marker, background sweep, reveal on scroll, italic, em, rich text
+
+// ─── Highlight ────────────────────────────────────────────────────────────────
+// The `<em>` runs of a text block with a highlight style, rewritten by
+// `highlight-text.liquid`. Colors arrive as inline vars only when the merchant set
+// them. Unset, the text inherits, and a shape follows the highlight text color — or the
+// foreground when that is unset too — at the alpha its style sets in `--hl-shape-alpha`.
+
+.highlight-text {
+  --hl-shape: var(--hl-shape-color, rgb(var(--hl-text-rgb, var(--color-foreground)) / var(--hl-shape-alpha, 100%)));
+
+  font-style: var(--hl-font-style, italic);
+  color: var(--hl-text-color, inherit);
+}
+
+// A linked highlight is `<a><em>…</em></a>` (the editor puts the link outside the italic), and
+// the link's underline is painted by the <a> in the <a>'s color — a descendant cannot recolor
+// it. The run draws its own underline in its own color on top, at the link's thickness (hover
+// included) and offset, so a link that only partly covers the run keeps its color elsewhere.
+:where(.rte a) > .highlight-text {
+  text-decoration-line: underline;
+  text-decoration-color: currentcolor;
+  text-decoration-thickness: inherit;
+}
+
+// The shape is a one-color gradient rather than a background-color so its size can animate.
+.highlight-text--solid-background {
+  --hl-shape-alpha: 20%;
+
+  background-image: linear-gradient(var(--hl-shape), var(--hl-shape));
+  background-repeat: no-repeat;
+  background-position: var(--transform-origin-start) center;
+  background-size: 100% 100%;
+  -webkit-box-decoration-break: clone; // Safari has only the prefixed form; the build adds no prefixes
+  box-decoration-break: clone;
+
+  // Reveal: collapsed until `highlight-text.js` marks the run in view, then the shape sweeps
+  // in along the reading direction. Reduced motion keeps it drawn from the start.
+  @media (prefers-reduced-motion: no-preference) {
+    &.highlight-text--reveal {
+      background-size: 0 100%;
+      transition: background-size var(--motion-reveal) var(--motion-ease-entrance);
+    }
+
+    &.highlight-text--reveal.is-in-view {
+      background-size: 100% 100%;
+    }
+  }
+}
+
+// Badge: the run carries `.badge` too, so the type, padding, border and corner radius are the
+// theme's own badge — whatever a fork sets there. This only colours it (this partial compiles
+// after `_component-badge`, so a single class wins): the shape color fills it and the text
+// color writes on it, and unset they invert the scheme. It sits on the text's centre line,
+// clear of the words before it, and never slants.
+.highlight-text--badge {
+  margin-inline-start: 0.8rem;
+  vertical-align: middle;
+  font-style: var(--font-badge--style);
+  color: var(--hl-text-color, rgb(var(--color-background)));
+  background-color: var(--hl-shape-color, rgb(var(--color-foreground)));
+  border-color: var(--hl-shape-color, rgb(var(--color-foreground)));
+}
+
+// An italic run's last glyph leans past the end of its own box, so the shape stopped short of
+// it and the run touched the next word. The overhang is the slant times the glyph's HEIGHT —
+// a synthesized italic (a font with no italic file) is skewed ~14° about the baseline — so it
+// is padded in `cap`, not em: measured on a tall condensed display face (cap 0.8em) the top of
+// a "T" leaned 1cap × tan 14° = 0.25cap (8.9px at 45px) past the box, and a flat 0.12em left
+// 3–4px of it bare. 0.3cap also covers ascenders a little above cap height and true italics
+// (usually 8–12°); checked at 16/36/72px on synthesized, serif, sans and display italics.
+// Known limit: a script face with swashes (a flourish on a final "T", a leading "S") reaches
+// past any fixed pad, on either side — accepted, as such faces rarely carry a solid highlight.
+// Physical right on purpose: the slant leans right in RTL too.
+// box-decoration-break: clone gives every line of a wrapped run the same padding.
+.highlight-text--slanted {
+  padding-right: 0.24em;
+  padding-right: 0.3cap;
+}
+
+// Under a gradient text color the shape above covers the parent's clipped gradient; with no
+// highlight text color of its own, the inner <span> re-clips the gradient over the shape.
+// `--color-gradient` is a gradient OR a plain color (the picker allows both): each longhand
+// takes the one it can parse and the other resolves to its initial value.
+:where(.color-gradient) .highlight-text--solid-background:not([style*="--hl-text-color"]) > span {
+  background-color: var(--color-gradient);
+  background-image: var(--color-gradient);
+  color: transparent;
+  background-clip: text;
+}

@@ -1,0 +1,187 @@
+{% doc %}
+  Collection card: optional swiper shell + inner card (snippet `collection-card-markup`; replaces former `collection-card` + nested chain).
+
+  **Theme / carousel shell** — pass `render_with_shell: true`, `card_settings` (block.settings), `section`, `shopify_attributes`. Other fields default from `card_settings` when omitted.
+
+  **Inner only** — `render_with_shell: false` (or omit); pass `collection`, `section`, `text_alignment`, etc. Optional `card_settings` fills blanks only.
+
+  @param {boolean} [render_with_shell] - Wrap in `collection-card-block swiper-slide-custom`.
+  @param {object} [card_settings] - Theme block settings (collection card / flex carousel).
+  @param {object} section - Section for row gaps and context.
+  @param {string} [shopify_attributes] - Editor attributes on the outer shell when `render_with_shell`.
+  @param {object} [collection]
+  @param {string} [title]
+  @param {string} [title_preset]
+  @param {boolean} [show_description]
+  @param {string} [description]
+  @param {string} [attributes] - Inner root attributes (e.g. `block.shopify_attributes`).
+  @param {string} [text_alignment] - May be omitted when `card_settings` supplies `text_alignment`.
+  @param {boolean} [show_product_count] - May be omitted when `card_settings` supplies `show_product_count`.
+  @param {object} [image]
+  @param {string} [image_ratio]
+  @param {string} [image_preload]
+  @param {string} [image_sizes]
+  @param {string} [image_widths]
+{% enddoc %}
+{%- liquid
+  if card_settings != blank
+    if collection == blank
+      assign collection = card_settings.collection
+    endif
+    if text_alignment == blank
+      assign text_alignment = card_settings.text_alignment
+    endif
+    if image == blank
+      assign image = card_settings.image
+    endif
+    if image_ratio == blank
+      assign image_ratio = card_settings.image_ratio
+    endif
+    if image_preload == blank
+      assign image_preload = card_settings.enable_preload_image
+    endif
+    if show_product_count == blank
+      assign show_product_count = card_settings.show_product_count
+    endif
+    if show_description == blank
+      assign show_description = card_settings.show_description
+    endif
+    if description == blank
+      assign description = card_settings.description
+    endif
+    if title == blank
+      assign title = card_settings.title
+    endif
+    if title_preset == blank
+      assign title_preset = card_settings.title_preset
+    endif
+  endif
+-%}
+{% if render_with_shell %}
+  <div
+    class="collection-card-block swiper-slide-custom size-style"
+    style="{% render 'size-style', settings: card_settings %}"
+    {{ shopify_attributes }}
+  >
+{% endif %}
+{%- liquid
+  assign collection_thumbnail = collection.metafields.foxtheme.collection_thumbnail.value
+  assign collection_alias = collection.metafields.foxtheme.collection_alias.value
+
+  assign attributes = attributes | default: ''
+  assign show_product_count = show_product_count | default: true, allow_false: true
+
+  if image != blank
+    assign image_source = image
+  else
+    assign image_source = collection_thumbnail | default: collection.featured_image
+  endif
+
+  assign image_ratio = image_ratio | default: settings.collection_card_aspect_ratio
+  if image_ratio == 'inherit'
+    assign image_ratio = settings.collection_card_aspect_ratio
+  endif
+
+  assign image_sizes = image_sizes | default: ''
+  assign image_widths = image_widths | default: ''
+  assign image_preload = image_preload | default: false, allow_false: true
+  assign loading = 'lazy'
+  assign fetchpriority = 'low'
+  if image_preload
+    assign loading = 'eager'
+    assign fetchpriority = 'high'
+  endif
+
+  assign title_preset = title_preset | default: 'h6'
+  if title == blank
+    assign title = collection_alias | default: collection.title
+    if title == blank
+      assign title = 'placeholders.collection_title' | t
+    endif
+  endif
+
+  assign show_description = show_description | default: false, allow_false: true
+  if description == blank
+    if collection != blank
+      assign description = collection.description
+    else
+      assign description = 'placeholders.collection_description' | t
+    endif
+  endif
+
+  assign all_products_count = collection.all_products_count
+  if collection == blank
+    assign all_products_count = 12
+  endif
+-%}
+<div
+  class="collection-card block border-style size-style relative z-0 w-full reversed-link media-hover--scale"
+  style="{% render 'border-style', settings: settings.collection_card_media_radius %}{% render 'size-style', settings: settings.collection_card_media_radius %};"
+  {{- attributes -}}
+>
+  <a
+    {% if collection.url != blank %}
+      href="{{ collection.url }}"
+    {% else %}
+      role="link"
+      aria-disabled="true"
+    {% endif %}
+    class="collection-card__link absolute inset-0 cursor-pointer"
+    aria-label="{{ title | escape }}"
+  ></a>
+  <div
+    class="collection-card__inner flex flex-col"
+    style="--row-gap: {{ section.settings.card_row_gap | default: 12 }}px;--row-gap-mobile: {{ section.settings.card_row_gap_mobile | default: 12 }}px;"
+  >
+    <div
+      class="collection-card__image image-block border-style relative z--1 media-mask-clip w-full"
+      style="--border-radius: {{ settings.collection_card_media_radius }}px;"
+    >
+      {%- if image_sizes != blank -%}
+        {% render 'responsive-image',
+          mode: 'liquid',
+          sizes: image_sizes,
+          widths: image_widths,
+          image: image_source,
+          image_ratio: image_ratio,
+          default_alt: title,
+          loading: loading,
+          fetchpriority: fetchpriority,
+          img_class: 'w-full',
+          svg_placeholder: 'collection-1'
+        %}
+      {%- else -%}
+        {% render 'responsive-image',
+          mode: 'js',
+          image: image_source,
+          image_ratio: image_ratio,
+          default_alt: title,
+          loading: loading,
+          fetchpriority: fetchpriority,
+          img_class: 'w-full',
+          svg_placeholder: 'collection-1'
+        %}
+      {%- endif -%}
+    </div>
+    <div class="collection-card__content flex flex-col gap-2 md:gap-3 w-full text-{{ text_alignment }}">
+      <h3 class="collection-card__title inline-flex gap-2 {{ title_preset }}">
+        <span>
+          <span class="reversed-link__text">{{ title }}</span>
+        </span>
+        {%- if show_product_count -%}
+          <sup class="collection-card__count paragraph">
+            {{ all_products_count }}
+          </sup>
+        {%- endif -%}
+      </h3>
+      {%- if show_description and description != blank -%}
+        <div class="collection-card__description color-subtext rte">
+          {{ description }}
+        </div>
+      {%- endif -%}
+    </div>
+  </div>
+</div>
+{% if render_with_shell %}
+  </div>
+{% endif %}

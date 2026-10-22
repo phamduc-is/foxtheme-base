@@ -1,0 +1,69 @@
+{% doc %}
+  One product-quiz result: the reused horizontal product card with an icon-only quick-add button
+  (single-variant products add directly, multi-variant ones open the quick-view modal).
+
+  Shared by the data endpoint (sections/section-rendering-product-quiz.liquid) and the theme-editor
+  preview rows of blocks/_product-quiz-results.liquid, so both render the exact same row. The
+  endpoint cannot read the results block's settings, so vendor and title clamp are rendered
+  permissively here and narrowed by the results list in CSS (`--line-clamp`, the no-vendor
+  modifier) — see src/scss/scoped/product-quiz.scss.
+
+  Every row is a BOX card. The endpoint passes no scheme, so its cards come out with the theme's
+  `pcard_box_color_scheme`, which the runtime swaps for the results list's `data-row-scheme`; the
+  editor preview rows pass the results block's scheme directly.
+
+  @param {object} [product] - The product. Blank renders the onboarding placeholder card (shop name as its vendor).
+  @param {string} [color_scheme] - Colour scheme id painting the box panel (default: the theme's box card scheme).
+
+  @example
+  {% render 'product-quiz-row', product: product, color_scheme: row_color_scheme %}
+{% enddoc %}
+
+{%- capture card -%}
+  {%- render 'product-card-markup',
+    product: product,
+    view_event_context: 'recommendation',
+    mode: 'horizontal',
+    mode_mobile: 'horizontal',
+    style: 'box',
+    color_scheme: color_scheme,
+    image_ratio: '1',
+    media_width: '9rem',
+    media_width_mobile: '7rem',
+    show_badges: false,
+    show_badges_mobile: false,
+    show_swatch: false,
+    show_swatch_mobile: false,
+    show_quick_view: false,
+    show_quick_view_mobile: false,
+    show_quick_add: true,
+    show_quick_add_mobile: true,
+    quick_add_button_layout: 'icon-only',
+    quick_add_placement: 'actions',
+    show_vendor: true,
+    show_vendor_mobile: true,
+    show_type: false,
+    show_type_mobile: false,
+    product_title_line_limit: 'none',
+    form_id_suffix: 'quiz'
+  -%}
+{%- endcapture -%}
+{%- liquid
+  comment
+    Onboarding card (no product): the core placeholder has no vendor line and no title clamp
+    class, so `show_vendor` and `title_line_limit` would show nothing in the editor preview.
+    Give it the shop name as its vendor (hidden by the list's no-vendor modifier like a real
+    one) and a `text-limit-*` title, which reads the list's `--line-clamp`.
+  endcomment
+  if product == blank
+    capture placeholder_title
+      echo '<div class="product-card__metas pointer-pass-through"><span class="product-card__meta product-card__meta--vendor"><span class="reversed-link__text">'
+      echo shop.name | escape
+      echo '</span></span></div><p class="product-card__title text-wrap text-limit-none">'
+    endcapture
+    assign card = card | replace_first: '<p class="product-card__title text-wrap">', placeholder_title
+  endif
+-%}
+<div class="product-quiz-results__product" data-quiz-product-id="{{ product.id }}">
+  {{- card -}}
+</div>

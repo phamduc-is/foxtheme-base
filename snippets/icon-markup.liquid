@@ -1,0 +1,32 @@
+{% doc %}
+  Markup for the icon theme block (no schema).
+
+  @param {object} settings - Block settings (icon, image, link, sizes).
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+  @param {string} block_id - Theme block id for stable media class names.
+{% enddoc %}
+{%- liquid
+  assign icon_block_class = 'icon-block__media icon-block-' | append: block_id
+
+  assign wrap_tag = 'div'
+  if settings.link != blank
+    assign wrap_tag = 'a'
+  endif
+-%}
+<{{ wrap_tag }}
+  class="icon-block flex{% if settings.link %} text-inherit{% endif %}{% if settings.image_upload != blank and settings.round_shape %} rounded media-mask-clip{% endif %}"
+  {% if settings.link %}
+    href="{{ settings.link }}"
+  {% endif %}
+  {{ shopify_attributes }}
+>
+  {% render 'icon-or-image',
+    icon: settings.icon,
+    image_upload: settings.image_upload,
+    class_name: icon_block_class,
+    width: settings.width,
+    width_mobile: settings.width_mobile,
+    icon_size: settings.icon_size,
+    icon_color: settings.icon_color
+  %}
+</{{ wrap_tag }}>

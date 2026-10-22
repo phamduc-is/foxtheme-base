@@ -1,0 +1,94 @@
+{% doc %}
+  Outputs CSS custom property declarations for text typography (font size, family, weight, line-height),
+  plus the heading letter-spacing when the custom preset uses the heading font.
+  In 'custom' preset mode, emits explicit values from params/settings.
+  In named preset mode, defers to a global preset CSS class.
+  Direct params take priority over the settings object equivalents.
+
+  @param {object} [settings] - Block/section settings (reads type_preset, font_size, font_size_mobile, font, font_weight, line_height)
+  @param {string} [preset] - Typography preset name; overrides settings.type_preset
+  @param {number} [font_size] - Font size in px; overrides settings.font_size
+  @param {number} [font_size_mobile] - Mobile font size in px; overrides settings.font_size_mobile
+  @param {string} [font_family] - Font family key; overrides settings.font
+  @param {string} [font_weight] - Font weight; overrides settings.font_weight
+  @param {string} [line_height] - Line height value; overrides settings.line_height
+  @param {string} [text_transform] - CSS text-transform keyword; overrides settings.text_transform. Blank = leave the casing to whatever already styles the element
+  @param {string} [font_type] - Font role: 'body' | 'heading' (used to resolve the correct font stack)
+
+  @example
+  {% render 'typography-style', settings: block.settings %}
+{% enddoc %}
+
+{%- liquid
+  assign preset = preset | default: settings.type_preset
+  assign font_size = font_size | default: settings.font_size
+  assign font_size_mobile = font_size_mobile | default: settings.font_size_mobile
+  assign font_family = font_family | default: settings.font
+  assign font_weight = font_weight | default: settings.font_weight
+  assign line_height = line_height | default: settings.line_height
+  assign text_transform = text_transform | default: settings.text_transform
+-%}
+
+{%- capture variables -%}
+  {%- if preset == 'custom' -%}
+    {%- liquid 
+      unless font_type
+        comment
+          When choosing to customize the font, picking a specific font size
+          determines the type of text block.
+        endcomment
+        if font_size != ''
+          assign font_size_value = font_size | divided_by: 10.0
+
+          if font_size_value > 4.8
+            assign font_type = 'display'
+          elsif font_size_value > 1.5
+            assign font_type = 'heading'
+          else
+            assign font_type = 'body'
+          endif
+        endif
+      endunless
+    -%}
+    {%- if font_size != blank and font_size_mobile != blank -%}
+      {%- render 'clamp-calculate-style',
+        property_name: 'font-size',
+        min_value: font_size_mobile,
+        max_value: font_size,
+      -%}
+    {%- endif -%}
+    --font-family: {{ font_family }};
+    {%- if font_weight != blank -%}
+      --font-weight: {{ font_weight }};
+    {%- else -%}
+      --font-weight: {{ font_family | replace: 'family', 'weight' }};
+    {%- endif -%}
+    {%- if preset == 'custom' and font_size == blank -%}
+      --line-height--display: var(--line-height--display-{{ line_height }});
+      --line-height--heading: var(--line-height--heading-{{ line_height }});
+      --line-height--subheading: var(--line-height--subheading-{{ line_height }});
+      --line-height--body: var(--line-height--body-{{ line_height }});
+    {%- else -%}
+      --line-height: var(--line-height--{{ font_type }}-{{ line_height }});
+    {%- endif -%}
+    {%- comment -%}
+      Emitted ONLY when a transform was picked. Left out, the var stays undefined and the
+      CSS fallback in `.custom-typography` keeps whatever already cased the element — a
+      nested heading still reads `--font-heading--transform`.
+    {%- endcomment -%}
+    {%- if text_transform != blank -%}
+      --text-transform: {{ text_transform }};
+    {%- endif -%}
+    {%- comment -%}
+      Heading font → heading letter-spacing too. A real property, not a var: a
+      `.custom-typography` rule would need a fallback for the unset case, and any
+      fallback overrides the element's own letter-spacing (`.btn`, product-card
+      title, `h1`-`h6`). Inline only when Heading is picked; it inherits into the
+      richtext children (a `<p>` has no heading rule of its own).
+    {%- endcomment -%}
+    {%- if font_family contains '--font-heading--' -%}
+      letter-spacing: var(--font-heading--letter-spacing);
+    {%- endif -%}
+  {%- endif -%}
+{%- endcapture -%}
+{{- variables | strip | strip_newlines -}}

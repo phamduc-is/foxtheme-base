@@ -1,0 +1,42 @@
+{% doc %}
+  Markup for the `_promotion-alert` / `_qv-promotion-alert` theme blocks (no schema). Static `content_for` child slots must be captured in the block file.
+
+  @param {string} promotion_alert_color - RGB string for `--promotion-alert-color` (from color setting).
+  @param {object} settings - Block settings for spacing-style and border-style.
+  @param {string} block_id - Block id, used to scope the sessionStorage dismissal key.
+  @param {string} shopify_attributes - Theme editor attributes on the root element.
+  @param {string} promotion_alert_icon_html - Captured `content_for` _icon static block.
+  @param {string} promotion_alert_title_html - Captured `content_for` _simple-text title.
+  @param {string} promotion_alert_description_html - Captured `content_for` _simple-text description.
+  @param {boolean} [show_close_button] - Renders the close button that dismisses the alert for the session.
+{% enddoc %}
+{{ 'scoped-promotion-alert.css' | asset_url | stylesheet_tag }}
+{%- if show_close_button -%}
+  <script src="{{ 'promotion-alert.js' | asset_url }}" type="module"></script>
+{%- endif -%}
+<promotion-alert
+  class="promotion-alert spacing-style"
+  style="{% render 'spacing-style', settings: settings %} {% render 'border-style', settings: settings %} --promotion-alert-color: {{ promotion_alert_color }};"
+  data-storage-key="promotion-alert:{{ block_id }}"
+  {{ shopify_attributes }}
+>
+  <div class="promotion-alert__wrapper border-style">
+    <div class="promotion-alert__content">
+      {{ promotion_alert_icon_html }}
+      <div class="promotion-alert__text">
+        {{ promotion_alert_title_html }}
+        {{ promotion_alert_description_html }}
+      </div>
+    </div>
+    {%- if show_close_button -%}
+      <button
+        type="button"
+        class="promotion-alert__close"
+        aria-label="{{ 'actions.close' | t }}"
+        on:click="/dismiss"
+      >
+        {% render 'icon', icon: 'close' %}
+      </button>
+    {%- endif -%}
+  </div>
+</promotion-alert>

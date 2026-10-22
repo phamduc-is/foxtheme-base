@@ -1,0 +1,163 @@
+{% doc %}
+  @param {object} [block] - The block object
+  @param {string} [text] - main text content. Overrides settings.text if provided.
+  @param {string} [fallback_text] - fallback text if settings.text or main text does not exist
+  @param {string} [width] - width of the text block
+  @param {string} [width_mobile] - width of the text block on mobile
+  @param {string} [text_color] - text color
+  @param {string} [text_alignment] - text alignment
+  @param {string} [text_alignment_mobile] - text alignment on mobile
+  @param {string} [animation_type] - animation type
+  @param {string} [animation_delay] - animation delay
+  @param {string} [animation_split] - 'words' plays the animation word by word (motion-text). Fallback for settings.animation_split
+  @param {string} [class] - custom class to define in addition to text-block classes
+  @param {string} [preset] - fallback for settings.type_preset
+  @param {number} [font_size] - fallback for settings.font_size. Only works when the preset is set to "custom"
+  @param {number} [font_size_mobile] - fallback for settings.font_size_mobile. Only works when the preset is set to "custom"
+  @param {string} [font_family] - fallback for settings.font. Only works when the preset is set to "custom"
+  @param {string} [font_weight] - fallback for settings.font_weight. Only works when the preset is set to "custom"
+  @param {string} [line_height] - fallback for settings.line_height. Only works when the preset is set to "custom"
+  @param {string} [text_transform] - fallback for settings.text_transform. Only works when the preset is set to "custom"
+  @param {string} [font_type] - font type. Only works when the preset is set to "custom"
+  @param {string} [text_color_gradient] - Text color gradient
+  @param {string} [text_color_custom] - Custom text color (used when text_color is 'custom')
+  @param {boolean} [disable_line_break_mobile] - Hide `<br>` line breaks below md (a space keeps the words apart). Fallback for settings.disable_line_break_mobile, so a section heading can opt in too
+
+  @example
+  {% render 'text-markup', block: block %}
+  {% render 'text-markup', fallback_text: 'Featured collection', preset: 'h2' %}
+  {% render 'text-markup', fallback_text: 'Featured product', preset: 'custom', font_size: 48, font_size_mobile: 28 %}
+{% enddoc -%}
+
+{%- liquid
+  assign block_settings = block.settings
+  if text == blank
+    assign text = block_settings.text
+  endif
+  assign plain_text = text | strip_newlines | strip
+  assign visible_text = plain_text | strip_html
+  assign text_width = width | default: block_settings.width
+  assign text_width_mobile = width_mobile | default: block_settings.width_mobile
+  assign text_alignment = text_alignment | default: block_settings.text_alignment
+  assign text_alignment_mobile = text_alignment_mobile | default: block_settings.text_alignment_mobile
+  assign text_color = text_color | default: block_settings.text_color | default: 'text'
+  assign animation_type = animation_type | default: block_settings.animation_type | default: 'none'
+  assign animation_delay = animation_delay | default: block_settings.animation_delay
+  assign animation_split = animation_split | default: block_settings.animation_split | default: 'none'
+
+  assign preset = preset | default: block_settings.type_preset
+  assign font_size = font_size | default: block_settings.font_size
+  assign font_size_mobile = font_size_mobile | default: block_settings.font_size_mobile
+  assign font_family = font_family | default: block_settings.font
+  assign font_weight = font_weight | default: block_settings.font_weight
+  assign line_height = line_height | default: block_settings.line_height
+  assign text_transform = text_transform | default: block_settings.text_transform
+  assign disable_line_break_mobile = disable_line_break_mobile | default: block_settings.disable_line_break_mobile, allow_false: true
+
+  capture text_block_classes
+    if preset == 'custom'
+      echo ' custom-typography '
+      if font_size != ''
+        echo ' custom-font-size '
+      endif
+    endif
+    unless preset == 'rte'
+      # Always use "rte" to make richtext tags display properly.
+      echo ' rte '
+    endunless
+  endcapture
+-%}
+
+{%- capture styles -%}
+  {% if text_width %}--width: {{ text_width }};{% endif %}
+  {% if text_width_mobile %}--width-mobile: {{ text_width_mobile }};{% endif %}
+  {% if text_alignment and text_width == '100%' %}--text-align: {{ text_alignment | replace: 'left', 'start' | replace: 'right', 'end' }};{% endif %}
+  {% if text_alignment_mobile and text_width_mobile == '100%' %}--text-align-mobile: {{ text_alignment_mobile | replace: 'left', 'start' | replace: 'right', 'end' }};{% endif %}
+  {% render 'typography-style', 
+    settings: block_settings,
+    preset: preset,
+    font_size: font_size,
+    font_size_mobile: font_size_mobile,
+    font_family: font_family,
+    font_weight: font_weight,
+    line_height: line_height,
+    text_transform: text_transform,
+    font_type: font_type,
+  %}
+  {% render 'spacing-style', settings: block_settings %}
+  {% if text_color == 'gradient' %}
+    {%- assign text_color_gradient = text_color_gradient | default: block_settings.text_color_gradient | default: '#000000' -%}
+    --color-gradient: {{ text_color_gradient }};
+  {% endif %}
+  {% if text_color == 'custom' %}
+    {%- assign text_color_custom = text_color_custom | default: block_settings.text_color_custom | default: '#000000' -%}
+    --color-text-custom: {{ text_color_custom }};
+  {% endif %}
+{%- endcapture -%}
+{%- capture classes -%}
+  spacing-style text-block color-{{ text_color }}{% if block %} text-block--{{ block.id }}{% endif %} {{ preset }}{{ text_block_classes }}{% if class != blank %} {{ class }}{% endif %}
+  {%- if disable_line_break_mobile %} mobile-no-br{%- endif -%}
+{%- endcapture -%}
+
+{%- liquid
+  # Split by word: <motion-text> (motion-text.js) plays the same preset on each
+  # word, one after another, instead of on the block as a whole. Any text can
+  # take it — the cascade is capped, a gradient fill follows the words, and an
+  # <em> highlight waits for them.
+  assign element = 'div'
+  if settings.animations_enabled and animation_type != 'none'
+    if animation_split == 'words'
+      assign element = 'motion-text'
+    else
+      assign element = 'motion-component'
+    endif
+  endif
+-%}
+
+{% capture attributes %}
+  class="{{ classes | strip | strip_newlines }}"
+  style="{{ styles | strip | strip_newlines }}"
+  {% render 'motion-attributes', type: animation_type, delay: animation_delay %}
+  {{ block.shopify_attributes }}
+{% endcapture %}
+
+{%- liquid
+  # {{ attributes }} must be on the immediate HTML parent of the text to preserve
+  # the click-to-edit connection in the theme editor. Any break between the text,
+  # including if-statements, will break the connection.
+
+  assign fallback_text_tag = 'div'
+  if block_settings.html_tag
+    assign fallback_text_tag = block_settings.html_tag
+  endif
+
+  assign use_fallback_text = false
+  assign render_text = text
+
+  if fallback_text != blank and visible_text == blank
+    assign use_fallback_text = true
+    assign render_text = fallback_text
+  endif
+
+  # `.mobile-no-br` hides every `<br>` below md, but a hidden `<br>` leaves NO word gap
+  # behind — "Big Summer<br>Sale" would render "Big SummerSale". Pair each break with a
+  # marker that supplies the space (see `.br-space` in `_block-text.scss`); it is
+  # display:none until the option actually takes effect, so nothing changes otherwise.
+  # Normalise the self-closing spellings first: shipped richtext writes `<br/>` far more
+  # often than `<br>`, and matching only the bare form would miss most of it.
+  if disable_line_break_mobile
+    assign render_text = render_text | replace: '<br />', '<br>' | replace: '<br/>', '<br>' | replace: '<br>', '<span class="br-space"></span><br>'
+  endif
+-%}
+{%- capture text_with_highlight -%}
+  {{ render_text }}
+{%- endcapture -%}
+{%- if use_fallback_text -%}
+  <{{ element }} {{ attributes }}>
+    <{{ fallback_text_tag }}>{{ text_with_highlight }}</{{ fallback_text_tag }}>
+  </{{ element }}>
+{%- elsif plain_text != blank -%}
+  <{{ element }} {{ attributes }}>
+    {{ text_with_highlight }}
+  </{{ element }}>
+{%- endif -%}

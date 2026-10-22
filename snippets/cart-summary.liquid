@@ -1,0 +1,125 @@
+{% doc %}
+  Renders the cart summary block with subtotal, applied discounts, estimated total,
+  addon buttons (discount, note, shipping), tax info, and checkout button.
+
+  @param {object} [section] - Section object
+  @param {string} [context] - Rendering context: 'drawer' | 'cart-page' (default: 'drawer')
+
+  'drawer': adds drawer-specific classes, color scheme, addon buttons, and "View cart" link.
+
+  'cart-page': shows discount labels, hides drawer-only UI.
+
+  @example
+  {% render 'cart-summary', context: 'drawer' %}
+  @example
+  {% render 'cart-summary', context: 'cart-page' %}
+{% enddoc %}
+
+{% liquid
+  assign context = context | default: 'drawer'
+  assign class = 'cart-summary'
+  assign class_inner = 'cart-summary__inner flex flex-col gap-5 xl:gap-6'
+
+  if context == 'drawer'
+    assign class = class | append: ' cart-drawer-summary'
+    assign class_inner = class_inner | append: ' cart-drawer-summary__inner color-' | append: section.settings.summary_color_scheme
+
+    if section.settings.summary_color_scheme.settings.background.rgb == settings.dialog_color_scheme.settings.background.rgb
+      assign class_inner = class_inner | append: ' show-seperator-line'
+    endif
+  endif
+%}
+
+<div class="{{ class }}">
+  <div class="{{ class_inner }}">
+    <div class="cart-summary__original-totals flex flex-col gap-1">
+      {%- if cart.cart_level_discount_applications.size > 0 -%}
+        <span class="cart__original-total flex justify-between gap-2">
+          <span class="cart__original-total-label">{{ 'content.cart_subtotal' | t }}</span>
+          <span class="cart__original-total-value color-subtext">
+            {{- cart.original_total_price | money -}}
+          </span>
+        </span>
+        <div class="cart__summary-discounts">
+          <ul
+            class="list-unstyled flex flex-col gap-1"
+            role="list"
+            aria-label="{{ 'content.discounts' | t }}"
+          >
+            {%- for discount in cart.cart_level_discount_applications -%}
+              <li class="w-full flex justify-between gap-2 cart__discount">
+                <span class="cart__discount-label flex items-center gap-1{% if context == 'cart-page' %} discount{% endif %}">
+                  {% render 'icon', icon: 'tag', size: 'small' %}
+                  <span>{{ discount.title | escape }}</span>
+                </span>
+                <span class="cart__discount-value color-subtext">-{{ discount.total_allocated_amount | money -}}</span>
+              </li>
+            {%- endfor -%}
+          </ul>
+        </div>
+      {%- endif -%}
+    </div>
+    {%- liquid
+      if settings.show_currency_code
+        assign total_price = cart.total_price | money_with_currency
+      else
+        assign total_price = cart.total_price | money
+      endif
+    -%}
+    <div class="flex gap-6">
+      <span
+        class="cart-summary__total flex flex-col gap-1 xl:gap-2"
+        role="status"
+      >
+        <span class="cart-summary__total-label">
+          {{- 'content.cart_estimated_total' | t -}}
+        </span>
+        <span
+          ref="cartTotal"
+          value="{{ total_price | strip_html }}"
+          class="cart-summary__total-value h3"
+          {% comment %} Used by payment_terms web component {% endcomment %}
+          data-cart-subtotal
+        >
+          <span class="price">{{ total_price }}</span>
+        </span>
+      </span>
+
+      <div class="text-right flex-1 flex flex-col gap-2">
+        {%- if context == 'drawer' -%}
+          {%- render 'cart-summary-addons-drawer', section: section -%}
+        {%- endif -%}
+        <div class="cart-summary__tax-note">
+          {% render 'tax-info', has_discounts_enabled: settings.show_add_discount_code %}
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-col gap-3">
+      <div class="flex gap-2">
+        {% if context == 'drawer' %}
+          <a class="flex-1 btn btn--outline" href="{{ routes.cart_url }}">
+            <span class="btn__text" data-label="{{ 'actions.view_cart' | t | escape }}">{{ 'actions.view_cart' | t }}</span>
+          </a>
+        {% endif %}
+        <button
+          type="submit"
+          id="checkout"
+          class="cart-summary__checkout-button btn btn--primary flex-1"
+          name="checkout"
+          {% if cart == empty %}
+            disabled
+          {% endif %}
+          form="cart-form"
+        >
+          <span class="btn__text" data-label="{{ 'content.checkout' | t | escape }}">{{ 'content.checkout' | t }}</span>
+        </button>
+      </div>
+
+      {% if additional_checkout_buttons and settings.show_accelerated_checkout_buttons %}
+        <div class="additional-checkout-buttons additional-checkout-buttons--vertical">
+          {{ content_for_additional_checkout_buttons }}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>

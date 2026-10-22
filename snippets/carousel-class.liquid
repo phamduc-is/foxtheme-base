@@ -1,0 +1,54 @@
+{% doc %}
+  Emits the carousel classes that the shared `carousel_overflow` / `carousel_edge_fade`
+  settings decide.
+
+  Two decisions, one file, because the theme used to spell them three different ways: a
+  `carousel--visible` class on the host, an `.overflow-visible` utility dropped straight
+  onto `.swiper`, and a `carousel--hidden` class that had no rule anywhere and only worked
+  because `overflow: hidden` is Swiper's own default.
+
+  @param {object} settings - Section/block settings holding carousel_overflow + carousel_edge_fade
+  @param {string} [part] - Which element is being classed. Default 'carousel'.
+
+  'carousel' is the carousel host element, and takes the overflow class.
+
+  'viewport' is the wrapper around .swiper and takes the DESKTOP edge fade. It has to be its own element: the fade
+  paints ::before/::after that bleed outward by --page-padding, so on a clipped .swiper they would never be seen.
+
+  'viewport-mobile' is a second wrapper around that one, taking the MOBILE edge fade. Two elements rather than one
+  because the two regimes have different drivers: while Swiper is alive FlexCarousel toggles is--active from its own
+  events, and where `destroyBelow: 768` tears it down a native scroll row takes over, which only swipe-component can
+  follow. Both drivers write the same three state classes, so they get an element each and each clears its OWN
+  element's state when it stops driving (swipe-component above the breakpoint, FlexCarousel on `carousel:destroyed`;
+  FlexCarousel never touches a wrapper upgraded with `is="swipe-component"`). Where Swiper survives below the
+  breakpoint (destroyBelow conditional on enable_swipe_on_mobile), the desktop wrapper simply keeps painting there —
+  that is why the mobile fade setting stays gated on enable_swipe_on_mobile. Upgrade this wrapper with
+  `is="swipe-component"` and put `swipe__element` on the .swiper for the mobile half to work.
+
+  @example
+  Host: class="carousel carousel--grid {% raw %}{% render 'carousel-class', settings: section.settings %}{% endraw %}"
+  Viewport wrapper: class="{% raw %}{% render 'carousel-class', settings: section.settings, part: 'viewport' %}{% endraw %}"
+  Known and harmless: the emitted string carries a leading newline, so a host renders
+  `class="carousel carousel--grid \ncarousel--visible"` and an unset viewport wrapper renders
+  `class="\n"`. A doc block absorbs the newline after it, leaving the `{%-` below no text
+  node to trim. Both parse as the identical class list. The one-line spelling that removes it
+  loses to `yarn format`, and 48 other snippets here share the shape, so it is not worth the
+  deviation — the callers that care pipe through `| strip_newlines`.
+{% enddoc -%}
+{%- liquid
+  assign part = part | default: 'carousel'
+
+  if part == 'viewport'
+    if settings.carousel_edge_fade
+      echo 'edge__shadows edge__shadows--desktop z-0'
+    endif
+  elsif part == 'viewport-mobile'
+    if settings.carousel_edge_fade_mobile
+      echo 'edge__shadows edge__shadows--mobile z-0'
+    endif
+  elsif settings.carousel_overflow == 'visible'
+    echo 'carousel--visible'
+  else
+    echo 'carousel--hidden'
+  endif
+-%}

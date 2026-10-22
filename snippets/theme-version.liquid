@@ -1,0 +1,13 @@
+{% doc %}
+  Shopify Theme Store release version — output ONLY.
+
+  Bumped manually via `yarn theme:bump-store-version <ver>` on each
+  store release (independent of the internal git-tag version in
+  `package.json`/CHANGELOG.md that increments per commit).
+
+  This file is `merge=ours` in `.gitattributes`: each fork ships its
+  own store version line and `yarn core:sync` never overwrites it.
+{% enddoc -%}
+{%- liquid
+  echo '1.0.0'
+-%}

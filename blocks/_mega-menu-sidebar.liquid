@@ -1,0 +1,263 @@
+{% doc %}
+  Private header mega-menu block: sidebar layout (collapsible collection groups + promotions panel).
+{% enddoc %}
+{%- liquid
+  assign menu_item_handle = block.settings.menu_title | downcase | handle
+
+  assign link = blank
+  for top_link in section.settings.menu.links
+    assign top_link_handle = top_link.title | downcase | handle
+    if top_link_handle == menu_item_handle
+      assign link = top_link
+      break
+    endif
+  endfor
+
+  assign menu_mobile = section.settings.menu_mobile | default: section.settings.menu
+  assign mobile_link = blank
+  for top_link in menu_mobile.links
+    assign top_link_handle = top_link.title | downcase | handle
+    if top_link_handle == menu_item_handle
+      assign mobile_link = top_link
+      break
+    endif
+  endfor
+
+  assign menu_columns = block.settings.menu_columns
+  assign promotions_width = block.settings.promotions_width
+
+  assign mega_menu_css_class = ''
+  if link.links != blank
+    assign mega_menu_css_class = ' mega-menu--with-links'
+  else
+    assign mega_menu_css_class = ' mega-menu--no-links'
+  endif
+
+  assign has_promotions = false
+  if block.blocks.size > 0
+    assign has_promotions = true
+  endif
+-%}
+{%- capture children -%}{% content_for 'blocks' %}{%- endcapture -%}
+<!-- @megaMenu/context/desktop -->
+<details
+  id="Mega-menu-item-{{ block.id }}"
+  is="details-mega"
+  trigger="{{ section.settings.menu_trigger }}"
+  level="top"
+  style="--menu-columns: {{ menu_columns }}; --promotions-width: {{ promotions_width }}%;"
+  {{ block.shopify_attributes }}
+>
+  <summary data-link="{{ link.url }}">
+    <span class="menu__item reversed-link">
+      <span class="reversed-link__text">{{- link.title | escape -}}</span>
+      {%- render 'icon', icon: 'caret-down', size: 'extra-small' -%}
+    </span>
+  </summary>
+  <div class="mega-menu mega-menu--sidebar{% if mega_menu_css_class != blank %} {{ mega_menu_css_class }}{% endif %} flex flex-col">
+    <div class="mega-menu__container v-scrollable{% unless settings.dialog_color_scheme_inherit %} color-{{ settings.dialog_color_scheme }}{% endunless %}">
+      <div
+        data-mega-menu-wrapper
+        class="page-width mega-menu__wrapper flex flex-wrap"
+      >
+        {%- if link.links != blank -%}
+          <menu-sidebar
+            class="block menu-sidebar flex-grow relative mega-menu__item"
+            style="{% render 'clamp-calculate-style', property_name: 'toggle-width', min_value: 180, max_value: 240, min_breakpoint: 1024, max_breakpoint: 1455 %}"
+          >
+            {%- for childlink in link.links -%}
+              <details class="menu-sidebar__item" open>
+                <summary
+                  class="menu-sidebar__toggle flex items-center justify-between reversed-link{% if forloop.first %} is-visible{% endif %}"
+                  aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}"
+                  data-link-url="{{ childlink.url }}"
+                >
+                  <h6 class="h4">
+                    <span class="reversed-link__text">{{ childlink.title | escape }}</span>
+                  </h6>
+                </summary>
+                <div class="menu-sidebar__content">
+                  <div class="menu-sidebar__content-inner flex items-start">
+                    {%- if childlink.links != blank -%}
+                      <ul
+                        class="menu-sidebar__collections list-unstyled layout-panel-grid gap-style flex-grow"
+                        style="--f-columns-lg: {{ menu_columns }}; --f-column-gap: 3rem; --f-row-gap: 1.2rem;"
+                      >
+                        {%- for grandchildlink in childlink.links -%}
+                          {%- liquid
+                            assign is_collection_link = false
+                            assign default_alt = shop.name
+                            if grandchildlink.type == 'collection_link' and block.settings.show_collection_image
+                              assign is_collection_link = true
+                              assign collection_object = grandchildlink.object
+                              assign collection_image = collection_object.featured_image
+                              assign default_alt = collection_object.title
+                            endif
+
+                            if collection_object.metafields.foxtheme.collection_megamenu_image.value
+                              assign collection_image = collection_object.metafields.foxtheme.collection_megamenu_image.value
+                            endif
+
+                            if block.settings.show_image_of_first_product
+                              assign collection_image = collections[grandchildlink.object.handle].all_products.first.featured_image
+                            endif
+
+                            assign image_ratio = block.settings.image_ratio
+                            if image_ratio == 'adapt'
+                              assign image_ratio = collection_image.aspect_ratio
+                            endif
+                          -%}
+                          <li>
+                            <a
+                              href="{{ grandchildlink.url }}"
+                              class="flex items-start gap-3 reversed-link text-decoration-none color-current relative focus-visible--absolute"
+                            >
+                              {%- if is_collection_link and collection_image != blank -%}
+                                <div class="menu-sidebar__collection-image media-mask-clip shrink-0">
+                                  {% render 'responsive-image',
+                                    mode: 'liquid',
+                                    image: collection_image,
+                                    image_ratio: image_ratio,
+                                    default_alt: default_alt,
+                                    sizes: '50px',
+                                    widths: '50, 100'
+                                  %}
+                                </div>
+                              {%- endif -%}
+                              <div class="menu-sidebar__collection-text self-center min-w-0 text-wrap text-limit-2-lines">
+                                <span class="reversed-link__text">
+                                  {{- grandchildlink.title | escape -}}
+                                </span>
+                              </div>
+                            </a>
+                          </li>
+                        {%- endfor -%}
+                      </ul>
+                    {%- endif -%}
+                  </div>
+                </div>
+              </details>
+            {%- endfor -%}
+          </menu-sidebar>
+        {%- endif -%}
+        {%- if has_promotions -%}
+          <div
+            data-mega-menu-promotions
+            class="mega-menu__promotions flex flex-col"
+          >
+            {{ children }}
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</details>
+<!-- @megaMenu/context/mobile -->
+{%- if mobile_link != blank -%}
+  {%- capture details_content_html -%}
+    {%- if mobile_link.links != blank -%}
+      <div class="menu-drawer__nav flex flex-col gap-5">
+        {%- render 'menu-drawer-sublinks', link: mobile_link, style: 'sidebar', block: block -%}
+      </div>
+    {%- endif -%}
+    {%- if has_promotions -%}
+      <div class="menu-drawer__mega flex flex-col gap-5">
+        {{ children }}
+      </div>
+    {%- endif -%}
+  {%- endcapture -%}
+  {%- render 'menu-drawer-details', link: mobile_link, content: details_content_html, content_class: 'menu-drawer__submenu--sidebar' -%}
+{%- endif -%}
+<!-- @megaMenu/handle/{{ menu_item_handle }} -->
+<!-- @megaMenu/split -->
+{% schema %}
+{
+  "name": "t:names.sidebar",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "label": "t:settings.menu_title",
+      "id": "menu_title"
+    },
+    {
+      "type": "range",
+      "id": "menu_columns",
+      "label": "t:settings.menu_columns",
+      "min": 2,
+      "max": 4,
+      "default": 2
+    },
+    {
+      "type": "header",
+      "content": "t:content.collections"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_collection_image",
+      "label": "t:settings.show_collection_image",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_image_of_first_product",
+      "label": "t:settings.show_image_of_first_product",
+      "default": false,
+      "visible_if": "{{ block.settings.show_collection_image == true }}"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "t:settings.image_ratio",
+      "default": "adapt",
+      "options": [
+        {
+          "value": "adapt",
+          "label": "t:options.adapt_to_image"
+        },
+        {
+          "value": "1/1",
+          "label": "t:options.square"
+        },
+        {
+          "value": "3/4",
+          "label": "t:options.portrait_3_4"
+        },
+        {
+          "value": "4/3",
+          "label": "t:options.landscape_4_3"
+        }
+      ],
+      "visible_if": "{{ block.settings.show_collection_image == true }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.right_sidebar"
+    },
+    {
+      "type": "range",
+      "id": "promotions_width",
+      "label": "t:settings.width",
+      "info": "t:info.promotions_width",
+      "min": 20,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 38
+    }
+  ],
+  "blocks": [
+    {
+      "type": "image-card"
+    },
+    {
+      "type": "_menu-mega-products"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.sidebar"
+    }
+  ]
+}
+{% endschema %}

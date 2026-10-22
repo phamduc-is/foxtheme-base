@@ -1,0 +1,86 @@
+@use "../mixins" as *;
+@use "./section-main-collection-banner";
+
+// ─── Collection Layout ────────────────────────────────────────────────────────
+
+.collection__wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+// Where facets.js brings the results back into view after a filter change:
+// 3rem under the (sticky) header, the same gap the sticky sidebar keeps.
+results-list {
+  scroll-margin-top: 3rem;
+}
+
+.main-collection-grid__empty {
+  padding-block: 2.4rem;
+}
+
+results-list[show-filtering="false"] .facet-filtering {
+  display: none;
+}
+
+@include media-breakpoint-up(lg) {
+  results-list .collection__wrapper {
+    grid-template-areas:
+      "toolbar toolbar"
+      "remove-buttons remove-buttons"
+      "main-collection-grid main-collection-grid";
+  }
+
+  results-list[show-filtering="true"]:not(.collection-empty) .collection__wrapper {
+    grid-template-areas:
+      "toolbar toolbar"
+      "remove-buttons remove-buttons"
+      "filtering main-collection-grid";
+  }
+
+  .collection__wrapper {
+    display: grid;
+    grid-template-columns: var(--facet-filter-width, 29.5rem) 1fr;
+  }
+
+  .facet-toolbar {
+    grid-area: toolbar;
+  }
+
+  .facet-filtering {
+    grid-area: filtering;
+    padding-inline-end: var(--facet-filter-padding-inline-end, 5rem);
+  }
+
+  // `align-self: start` so the grid can stick like the sidebar: a stretched
+  // item fills its row and has no room to move. Both columns carry
+  // `is="sticky-column"` — whichever is shorter pins while the taller scrolls.
+  .main-collection-grid {
+    grid-area: main-collection-grid;
+    align-self: start;
+    align-content: flex-start;
+  }
+
+  .facet-remove-buttons {
+    grid-area: remove-buttons;
+  }
+}
+
+@include media-breakpoint-up(xl) {
+  .collection__wrapper {
+    --facet-filter-width: 34.5rem;
+  }
+}
+
+// List layout: force single column regardless of --f-columns-* values
+// Specificity 0-2-0 beats .layout-panel-grid (0-1-0) at all breakpoints.
+.product-grid[data-layout="list"] {
+  --f-grid-columns: 1;
+}
+
+// Everything below this line used to live here — the density control, the
+// filter sidebar, remove chips, list/price filters, the toolbar, the filters
+// drawer and sorting. It moved to src/scss/scoped/filters.scss, inlined once per
+// page by snippets/filters.liquid: that UI is the bulk of the collection CSS,
+// and splitting it keeps both inlined files far from inline_asset_content's
+// 15,360-byte ceiling (see snippets/styles.liquid) while this file stays the
+// layout the page needs before the toolbar even renders.

@@ -1,0 +1,59 @@
+{% doc %}
+  Markup for the testimonial theme block (no schema). Static child slots must be captured in the block file.
+
+  @param {object} settings - Block settings.
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+  @param {string} static_text_html - Captured `content_for` _simple-text static block.
+  @param {string} static_info_html - Captured `content_for` _author-info static block.
+{% enddoc %}
+{% liquid
+  assign image = settings.image
+  assign design = settings.design
+  assign product = settings.product
+%}
+{%- capture classes -%}
+  testimonial testimonial--{{ design }} flex items-start flex-nowrap flex-col{% if design == 'inline'%} md:flex-row{% endif %}
+  {% if settings.show_image %}
+    {% if settings.image_away_from_edge %} testimonial--image-away-edge{% endif %}
+    {% if design == 'inline' and settings.enable_image_stretch %} testimonial--image-stretch{% endif %}
+  {% else %}
+    testimonial--no-image
+  {% endif %}
+  {% unless settings.inherit_color_scheme %} border-style color-{{ settings.color_scheme }}{% else %} color-inherit{% endunless %}
+{%- endcapture -%}
+<div
+  class="{{ classes | strip | strip_newlines }}"
+  style="{% unless settings.inherit_color_scheme %}{% render 'border-style', settings: settings %}{% endunless %}"
+  {{ shopify_attributes }}
+>
+  {%- if settings.show_image -%}
+    <div
+      class="testimonial__media relative border-style media-mask-clip w-full"
+      style="--border-radius: {{ settings.image_border_radius }}px;"
+    >
+      {% render 'responsive-image', mode: 'liquid', image: image, image_ratio: settings.image_ratio, default_alt: shop.name %}
+    </div>
+  {%- endif -%}
+  <div class="testimonial__content reset-text-alignment flex flex-col flex-1">
+    {{ static_text_html }}
+    {{ static_info_html }}
+    {% if product != blank %}
+      <div class="testimonial__product flex-1 flex flex-col justify-end">
+        <a href="{{ product.url }}" class="reversed-link flex items-center gap-x-3">
+          <div class="testimonial__product-media media-mask-clip">
+            {% render 'responsive-image',
+              image: product.featured_media,
+              image_ratio: '1',
+              media_width_desktop: '200px',
+              media_width_mobile: '200px',
+              widths: '80,160,200'
+            %}
+          </div>
+          <span class="testimonial__product-title reversed-link__text text-limit-1-line">
+            {{- product.title -}}
+          </span>
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>

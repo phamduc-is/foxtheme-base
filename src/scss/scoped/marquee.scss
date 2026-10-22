@@ -1,0 +1,106 @@
+@use "../mixins" as *;
+
+// ─── Marquee ──────────────────────────────────────────────────────────────────
+
+.marquee__items {
+  flex: 0 0 auto;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+.marquee__items > * {
+  margin-inline: calc(var(--f-column-gap-mobile, var(--f-column-gap)) / 2);
+}
+
+.marquee__inner {
+  // The strip is deliberately WIDER than this box — enough copies to loop
+  // seamlessly — so it has to be clipped here, or it paints straight across the
+  // page. `contain: layout` above does not clip; only `paint` or `overflow`
+  // does. It went unnoticed while sections were full-bleed, because the spill
+  // then lands outside the viewport where `main`'s own `overflow-x: clip` hides
+  // it. Give the section a `page-width` container and the copies show up in the
+  // gutters on both sides: measured, a 1340px marquee painted from -304px to
+  // 2216px, and a hit test at x=10 and x=1400 landed on marquee content.
+  // Matches the shape the `.paused` rule below already assumes (`auto hidden`,
+  // i.e. the vertical axis clipped either way).
+  overflow: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  will-change: transform;
+  backface-visibility: hidden;
+  contain: layout;
+}
+
+.marquee__inner::-webkit-scrollbar {
+  display: none;
+}
+
+.marquee {
+  transform: rotate(calc(var(--flip-x-factor) * var(--angle-raw)));
+  z-index: var(--layer-raised);
+  max-width: 100%;
+}
+
+.marquee--has-edge::before,
+.marquee--has-edge::after {
+  --rotate: 90deg;
+
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: calc(var(--offset, 0px) + 2px);
+  background: rgb(var(--color-background));
+  z-index: 1;
+}
+
+.marquee--edge-fade::before,
+.marquee--edge-fade::after {
+  width: var(--edge-fade-width, clamp(5rem, 7.6%, 11rem));
+  background: linear-gradient(var(--rotate), rgb(var(--color-background)) 37.84%, transparent 100%);
+}
+
+.marquee--has-edge::before {
+  inset-inline-start: calc(-1 * var(--offset, 0px) - 1px);
+}
+
+.marquee--has-edge::after {
+  --rotate: 270deg;
+
+  inset-inline-end: calc(-1 * var(--offset, 0px) - 1px);
+}
+
+.marquee--rotated {
+  --offset: 0px;
+}
+
+@include media-breakpoint-up(md) {
+  .marquee__items > * {
+    margin-inline: calc(var(--f-column-gap) / 2);
+  }
+}
+
+// ─── Animation ────────────────────────────────────────────────────────────────
+
+.marquee__items.animate {
+  animation-name: scrolling-left;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  animation-duration: var(--duration, 20s);
+  animation-play-state: running;
+  width: max-content;
+}
+
+.marquee[data-direction="reverse"] .marquee__items.animate {
+  animation-name: scrolling-right;
+}
+
+.marquee.paused {
+  .marquee__inner {
+    overflow: auto hidden;
+  }
+
+  .marquee__items.animate {
+    animation-play-state: paused;
+  }
+}

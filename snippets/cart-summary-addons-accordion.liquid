@@ -1,0 +1,100 @@
+{% doc %}
+  Renders the cart summary addons accordion (discount code, order notes, gift wrapping, shipping rates).
+
+  @param {string} [color_scheme] - Color scheme ID applied to each accordion `<details>` (`color-{{ color_scheme }}`).
+  @param {string} [parent_color_scheme] - Color scheme ID of the parent container. When it matches `color_scheme`, a border modifier is added to each `<details>` for visual separation.
+  @param {object} [section] - The section, used to scope addon content.
+  @param {string} [block_attributes] - shopify_attributes for the owning block.
+{% enddoc %}
+
+{%- capture gift_wrapping_html -%}
+  {%- render 'cart-gift-wrapping' -%}
+{%- endcapture -%}
+{%- capture details_class -%}
+  accordion__details cart-summary__addon
+  {%- unless color_scheme == blank %} color-{{ color_scheme }}{%- endunless -%}
+  {%- if color_scheme.settings.background.rgb == parent_color_scheme.settings.background.rgb %} cart-summary__addon--border{%- endif -%}
+{%- endcapture -%}
+{%- if settings.show_add_discount_code or settings.show_cart_note or settings.show_caculate_shipping_rate or gift_wrapping_html != blank -%}
+  <accordion-component
+    class="accordion cart-summary__addons flex flex-col"
+    data-single-open="true"
+    {% if block_attributes %}
+      {{ block_attributes }}
+    {% endif %}
+  >
+    {%- if settings.show_add_discount_code -%}
+      <details
+        ref="item[]"
+        class="{{ details_class }}"
+        data-skip-node-update="true"
+      >
+        <summary ref="summary[]" class="accordion__summary flex" on:click="/onSummaryClick">
+          <span class="accordion__summary-text h6">
+            {{ 'actions.discount_code' | t }}
+          </span>
+          {% render 'icon', icon: 'caret-down', class: 'icon--caret flex accordion__summary-arrow' %}
+        </summary>
+        <div ref="content[]" class="accordion__content">
+          <div class="accordion__inner">
+            {% render 'cart-discount', section_id: section.id %}
+          </div>
+        </div>
+      </details>
+    {%- endif -%}
+    {%- if settings.show_cart_note -%}
+      <details
+        ref="item[]"
+        class="{{ details_class }}"
+      >
+        <summary ref="summary[]" class="accordion__summary flex" on:click="/onSummaryClick">
+          <span class="accordion__summary-text h6">
+            {{ 'actions.order_notes' | t }}
+          </span>
+          {% render 'icon', icon: 'caret-down', class: 'icon--caret flex accordion__summary-arrow' %}
+        </summary>
+        <div ref="content[]" class="accordion__content">
+          <div class="accordion__inner">
+            {% render 'cart-note', section: section %}
+          </div>
+        </div>
+      </details>
+    {%- endif -%}
+    {%- if gift_wrapping_html != blank -%}
+      <details
+        ref="item[]"
+        class="{{ details_class }}"
+      >
+        <summary ref="summary[]" class="accordion__summary flex" on:click="/onSummaryClick">
+          <span class="accordion__summary-text h6">
+            {{ 'actions.gift_wrapping' | t }}
+          </span>
+          {% render 'icon', icon: 'caret-down', class: 'icon--caret flex accordion__summary-arrow' %}
+        </summary>
+        <div ref="content[]" class="accordion__content">
+          <div class="accordion__inner">
+            {{ gift_wrapping_html }}
+          </div>
+        </div>
+      </details>
+    {%- endif -%}
+    {%- if settings.show_caculate_shipping_rate -%}
+      <details
+        ref="item[]"
+        class="{{ details_class }}"
+      >
+        <summary ref="summary[]" class="accordion__summary flex" on:click="/onSummaryClick">
+          <span class="accordion__summary-text h6">
+            {{ 'actions.shipping' | t }}
+          </span>
+          {% render 'icon', icon: 'caret-down', class: 'icon--caret flex accordion__summary-arrow' %}
+        </summary>
+        <div ref="content[]" class="accordion__content">
+          <div class="accordion__inner">
+            {% render 'cart-shipping', section: section %}
+          </div>
+        </div>
+      </details>
+    {%- endif -%}
+  </accordion-component>
+{%- endif -%}

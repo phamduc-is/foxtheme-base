@@ -1,0 +1,49 @@
+@use "../mixins" as *;
+
+// ─── Newsletter ───────────────────────────────────────────────────────────────
+
+.newsletter.page-width .newsletter__wrapper {
+  padding-inline: 1.6rem;
+}
+
+.newsletter__media {
+  .media,
+  .media__image {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .newsletter__content-inner {
+    max-width: var(--content-width);
+  }
+
+  // TODO: move to _component-layered-images.scss when used by more than one section
+  .layered-images {
+    position: absolute;
+    inset: 0;
+  }
+
+  .layered-image {
+    position: absolute;
+    top: var(--top);
+    inset-inline-start: var(--left);
+    width: 100%;
+    max-width: min(var(--width), max(160px, calc(var(--width) * 0.8)));
+  }
+
+  .layered-image--move-y .layered-image__inner {
+    animation: float-up var(--mover-duration, 3s) linear infinite alternate;
+  }
+
+  .layered-image--move-y-reverse .layered-image__inner {
+    animation: float-down var(--mover-duration, 3s) linear infinite alternate;
+  }
+}
+
+@include media-breakpoint-up(xxl) {
+  .layered-image {
+    max-width: var(--width);
+  }
+}

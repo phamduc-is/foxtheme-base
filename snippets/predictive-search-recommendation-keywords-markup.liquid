@@ -1,0 +1,33 @@
+{% doc %}
+  Recommendation keywords panel for predictive search (rendered while the form is idle).
+  Reads `settings.search_recommendation_keywords`; renders nothing when blank.
+
+  @example
+  {% render 'predictive-search-recommendation-keywords-markup' %}
+{% enddoc %}
+{%- if settings.search_recommendation_keywords != blank -%}
+  {%- liquid
+    assign keywords = settings.search_recommendation_keywords | split: ','
+  -%}
+  <div class="search__recommendation--keywords flex flex-col gap-3">
+    <h4 class="search__recommendation-heading h6">
+      {{ 'content.search_recommendations_keywords' | t }}
+    </h4>
+    <ul class="flex flex-wrap gap-2 list-unstyled search__list--btn">
+      {%- for keyword in keywords -%}
+        <li class="flex">
+          {%- comment -%}
+            url_encode, not escape: an `&` in the keyword ends `q` and starts a parameter
+            of its own, so the search page receives only the text before it.
+          {%- endcomment -%}
+          <a
+            class="btn btn--secondary btn--small paragraph"
+            href="{{ routes.search_url }}?type=product&options%5Bprefix%5D=last&q={{- keyword | strip | url_encode -}}"
+          >
+            <span class="btn__text" data-label="{{ keyword | strip | escape }}">{{- keyword | strip }}</span>
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}

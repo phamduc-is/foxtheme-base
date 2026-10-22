@@ -1,0 +1,199 @@
+// @capability Generic image + content card — ratio-controlled media (padding hack via --ratio/--ratio-mobile), variable-driven text alignment and gap, static variant with container-query spacing, and a content-outside variant.
+// @when Any image with caption/CTA card (banners, promo tiles, lookbook-style cards) — reuse before writing a new media-card layout. No pairing JS.
+// @contract .image-card > .image-card__inner / .image-card__media (.media, [style*="--ratio"]) / .image-card__content > .image-card__texts (.image-card__subheading, .image-card__text); modifiers .image-card--static / --content-outside; gap via --gap / --gap-mobile; optional corner .image-card-badge (--starburst / --circle, --top-left…--bottom-right) sized by --badge-size / --badge-size-mobile.
+// @keywords image card, banner card, promo tile, media card, aspect ratio, image with text, caption overlay
+
+@use "sass:list";
+@use "sass:math";
+@use "../mixins" as *;
+
+// ─── Image card ───────────────────────────────────────────────────────────────
+
+.image-card {
+  gap: var(--gap);
+}
+
+.image-card__inner {
+  height: 100%;
+}
+
+.image-card__texts {
+  align-items: var(--horizontal-alignment);
+}
+
+.image-card__content :is(a, button) {
+  pointer-events: auto;
+}
+
+.image-card__content {
+  min-width: 0;
+}
+
+// ─── Image card media ─────────────────────────────────────────────────────────
+
+.image-card__media {
+  // Pinned to the first cell: `.image-card-badge` claims row 1 explicitly, and an
+  // auto-placed media would then drop to row 2 under content-outside. Start lines only,
+  // so `.row-span-full` / `.col-span-full` keep their `-1` end lines.
+  grid-row-start: 1;
+  grid-column-start: 1;
+
+  .media {
+    aspect-ratio: unset;
+    height: 100%;
+  }
+
+  [style*="--ratio"] {
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      display: block;
+      width: 100%;
+      content: "";
+      height: 0;
+      padding-block-start: calc(100% / (0.0001 + var(--ratio, #{math.div(16, 9)})));
+    }
+
+    > *:first-child:is(img),
+    .media__image {
+      inset-block-start: 0;
+      inset-inline: 0;
+      position: absolute !important;
+      object-fit: cover;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+// ─── Image card badge ─────────────────────────────────────────────────────────
+// Shares the media's grid cell (row 1 — the whole card when content overlays it) so it
+// sits in a corner of the image in both layouts, inset by the card's Content padding
+// (`--edge-padding-*`, the same pair `.label--media` reads). Not a link target.
+
+@function starburst-polygon($points, $inner-ratio) {
+  $vertices: ();
+
+  @for $i from 0 to $points * 2 {
+    $angle: math.div(180deg, $points) * $i - 90deg;
+    $radius: if($i % 2 == 0, 50%, 50% * $inner-ratio);
+    $vertices: list.append($vertices, (50% + $radius * math.cos($angle)) (50% + $radius * math.sin($angle)), comma);
+  }
+
+  @return polygon($vertices);
+}
+
+.image-card-badge {
+  // A % padding resolves against the CARD's width, not the badge's — derive it from the size.
+  --badge-current-size: var(--badge-size-mobile, var(--badge-size));
+
+  position: relative;
+  z-index: var(--layer-flat, 1);
+  grid-row: 1;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: var(--badge-current-size);
+  aspect-ratio: 1;
+  margin: var(--edge-padding-block, 2rem) var(--edge-padding-inline, 2rem);
+  padding: calc(var(--badge-current-size) * 0.15);
+  text-align: center;
+  line-height: 1;
+  color: var(--badge-color, rgb(var(--color-primary-button-text)));
+  background-color: var(--badge-background, rgb(var(--color-primary-button-background)));
+  pointer-events: none;
+
+  > * {
+    margin: 0;
+    color: inherit;
+    overflow-wrap: anywhere;
+  }
+
+  &--starburst {
+    // 20 points; the inner radius is Figma's star (65 → 54.1 on a 130 box).
+    clip-path: starburst-polygon(20, 0.832);
+  }
+
+  &--circle {
+    border-radius: 50%;
+  }
+
+  &--top-left,
+  &--top-right {
+    align-self: start;
+  }
+
+  &--bottom-left,
+  &--bottom-right {
+    align-self: end;
+  }
+
+  &--top-left,
+  &--bottom-left {
+    justify-self: start;
+  }
+
+  &--top-right,
+  &--bottom-right {
+    justify-self: end;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .image-card-badge {
+    --badge-current-size: var(--badge-size);
+  }
+}
+
+// ─── Image card modifiers ─────────────────────────────────────────────────────
+
+.image-card--static {
+  .image-card__inner {
+    container: card-inner / inline-size;
+  }
+
+  .image-card__subheading {
+    margin-block-end: 2rem;
+  }
+
+  .image-card__text {
+    margin-block-start: 1.2rem;
+  }
+
+  @container card-inner style(--vertical-alignment: space-between) {
+    .image-card__subheading {
+      margin-bottom: 1.6rem;
+    }
+  }
+}
+
+// `.image-card--content-outside` used to force `padding-block-start: 0` here. At 0-2-0 it
+// outranked `.edge-gap` (0-1-0), so the card's Content padding could never reach the top
+// edge — harmless while that padding was a coarse preset every content-below card set to
+// `none`, but it silently ate half of the Vertical range that replaced it. The media↔content
+// separation is `--gap`'s job; the padding belongs to the merchant.
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .image-card {
+    gap: var(--gap-mobile);
+  }
+
+  .image-card--static {
+    .image-card__subheading {
+      margin-block-end: 1.6rem;
+    }
+  }
+
+  .image-card__media {
+    [style*="--ratio"] {
+      &::before {
+        padding-block-start: calc(100% / (0.0001 + var(--ratio-mobile, var(--ratio, #{math.div(16, 9)}))));
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+// @capability Quantity input stepper — bordered numeric input with native spin buttons removed and plus/minus buttons overlaid, plus compact sizing for cart lines via a data attribute.
+// @when Any quantity picker (product form, cart lines, quick order); pairs with src/js/modules/quantity-selector.js. Do not restyle native number inputs per feature.
+// @contract .quantity-selector (optionally [data-context="cart-items"]) > .quantity-input + .quantity-button / .quantity-plus; sizing via --quantity-selector-* variables.
+// @keywords quantity selector, number input, stepper, plus minus, qty picker, increment decrement, cart quantity
+
+@use "../mixins" as *;
+
+// ─── Quantity selector ────────────────────────────────────────────────────────
+
+.quantity-selector {
+  flex-shrink: 0;
+  width: var(--quantity-selector-max-width, 11.5rem);
+  max-width: 100%;
+}
+
+.quantity-selector[data-context="cart-items"] {
+  --quantity-selector-max-width: 9rem;
+  --quantity-selector-height: 3.8rem;
+  --quantity-selector-padding-inline: 1.2rem;
+}
+
+.quantity-selector .quantity-input {
+  appearance: textfield;
+  -webkit-appearance: textfield;
+  -moz-appearance: textfield;
+  height: var(--quantity-selector-height, var(--input-height));
+  color: rgb(var(--color-foreground));
+  background-color: rgb(var(--color-background));
+  border: 0.1rem solid rgb(var(--color-foreground) / 10%);
+  border-radius: var(--quantity-selector-radius, var(--input-border-radius));
+}
+
+.quantity-selector .quantity-input::-webkit-outer-spin-button,
+.quantity-selector .quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.quantity-selector .quantity-button {
+  top: 0;
+  bottom: 0;
+  height: 100%;
+  padding-inline: var(--quantity-selector-padding-inline, 2rem) 0.8rem;
+}
+
+.quantity-selector .quantity-plus {
+  inset-inline-end: 0;
+  padding-inline: 0.8rem var(--quantity-selector-padding-inline, 2rem);
+}

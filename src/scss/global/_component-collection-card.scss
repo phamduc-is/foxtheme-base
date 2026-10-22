@@ -1,0 +1,26 @@
+// @capability Collection card spacing and shape — row gap between image and text (desktop + mobile variables) and rounded link corners.
+// @when Styling a collection/category preview card in lists or grids; extend these hooks instead of new card CSS. No pairing JS.
+// @contract .collection-card__inner (uses --row-gap / --row-gap-mobile), .collection-card__link (uses --border-radius), .collection-card__count.
+// @keywords collection card, category card, collection grid, card gap, rounded card, product count
+
+@use "../mixins" as *;
+
+// ─── Collection card ──────────────────────────────────────────────────────────
+
+.collection-card__inner {
+  row-gap: var(--row-gap);
+}
+
+.collection-card__link {
+  border-radius: var(--border-radius);
+}
+
+.collection-card__count {
+  --font-size--paragraph: 87.5%;
+}
+
+@include media-breakpoint-down(md) {
+  .collection-card__inner {
+    row-gap: var(--row-gap-mobile, 1.2rem);
+  }
+}

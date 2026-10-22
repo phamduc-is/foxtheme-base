@@ -1,0 +1,88 @@
+{% doc %}
+  Image of the product quiz intro (STATIC child of `blocks/_product-quiz-intro.liquid`, never added
+  by hand). With no image picked (desktop or mobile) it renders the theme's placeholder SVG in the
+  same `.media` box, on the storefront too, so `image_ratio` (1:1 under `adapt`), `border_radius`
+  and the intro's position / alignment all show on it. Hiding this static block (eye toggle) is
+  how to get a text-only intro: it then renders nothing and the intro lays its text out full
+  width. The corner radius is this block's own `border_radius` (`--product-quiz-image-radius`).
+
+  @example
+  {% content_for 'block', type: '_product-quiz-image', id: 'image' %}
+{% enddoc %}
+
+{%- liquid
+  # Only a mobile image picked: it serves every breakpoint.
+  assign image = block.settings.image | default: block.settings.image_mobile
+
+  capture priority
+    render 'image-priority', section: section
+  endcapture
+  assign priority = priority | split: ','
+  assign loading = priority[0]
+  assign fetchpriority = priority[1]
+  assign radius = block.settings.border_radius | divided_by: 10.0
+-%}
+<div
+  class="product-quiz-intro__media"
+  style="--product-quiz-image-radius: {{ radius }}rem;"
+  {{ block.shopify_attributes }}
+>
+  {%- render 'responsive-image',
+    image: image,
+    image_mobile: block.settings.image_mobile,
+    mode: 'liquid',
+    image_ratio: block.settings.image_ratio,
+    class: 'product-quiz-intro__image',
+    sizes: '(min-width: 1440px) 550px, (min-width: 768px) 50vw, 100vw',
+    widths: '375, 550, 750, 900, 1100, 1400',
+    loading: loading,
+    fetchpriority: fetchpriority,
+    use_zoom: false,
+    svg_placeholder: 'lifestyle-1'
+  -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.image",
+  "tag": null,
+  "settings": [
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "t:settings.image"
+    },
+    {
+      "type": "image_picker",
+      "id": "image_mobile",
+      "label": "t:settings.image_mobile"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "t:settings.aspect_ratio",
+      "options": [
+        { "value": "adapt", "label": "t:options.auto" },
+        { "value": "1/1", "label": "t:options.square" },
+        { "value": "4/5", "label": "t:options.portrait" },
+        { "value": "3/4", "label": "t:options.portrait_3_4" },
+        { "value": "3/2", "label": "t:options.landscape_3_2" },
+        { "value": "4/3", "label": "t:options.landscape_4_3" },
+        { "value": "16/9", "label": "t:options.landscape" },
+        { "value": "21/9", "label": "t:options.landscape_21_9" }
+      ],
+      "default": "1/1"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    }
+  ]
+}
+{% endschema %}

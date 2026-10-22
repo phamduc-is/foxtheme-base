@@ -1,0 +1,18 @@
+{% doc %}
+  "View all results" submit button for predictive search results.
+  Submits the predictive search form by id so the button can live outside the form element.
+
+  @param {string} form_id - The id of the search `<form>` to submit (`PredictiveSearch-*`).
+
+  @example
+  {% render 'predictive-search-result-view-all-markup', form_id: form_id %}
+{% enddoc %}
+<div class="search__result-view-all">
+  <button
+    type="submit"
+    class="btn btn--primary"
+    form="{{ form_id }}"
+  >
+    <span class="btn__text" data-label="{{ 'actions.view_all_search_results' | t | escape }}">{{ 'actions.view_all_search_results' | t }}</span>
+  </button>
+</div>

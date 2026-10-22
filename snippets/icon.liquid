@@ -1,0 +1,38 @@
+{% doc %}
+  Renders an inline SVG icon from the assets directory.
+  The icon file is resolved as `icon-{icon}.svg`. Passing 'none' renders nothing.
+
+  @param {string} icon - Icon name (maps to `icon-{name}.svg` in assets); pass 'none' to render nothing
+  @param {string} [size] - Size modifier class: 'small' | 'medium' | 'large' | 'custom-size' (default: no size class)
+  @param {string} [class] - Additional CSS classes to append
+  @param {string} [style] - Inline style string applied to the wrapper span
+  @param {string} [icon_color] - Overrides the icon color (SVG uses currentColor); blank inherits the ambient color
+  @param {string} [attributes] - Raw HTML attributes string applied to the wrapper span
+
+  @example
+  {% render 'icon', icon: 'arrow-up', size: 'large' %}
+{% enddoc %}
+
+{% liquid
+  if size == 'custom-size'
+    assign class = class | append: ' icon--custom-size'
+  endif
+  assign icon_style = style
+  if icon_color != blank
+    assign icon_style = icon_style | append: 'color: ' | append: icon_color | append: ';'
+  endif
+%}
+{%- if icon != 'none' -%}
+  {%- assign file = icon | replace: '_', '-' | prepend: 'icon-' | append: '.svg' -%}
+  <span
+    class="icon icon--{{ icon }}{% if size and size != 'custom-size' %} icon--{{ size }}{% endif %}{% if class %} {{ class }}{% endif %}"
+    {% if icon_style %}
+      style="{{ icon_style }}"
+    {% endif %}
+    {% if attributes %}
+      {{ attributes }}
+    {% endif %}
+  >
+    {{- file | inline_asset_content -}}
+  </span>
+{%- endif -%}

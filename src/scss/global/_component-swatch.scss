@@ -1,0 +1,308 @@
+// @capability Variant option pickers — text option buttons with checked/hover fill and sold-out strikethrough, color/image swatches (circle and square incl. half-height card style) with an animated active ring, dropdown select sizing, and a "+N" hidden-swatch overflow counter.
+// @when Any variant/option selector or color swatch (PDP, product cards, filters); pairs with src/js/modules/variant-picker.js. Never hand-roll swatches.
+// @contract .variant-picker__form > .variant-option (--buttons/--swatches/--card) > .variant-option__button-label (--has-swatch/--square/--circle, hidden input[type=radio], .strikethrough-variant, [data-option-available]); .swatch (fill via --swatch-background), .hidden-swatches__count (--overflow-count), .variant-option__select.
+// @keywords swatch, color swatch, variant picker, option buttons, size selector, sold out strikethrough, active ring, overflow count, product options
+
+// ─── Swatch CSS variables ─────────────────────────────────────────────────────
+
+:root {
+  --swatch-base-size: 2.4rem;
+  --swatch-gap: 0.8rem;
+  --swatch-border-width: 0.1rem;
+  --card-swatch-border-width: 0.2rem;
+  --swatch-active-offset: 0.3rem;
+  --swatch-card-offset: 0.6rem;
+  --swatch-circle-inset: 0.2rem;
+  --swatch-transition-duration: var(--motion-ui-fast, 0.3s);
+  --swatch-transition-easing: ease;
+  --swatch-stroke-color: var(--color-swatch-border);
+  --swatch-button-size: 4.4rem;
+}
+
+// ─── Variant picker ───────────────────────────────────────────────────────────
+
+.variant-picker__form {
+  --swatch-active-border-color: transparent;
+  --swatch-active-border-width: 0rem;
+  --swatch-active-background-color: transparent;
+  --swatch-gap: 0.5rem;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 2rem;
+}
+
+.variant-option {
+  &__label {
+    margin-block-end: 1.2rem;
+    text-transform: capitalize;
+  }
+
+  &--buttons {
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: var(--swatch-gap, 0.5rem);
+  }
+
+  &--swatches {
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--swatch-gap);
+    }
+  }
+
+  &__button-label {
+    position: relative;
+    cursor: pointer;
+    min-height: var(--swatch-button-size);
+    max-height: var(--swatch-button-size);
+    display: flex;
+    align-items: center;
+    padding-inline: 2rem;
+    border: 0.1rem solid rgb(var(--color-foreground));
+    text-transform: capitalize;
+    transition:
+      background-color var(--swatch-transition-duration) var(--swatch-transition-easing),
+      color var(--swatch-transition-duration) var(--swatch-transition-easing);
+    border-radius: var(--border-radius, 0);
+
+    // Hidden radio input
+    input[type="radio"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      margin: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    // Strikethrough variant styles
+    .strikethrough-variant {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      width: 100%;
+      cursor: pointer;
+      pointer-events: none;
+      background: linear-gradient(
+        to right bottom,
+        transparent calc(50% - 1px),
+        rgb(var(--color-foreground)),
+        transparent calc(50% + 1px)
+      );
+      transition-property: opacity;
+      transition-duration: var(--swatch-transition-duration);
+
+      // Not --swatch-transition-easing: that local knob covers colour and
+      // box-shadow too, and opacity takes the linear curve every fade uses.
+      transition-timing-function: var(--motion-ease-fade);
+      border-radius: inherit;
+    }
+
+    &:has([data-option-available="false"]) {
+      opacity: var(--swatch-disabled-opacity, 0.322);
+    }
+
+    &:has(:checked) {
+      background-color: rgb(var(--color-foreground));
+      color: rgb(var(--color-background));
+
+      .strikethrough-variant {
+        background: linear-gradient(
+          to right bottom,
+          transparent calc(50% - 1px),
+          var(--color-swatch-border),
+          transparent calc(50% + 1px)
+        );
+      }
+    }
+
+    // Hover only on devices that support hover (desktop)
+    @media (hover: hover) {
+      &:hover {
+        background-color: rgb(var(--color-foreground));
+        color: rgb(var(--color-background));
+
+        .strikethrough-variant {
+          background: linear-gradient(
+            to right bottom,
+            transparent calc(50% - 1px),
+            var(--color-swatch-border),
+            transparent calc(50% + 1px)
+          );
+        }
+      }
+    }
+
+    // Swatch variant styles
+    &--has-swatch {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--swatch-width, var(--swatch-base-size));
+      height: var(--swatch-height, var(--swatch-base-size));
+      border-radius: inherit;
+      padding: 0;
+      border: none;
+      min-height: auto;
+      max-height: none;
+
+      // Active state indicator
+      &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        visibility: hidden;
+        box-shadow:
+          0 0 0 var(--swatch-active-offset) inset var(--swatch-active-background-color),
+          0 0 0 var(--swatch-active-border-width) var(--swatch-active-border-color);
+        transition:
+          opacity var(--swatch-transition-duration) var(--motion-ease-fade),
+          visibility var(--swatch-transition-duration) var(--swatch-transition-easing),
+          box-shadow var(--swatch-transition-duration) var(--swatch-transition-easing);
+        border-radius: inherit;
+        will-change: opacity, visibility, box-shadow;
+      }
+
+      &:hover,
+      &:has(:checked) {
+        --swatch-stroke-color: rgb(var(--color-foreground));
+        --swatch-active-border-color: rgb(var(--color-foreground));
+        --swatch-active-background-color: rgb(var(--color-background));
+        --swatch-active-offset: 0.3rem;
+        --swatch-active-border-width: 0.1rem;
+
+        background-color: transparent;
+
+        &::before {
+          opacity: 1;
+          visibility: visible;
+        }
+      }
+
+      .strikethrough-variant {
+        background: linear-gradient(
+          to right bottom,
+          transparent calc(50% - 1px),
+          var(--color-swatch-border),
+          transparent calc(50% + 1px)
+        );
+      }
+    }
+
+    // Square variant
+    &--square {
+      border-radius: var(--border-radius, 0);
+
+      .variant-option--card & {
+        --offset: var(--swatch-card-offset);
+
+        height: calc(var(--swatch-width, var(--swatch-base-size)) / 2 + var(--offset));
+        padding-bottom: var(--offset);
+
+        &::before {
+          box-shadow: none;
+          border-bottom: var(--card-swatch-border-width) solid var(--swatch-active-border-color);
+        }
+
+        .strikethrough-variant {
+          height: calc(100% - var(--offset));
+        }
+
+        .hidden-swatches__count {
+          padding-bottom: var(--offset);
+        }
+
+        &:hover,
+        &:has(:checked) {
+          --swatch-stroke-color: var(--color-swatch-border);
+        }
+      }
+    }
+
+    // Circle variant
+    &--circle {
+      border-radius: 50%;
+      height: var(--swatch-width, var(--swatch-base-size));
+      max-height: unset;
+
+      .variant-option--card & {
+        .hidden-swatches__count {
+          height: 100%;
+        }
+      }
+    }
+  }
+
+  &__select {
+    --input-height: 4.4rem;
+
+    text-transform: capitalize;
+  }
+}
+
+// ─── Swatch element ───────────────────────────────────────────────────────────
+
+.swatch {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--swatch-background);
+  border: var(--swatch-border-width) solid var(--color-swatch-border);
+  border-radius: inherit;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transition: border-color var(--swatch-transition-duration) var(--swatch-transition-easing);
+}
+
+// ─── Reduced motion ───────────────────────────────────────────────────────────
+
+@media (prefers-reduced-motion: reduce) {
+  .variant-option__button-label--has-swatch,
+  .variant-option__button-label--has-swatch::before,
+  .variant-option__button-label svg,
+  .swatch {
+    transition: none;
+  }
+}
+
+// ─── Hidden swatch overflow count ────────────────────────────────────────────
+
+.hidden-swatches__count {
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: flex-start;
+  color: rgb(var(--color-foreground) / 60%);
+  background-color: transparent;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  position: relative;
+  width: var(--swatch-width);
+
+  &::before {
+    /* This doesn't work in Safari without the counter-reset. https://stackoverflow.com/a/40179718 */
+    counter-reset: overflow-count var(--overflow-count);
+    content: "+" counter(overflow-count);
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  &:hover {
+    color: rgb(var(--color-foreground));
+  }
+}

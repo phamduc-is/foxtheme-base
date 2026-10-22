@@ -1,0 +1,86 @@
+{% doc %}
+  Renders product card vendor and type links inside `.product-card__metas`.
+  Outputs nothing when both are disabled or blank.
+
+  @param {object} product - The Shopify product object
+  @param {boolean} [show_vendor] - Desktop: show vendor (default: settings.pcard_show_vendor)
+  @param {boolean} [show_vendor_mobile] - Mobile: show vendor (default: show_vendor)
+  @param {boolean} [show_type] - Desktop: show type (default: settings.pcard_show_type)
+  @param {boolean} [show_type_mobile] - Mobile: show type (default: show_type)
+
+  @example
+  {% render 'product-card-metas', product: product %}
+  @example
+  {% render 'product-card-metas', product: product, show_vendor: true, show_type: false %}
+{% enddoc %}
+
+{%- liquid
+  # ── Meta visibility: desktop / mobile independently ───────────────────────────
+  assign show_vendor = show_vendor | default: settings.pcard_show_vendor, allow_false: true
+  assign show_vendor_mobile = show_vendor_mobile | default: show_vendor, allow_false: true
+
+  assign show_type = show_type | default: settings.pcard_show_type, allow_false: true
+  assign show_type_mobile = show_type_mobile | default: show_type, allow_false: true
+
+  assign has_vendor = false
+  assign has_type = false
+  assign has_metas_desktop = false
+  assign has_metas_mobile = false
+
+  if product.vendor != blank
+    if show_vendor
+      assign has_vendor = true
+      assign has_metas_desktop = true
+    endif
+
+    if show_vendor_mobile
+      assign has_vendor = true
+      assign has_metas_mobile = true
+    endif
+  endif
+
+  if product.type != blank
+    if show_type
+      assign has_type = true
+      assign has_metas_desktop = true
+    endif
+    if show_type_mobile
+      assign has_type = true
+      assign has_metas_mobile = true
+    endif
+  endif
+-%}
+{%- if has_vendor or has_type -%}
+  {%- capture inline_style -%}
+  {%- comment -%} Meta visibility CSS vars (d = desktop, m = mobile) {%- endcomment -%}
+  --vendor-d: {% if show_vendor %}block{% else %}none{% endif %};
+  --vendor-m: {% if show_vendor_mobile %}block{% else %}none{% endif %};
+  --type-d: {% if show_type %}block{% else %}none{% endif %};
+  --type-m: {% if show_type_mobile %}block{% else %}none{% endif %};
+  --metas-d: {% if has_metas_desktop %}flex{% else %}none{% endif %};
+  --metas-m: {% if has_metas_mobile %}flex{% else %}none{% endif %};
+  {%- endcapture -%}
+  <div
+    class="product-card__metas pointer-pass-through"
+    style="{{ inline_style | strip | strip_newlines }}"
+  >
+    {%- if has_vendor -%}
+      <a
+        class="product-card__meta product-card__meta--vendor reversed-link"
+        href="{{ product.vendor | url_for_vendor }}"
+        aria-label="{{ 'accessibility.vendor' | t }}{{ product.vendor }}"
+      >
+        <span class="reversed-link__text">{{- product.vendor -}}</span>
+      </a>
+    {%- endif -%}
+    {%- if has_type -%}
+      <a
+        class="product-card__meta product-card__meta--type reversed-link"
+        href="{{ product.type | url_for_type }}"
+        aria-label="{{ 'accessibility.product_type' | t }}{{ product.type }}"
+      >
+        <span class="reversed-link__text">{{ product.type }}</span>
+      </a>
+    {%- endif -%}
+  </div>
+{%- endif -%}

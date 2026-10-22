@@ -1,0 +1,92 @@
+// @capability Generated spacing utility classes — column-count and gap scales (gap-0/x/y + named steps) driven by the theme's spacing map.
+// @when Grid/flex gaps and column counts in markup — use these (or the gap-style snippet emitting --gap vars) instead of hardcoding margin/padding/gap values in a partial.
+// @contract Flat classes applied in Liquid; generated per the $spacing/$columns maps in this file.
+// @keywords spacing, gap, gutter, columns, margin, padding, spacing scale
+
+@use "../mixins" as *;
+@use "sass:map";
+
+// ─── Spacing scale tokens ─────────────────────────────────────────────────────
+
+:root {
+  --spacing-1: 0.4rem;
+  --spacing-2: 0.8rem;
+  --spacing-3: 1.2rem;
+  --spacing-4: 1.6rem;
+  --spacing-5: 2rem;
+  --spacing-6: 2.4rem;
+  --spacing-7: 3.2rem;
+  --spacing-8: 4rem;
+  --spacing-9: 4.8rem;
+  --spacing-10: 6rem;
+  --spacing-11: 10rem;
+  --spacing-12: 16rem;
+}
+
+// ─── Gap utilities ────────────────────────────────────────────────────────────
+
+@each $number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12") {
+  .gap-#{$number} {
+    gap: var(--spacing-#{$number});
+  }
+
+  .gap-x-#{$number} {
+    column-gap: var(--spacing-#{$number});
+  }
+
+  .gap-y-#{$number} {
+    row-gap: var(--spacing-#{$number});
+  }
+}
+
+.gap-0 {
+  gap: 0;
+}
+
+.gap-x-0 {
+  column-gap: 0;
+}
+
+.gap-y-0 {
+  row-gap: 0;
+}
+
+// ─── Responsive gap utilities ─────────────────────────────────────────────────
+
+@each $name,
+  $br
+    in (
+      md: map.get($grid-breakpoints, md),
+      lg: map.get($grid-breakpoints, lg),
+      xl: map.get($grid-breakpoints, xl),
+      xxl: map.get($grid-breakpoints, xxl)
+    )
+{
+  @media (min-width: $br) {
+    @each $number in ("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12") {
+      .#{$name}\:gap-#{$number} {
+        gap: var(--spacing-#{$number});
+      }
+
+      .#{$name}\:gap-x-#{$number} {
+        column-gap: var(--spacing-#{$number});
+      }
+
+      .#{$name}\:gap-y-#{$number} {
+        row-gap: var(--spacing-#{$number});
+      }
+    }
+
+    .#{$name}\:gap-0 {
+      gap: 0;
+    }
+
+    .#{$name}\:gap-x-0 {
+      column-gap: 0;
+    }
+
+    .#{$name}\:gap-y-0 {
+      row-gap: 0;
+    }
+  }
+}

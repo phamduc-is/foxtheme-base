@@ -1,0 +1,488 @@
+{% doc %}
+  Shared markup of one product-quiz question, rendered by `blocks/_finder-quiz-question.liquid`
+  and `blocks/_recommendation-quiz-question.liquid`.
+
+  Emits two halves separated by `<!-- @product-quiz/split -->` (mirror: blocks/_tab.liquid):
+    1. the progress step (bar segment / stepper cell),
+    2. the question panel: a fieldset of radio cards (the question's option blocks, or cards the
+       runtime generates from the store filter when `is_auto` is on; Finder quiz only).
+  `snippets/product-quiz-shell.liquid` resolves the `__PQ_INDEX__` / `__PQ_TOTAL__` /
+  `__PQ_STATE__` tokens and the `data-pq-slot hidden` slot, and (Finder quiz, intro off) puts the
+  first question's cards in their loading state (`data-quiz-prefetch`).
+
+  Options cannot read their parent's settings, so this snippet rewrites tokens in the captured
+  option markup: `__PQ_RADIO__` (the radio name, one group per question), `__PQ_CARD_SCHEME__`
+  (this question's `card_color_scheme`), `__PQ_TITLE_SIZE__` (this question's `title_size`, a
+  type preset class; the generated-card `<template>` gets the same class), `__PQ_SUBTITLE_COLOR__`
+  (this question's `subtitle_color`: `text` | `subtext`, the global `.color-*` helper) and
+  `__PQ_IMG_SIZES__` (the option image `sizes`, per image mode). It then cuts ONE fenced part out of the option
+  markup (see the option snippet's doc), so each option image renders once. The image mode is
+  `custom` only for a vertical card with `image_display: custom`; a horizontal card has no
+  Fill/Custom choice (its image is always the left thumbnail), so it is `fill`:
+    - Text only: every `<!--pq-media-->…<!--/pq-media-->` part (image, icons, subtitle);
+    - Media, mode `fill`: every `<!--pq-custom-->` part (the image stays in the media slot);
+    - Media, mode `custom`: every `<!--pq-fill-->` part (the image stays in the icon slot).
+  Everything else is CSS on the options grid, so the cards the runtime generates from the
+  `<template>` inherit it as well:
+    - modifiers: `--media` | `--text`; media adds `--vertical` | `--horizontal`, `--circle`
+      (horizontal circle image), `--icon-bg`; either style adds `--comfortable` (`card_padding`);
+      `--single` (one desktop column); the selected look (either style) adds
+      `--border-background` or `--fill` (`border` adds nothing: the ring is always there);
+    - vars: `--product-quiz-image-ratio` (every placement; left out for `adapt` and circle),
+      `--product-quiz-image-size` + `--product-quiz-image-size-mobile` (the image width, md+ /
+      below md: horizontal and Custom), `--product-quiz-card-border-width` +
+      `--product-quiz-card-border-opacity` (`card_border: solid` only),
+      `--product-quiz-options-margin-inline` (one column only, with `--single`), and
+      `--product-quiz-icon-size` (+ `--product-quiz-icon-color` / `--product-quiz-icon-bg` only
+      when set), which size and tint the SVG icon only.
+  The card radius rides on the panel (`--product-quiz-card-radius`), with the header and
+  card-content alignment (`--product-quiz-header-align[-mobile]`, `--product-quiz-card-align[-mobile]`).
+
+  @param {object} block - The question block (its id, settings and shopify_attributes).
+  @param {object} section - The quiz section (its id, progress style and advance mode).
+  @param {string} [options_html] - The captured `content_for 'blocks'` (option cards). Ignored
+    when `is_auto` is on.
+  @param {string} [filter] - Finder quiz only: the store filter (label or param name) the cards map to.
+  @param {boolean} [is_auto] - Finder quiz only: cards are generated from the store filter, as
+    text cards in the order the filter returns its values, whatever `card_style` is stored.
+
+  @example
+  {% render 'product-quiz-question-markup',
+    block: block,
+    section: section,
+    options_html: options_html,
+    filter: filter,
+    is_auto: is_auto
+  %}
+{% enddoc %}
+
+{%- comment -%}
+  First paint of the heading / subtext: `[question_id]` tokens stripped (see below). Both are inline
+  richtext, so these are HTML; `heading_plain` is the heading as text (tags stripped, entities
+  decoded so `escape` encodes them once) for every plain-text use, like the stepper label fallback.
+{%- endcomment -%}
+{%- capture heading_text -%}{% render 'product-quiz-strip-tokens', text: block.settings.heading %}{%- endcapture -%}
+{%- capture subtext_text -%}{% render 'product-quiz-strip-tokens', text: block.settings.subtext %}{%- endcapture -%}
+{%- liquid
+  assign is_auto = is_auto | default: false, allow_false: true
+  assign filter = filter | strip
+
+  assign question_id = block.settings.question_id | strip | handleize
+  if question_id == blank
+    assign question_id = block.id | handleize
+  endif
+  assign radio_name = section.id | append: '-' | append: block.id
+
+  assign progress_style = section.settings.progress_style
+  assign heading_size = block.settings.question_heading_size | default: 'h2'
+  assign title_size = block.settings.title_size | default: 'paragraph'
+  assign subtitle_color = block.settings.subtitle_color | default: 'subtext'
+  assign subtext_color = block.settings.subtext_color | default: 'text'
+  assign help_text_color = block.settings.help_text_color | default: 'subtext'
+  assign card_scheme = block.settings.card_color_scheme
+  assign card_radius = block.settings.card_radius | default: 0 | divided_by: 10.0
+  assign header_gap = block.settings.header_gap | default: 24
+  assign header_gap_mobile = block.settings.header_gap_mobile | default: 24
+  comment
+    Generated cards are always Text only, whatever `card_style` is stored. Anything that is not
+    `media` (a stale value from an older schema included) renders as text.
+  endcomment
+  assign card_style = 'text'
+  if block.settings.card_style == 'media' and is_auto == false
+    assign card_style = 'media'
+  endif
+
+  assign heading_plain = heading_text | strip_html | replace: '&nbsp;', ' ' | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&amp;', '&' | strip
+  assign stepper_label = block.settings.stepper_label | default: heading_plain
+
+  comment
+    Alignment, per question: header (eyebrow + heading + subtext) and the content inside each
+    card. Emitted on the panel as start|center|end so the generated cards cloned from the
+    `<template>` inherit them too.
+  endcomment
+  assign header_align = block.settings.text_alignment | default: 'left' | replace: 'left', 'start' | replace: 'right', 'end'
+  assign header_align_mobile = block.settings.text_alignment_mobile | default: 'left' | replace: 'left', 'start' | replace: 'right', 'end'
+  assign card_align = block.settings.card_alignment | default: 'left' | replace: 'left', 'start' | replace: 'right', 'end'
+  assign card_align_mobile = block.settings.card_alignment_mobile | default: 'left' | replace: 'left', 'start' | replace: 'right', 'end'
+  assign align_style = '--product-quiz-header-align: ' | append: header_align | append: '; --product-quiz-header-align-mobile: ' | append: header_align_mobile | append: '; --product-quiz-card-align: ' | append: card_align | append: '; --product-quiz-card-align-mobile: ' | append: card_align_mobile | append: ';'
+
+  comment
+    Card style → grid modifiers + vars (see the doc). Media only: layout, image mode + box, icon.
+    Image mode: `custom` only on a vertical card; a horizontal card ignores a stored
+    `image_display` (no Fill/Custom choice there). Circle (horizontal only) forces 1:1, so the
+    ratio var is left out for it, and under `adapt` (natural aspect).
+  endcomment
+  assign options_class = 'product-quiz__options--' | append: card_style
+  if block.settings.card_padding == 'comfortable'
+    assign options_class = options_class | append: ' product-quiz__options--comfortable'
+  endif
+  assign options_style = ''
+  assign img_sizes = ''
+  assign cut_marker = 'pq-media'
+  if card_style == 'media'
+    assign card_layout = block.settings.card_layout | default: 'vertical'
+    assign image_display = block.settings.image_display | default: 'fill'
+    assign image_ratio = block.settings.image_ratio | default: '1/1'
+    assign image_width = block.settings.image_width | default: 80
+    assign image_width_mobile = block.settings.image_width_mobile | default: 70
+    assign icon_size = block.settings.icon_size | default: 24
+    assign image_mode = 'fill'
+    if card_layout != 'horizontal' and image_display == 'custom'
+      assign image_mode = 'custom'
+    endif
+    assign is_circle = false
+    if card_layout == 'horizontal' and block.settings.image_shape == 'circle'
+      assign is_circle = true
+    endif
+
+    assign options_class = options_class | append: ' product-quiz__options--' | append: card_layout
+    if is_circle
+      assign options_class = options_class | append: ' product-quiz__options--circle'
+    endif
+    if block.settings.icon_background
+      assign options_class = options_class | append: ' product-quiz__options--icon-bg'
+    endif
+
+    assign icon_size_rem = icon_size | divided_by: 10.0
+    assign options_style = '--product-quiz-icon-size: ' | append: icon_size_rem | append: 'rem;'
+    if block.settings.icon_color != blank
+      assign options_style = options_style | append: ' --product-quiz-icon-color: ' | append: block.settings.icon_color | append: ';'
+    endif
+    if block.settings.icon_background and block.settings.icon_background_color != blank
+      assign options_style = options_style | append: ' --product-quiz-icon-bg: ' | append: block.settings.icon_background_color | append: ';'
+    endif
+
+    if image_mode == 'custom'
+      assign cut_marker = 'pq-fill'
+    else
+      assign cut_marker = 'pq-custom'
+    endif
+    if image_ratio != 'adapt' and is_circle == false
+      assign options_style = options_style | append: ' --product-quiz-image-ratio: ' | append: image_ratio | append: ';'
+    endif
+
+    comment
+      Image `sizes`. Horizontal thumbnail and Custom image: the larger of the `image_width`
+      (md+) and `image_width_mobile` (below md) px boxes, or its height when a portrait ratio
+      makes the cover crop need more pixels than the width. Vertical Fill: one column of the
+      900px stage.
+    endcomment
+    if card_layout == 'horizontal' or image_mode == 'custom'
+      assign image_width_rem = image_width | divided_by: 10.0
+      assign image_width_mobile_rem = image_width_mobile | divided_by: 10.0
+      assign options_style = options_style | append: ' --product-quiz-image-size: ' | append: image_width_rem | append: 'rem; --product-quiz-image-size-mobile: ' | append: image_width_mobile_rem | append: 'rem;'
+      assign img_box = image_width | at_least: image_width_mobile
+      assign img_slot = img_box
+      if is_circle == false and image_ratio != 'adapt'
+        assign ratio_w = image_ratio | split: '/' | first | times: 1.0
+        assign ratio_h = image_ratio | split: '/' | last | times: 1.0
+        if ratio_h > ratio_w
+          assign img_slot = img_box | times: ratio_h | divided_by: ratio_w | ceil
+        endif
+      endif
+      assign img_sizes = img_slot | append: 'px'
+    else
+      assign columns_d = block.settings.columns | default: 4 | at_least: 1
+      assign columns_m = block.settings.columns_mobile | default: 2 | at_least: 1
+      assign slot_d = 900 | divided_by: columns_d
+      assign img_sizes = '(min-width: 768px) ' | append: slot_d | append: 'px, calc(100vw / ' | append: columns_m | append: ')'
+    endif
+  endif
+  comment
+    Selected look, either style (generated cards included): `border` is the ring every card has,
+    so only the other two add a modifier. Fill picks its surface in CSS from the card's shape.
+  endcomment
+  comment
+    Card border at rest (`card_border`), built like the section border: the CARD scheme's
+    `--color-border` at `card_border_opacity`, `card_border_width` wide. Only the width and the
+    opacity ride on the grid (generated cards included); the colour resolves on each card, where its
+    scheme class defines `--color-border`. Painted by the card's ring overlay, so the selected ring
+    takes the same box (see the SCSS).
+  endcomment
+  if block.settings.card_border == 'solid'
+    assign card_border_width_rem = block.settings.card_border_width | default: 1 | divided_by: 10.0
+    assign card_border_opacity = block.settings.card_border_opacity | default: 100 | divided_by: 100.0
+    assign options_style = options_style | append: ' --product-quiz-card-border-width: ' | append: card_border_width_rem | append: 'rem; --product-quiz-card-border-opacity: ' | append: card_border_opacity | append: ';'
+  endif
+
+  comment
+    One column (desktop): the grid narrows to 40rem from md up, placed like the header
+    (`text_alignment`: start | center | end). Mobile stays full width.
+  endcomment
+  if block.settings.columns == 1
+    assign options_class = options_class | append: ' product-quiz__options--single'
+    case header_align
+      when 'center'
+        assign options_margin = 'auto'
+      when 'end'
+        assign options_margin = 'auto 0'
+      else
+        assign options_margin = '0 auto'
+    endcase
+    assign options_style = options_style | append: ' --product-quiz-options-margin-inline: ' | append: options_margin | append: ';'
+  endif
+
+  case block.settings.selected_style
+    when 'border_background'
+      assign options_class = options_class | append: ' product-quiz__options--border-background'
+    when 'fill'
+      assign options_class = options_class | append: ' product-quiz__options--fill'
+  endcase
+
+  if is_auto
+    assign options_html = ''
+  else
+    assign options_html = options_html | replace: '__PQ_RADIO__', radio_name | replace: '__PQ_CARD_SCHEME__', card_scheme | replace: '__PQ_TITLE_SIZE__', title_size | replace: '__PQ_SUBTITLE_COLOR__', subtitle_color | replace: '__PQ_IMG_SIZES__', img_sizes
+
+    comment
+      Cut every `<!--{cut_marker}-->…<!--/{cut_marker}-->` part (see the doc). The fences never
+      nest with themselves. `split` drops a trailing empty field, so a segment that ENDS with the
+      closing marker has nothing after it: keep ''.
+    endcomment
+    assign cut_open = '<!--' | append: cut_marker | append: '-->'
+    assign cut_close = '<!--/' | append: cut_marker | append: '-->'
+    if options_html contains cut_open
+      assign media_segments = options_html | split: cut_open
+      assign options_html = ''
+      for segment in media_segments
+        if forloop.first
+          assign options_html = segment
+        elsif segment contains cut_close
+          assign segment_parts = segment | split: cut_close
+          if segment_parts.size > 1
+            assign options_html = options_html | append: segment_parts.last
+          endif
+        else
+          assign options_html = options_html | append: segment
+        endif
+      endfor
+    endif
+  endif
+
+  assign progress_text = 'blocks.product_quiz.progress' | t: current: '__PQ_INDEX__', total: '__PQ_TOTAL__'
+  assign next_label = 'blocks.product_quiz.next' | t
+-%}
+{%- comment -%}
+  Header → options gap, per question: fluid mobile → desktop, like the section padding
+  (`--product-quiz-header-gap` + `--product-quiz-header-gap-mobile`).
+{%- endcomment -%}
+{%- capture header_gap_style -%}
+  {%- render 'clamp-calculate-style',
+    property_name: 'product-quiz-header-gap',
+    min_value: header_gap_mobile,
+    max_value: header_gap,
+    max_breakpoint: 1455
+  -%}
+{%- endcapture -%}
+<!-- @product-quiz/split -->
+<li
+  class="product-quiz__step"
+  ref="progressSteps[]"
+  data-question-id="{{ question_id }}"
+  data-state="__PQ_STATE__"
+>
+  <span class="product-quiz__step-circle" data-quiz-step-number>__PQ_INDEX__</span>
+  <span class="product-quiz__step-label text-subheading">{{ stepper_label | escape }}</span>
+</li>
+<!-- @product-quiz/split -->
+<div
+  class="product-quiz__screen product-quiz__question"
+  ref="questions[]"
+  data-question-id="{{ question_id }}"
+  data-radio-name="{{ radio_name }}"
+  {% if filter != blank %}
+    data-filter="{{ filter | escape }}"
+  {% endif %}
+  data-option-source="{% if is_auto %}auto{% else %}manual{% endif %}"
+  data-show-in-summary="{{ block.settings.show_in_summary }}"
+  style="--product-quiz-card-radius: {{ card_radius }}rem; {{ align_style }} {{ header_gap_style }}"
+  {{ block.shopify_attributes }}
+  data-pq-slot hidden
+>
+  <fieldset class="product-quiz__fieldset" data-quiz-fieldset>
+    <legend class="product-quiz__header">
+      {%- if progress_style == 'stepper' -%}
+        <span class="product-quiz__eyebrow text-subheading" data-quiz-eyebrow>{{ progress_text }}</span>
+      {%- endif -%}
+      {%- comment -%}
+        `[question_id]` tokens: the raw setting rides in `data-template` (the runtime resolves it
+        from the answers each time the question is shown); the first paint has them stripped.
+        The heading is inline richtext (trusted settings HTML), handled like the subtext below:
+        `data-quiz-rich`, raw HTML template, first paint unescaped. Its links stay clickable.
+      {%- endcomment -%}
+      <h2
+        class="product-quiz__heading {{ heading_size }}"
+        tabindex="-1"
+        data-quiz-focus
+        data-quiz-tokenized
+        data-quiz-rich
+        data-template="{{ block.settings.heading | escape }}"
+      >
+        {{- heading_text -}}
+      </h2>
+      {%- comment -%}
+        The subtext is inline richtext (trusted settings HTML): `data-template` holds the raw HTML,
+        the first paint renders the token-stripped HTML unescaped, and `data-quiz-rich` tells the
+        runtime not to escape the template (answers stay escaped). Hidden when no text is left.
+      {%- endcomment -%}
+      {%- if block.settings.subtext != blank -%}
+        {%- assign subtext_plain = subtext_text | strip_html | replace: '&nbsp;', ' ' | strip -%}
+        <span
+          class="product-quiz__subtext paragraph color-{{ subtext_color }}"
+          data-quiz-tokenized
+          data-quiz-rich
+          data-template="{{ block.settings.subtext | escape }}"
+          {% if subtext_plain == blank %}
+            hidden
+          {% endif %}
+        >
+          {{- subtext_text -}}
+        </span>
+      {%- endif -%}
+    </legend>
+
+    {%- if request.design_mode and filter != blank -%}
+      {%- comment -%}
+        Theme editor only: ONE notice per question, in one of two variants (`data-variant`):
+        - `warning`: its editor warnings (filter not found / collection too large / manual cards
+          the storefront hides);
+        - `info`: generated-options questions with no warning, saying where the cards come from.
+        A warning always wins: the info text is dropped. Generated questions paint the info
+        variant on first paint; the runtime recomputes variant + text from these templates
+        (`[filter]`, `[count]` and `[names]` are replaced in JS) and shows the matching icon.
+        `t` already HTML-escapes its output: a second `escape` here shows `&quot;` as text.
+      {%- endcomment -%}
+      {%- liquid
+        assign notice_filter = 'blocks.product_quiz.editor_filter_unmatched' | t: filter: '[filter]'
+        assign notice_large = 'blocks.product_quiz.editor_large_collection' | t
+        assign notice_hidden = 'blocks.product_quiz.editor_options_hidden' | t: count: '[count]', names: '[names]'
+        assign notice_generated = 'blocks.product_quiz.editor_generated_options' | t
+        assign notice_variant = 'warning'
+        if is_auto
+          assign notice_variant = 'info'
+        endif
+      -%}
+      <div
+        class="product-quiz__notice"
+        role="status"
+        data-quiz-editor-notice
+        data-variant="{{ notice_variant }}"
+        data-text-filter="{{ notice_filter }}"
+        data-text-large="{{ notice_large }}"
+        data-text-hidden="{{ notice_hidden }}"
+        {% if is_auto %}
+          data-text-generated="{{ notice_generated }}"
+        {% else %}
+          hidden
+        {% endif %}
+      >
+        {%- if is_auto -%}
+          {% render 'icon',
+            icon: 'info',
+            class: 'product-quiz__notice-icon',
+            attributes: 'data-quiz-notice-icon="info"'
+          %}
+        {%- endif -%}
+        {% render 'icon',
+          icon: 'warning',
+          class: 'product-quiz__notice-icon',
+          attributes: 'data-quiz-notice-icon="warning" hidden'
+        %}
+        <div class="product-quiz__notice-text" data-quiz-editor-notice-text>
+          {%- if is_auto -%}
+            <p>{{ notice_generated }}</p>
+          {%- endif -%}
+        </div>
+      </div>
+    {%- endif -%}
+
+    {%- comment -%}
+      The stage stacks the loading spinner over the cards (Finder quiz, intro off), so the cards
+      keep their place while it shows.
+    {%- endcomment -%}
+    <div class="product-quiz__stage{% if is_auto %} product-quiz__stage--auto{% endif %}">
+      <div
+        class="product-quiz__options {{ options_class }}"
+        style="--product-quiz-columns: {{ block.settings.columns }}; --product-quiz-columns-mobile: {{ block.settings.columns_mobile }}; {{ options_style }}"
+        data-quiz-options
+      >
+        {%- if is_auto -%}
+          <div class="product-quiz__auto-list" data-quiz-auto-list></div>
+        {%- else -%}
+          {{ options_html }}
+        {%- endif -%}
+      </div>
+
+      {%- if filter != blank -%}
+        {%- comment -%}
+          Loading state of the cards while the Finder quiz's first pre-fetch runs (intro off only):
+          the shell unhides this over the invisible cards; the runtime reverts both once it resolves.
+        {%- endcomment -%}
+        <div class="product-quiz__prefetch" data-quiz-prefetch hidden>
+          {% render 'loading-spinner', size: 'large' %}
+          <span class="visually-hidden">{{ 'accessibility.loading' | t }}</span>
+        </div>
+      {%- endif -%}
+    </div>
+
+    {%- if is_auto -%}
+      <template data-quiz-auto-template>
+        <label class="product-quiz-card color-{{ card_scheme }}" data-quiz-option>
+          <input
+            class="product-quiz-card__input"
+            type="radio"
+            name="{{ radio_name }}"
+            value=""
+            data-label=""
+            data-filter-value=""
+            data-no-preference="false"
+            on:change="product-quiz/onOptionChange"
+            on:click="product-quiz/onOptionClick"
+            on:keydown="product-quiz/onOptionKeydown"
+          >
+          <span class="product-quiz-card__body">
+            <span class="product-quiz-card__title {{ title_size }}" data-quiz-option-title></span>
+          </span>
+        </label>
+      </template>
+    {%- endif -%}
+  </fieldset>
+
+  {%- if block.settings.help_text != blank -%}
+    <p class="product-quiz__help paragraph color-{{ help_text_color }}">{{ block.settings.help_text }}</p>
+  {%- endif -%}
+
+  <div class="product-quiz__error" data-quiz-error hidden>
+    <p class="form-message form-message--error" role="alert">{{ 'blocks.product_quiz.fetch_error' | t }}</p>
+    <button type="button" class="btn btn--outline btn--small" on:click="product-quiz/retry">
+      <span class="btn__text">{{ 'blocks.product_quiz.retry' | t }}</span>
+    </button>
+  </div>
+
+  <div class="product-quiz__actions">
+    <button type="button" class="product-quiz__link button-unstyled" data-quiz-back on:click="product-quiz/back" hidden>
+      {% render 'icon', icon: 'arrow-left', class: 'product-quiz__link-icon' %}
+      <span>{{ 'blocks.product_quiz.back' | t }}</span>
+    </button>
+    {%- if block.settings.allow_skip -%}
+      <button type="button" class="product-quiz__link button-unstyled" data-quiz-skip on:click="product-quiz/skip">
+        <span>{{ 'blocks.product_quiz.skip_question' | t }}</span>
+      </button>
+    {%- endif -%}
+    <button
+      type="button"
+      class="product-quiz__next btn btn--primary"
+      data-quiz-next
+      on:click="product-quiz/next"
+      aria-disabled="true"
+      {% if section.settings.advance_mode == 'auto' %}
+        hidden
+      {% endif %}
+    >
+      <span class="btn__text" data-quiz-next-text data-label="{{ next_label | escape }}">
+        {{- next_label | escape -}}
+      </span>
+      {% render 'loading-spinner', size: 'small' %}
+    </button>
+  </div>
+</div>

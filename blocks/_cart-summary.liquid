@@ -1,0 +1,24 @@
+<div
+  class="cart-summary__container sticky-element sticky-element--adapt flex flex-col gap-5 xl:gap-6"
+  style="--sticky-element-top: 3rem;"
+  {{ block.shopify_attributes }}
+>
+  {%- if settings.show_free_shipping_goal and settings.free_shipping_goal_amount != blank -%}
+    <div class="cart-summary__free-shipping-goal">
+      {% render 'free-shipping-goal', section: section %}
+    </div>
+  {%- endif -%}
+  {% content_for 'block', type: '_cart-summary-addons', id: 'cart-page-summary-addons' %}
+  {% render 'cart-summary', section: section, context: 'cart-page' %}
+</div>
+{% schema %}
+{
+  "name": "t:names.summary",
+  "tag": null,
+  "presets": [
+    {
+      "name": "t:names.summary"
+    }
+  ]
+}
+{% endschema %}

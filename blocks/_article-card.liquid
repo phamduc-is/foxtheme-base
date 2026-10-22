@@ -1,0 +1,69 @@
+{% doc %}
+  Renders articles card.
+
+  @param {object} article - The blog article object
+  @param {string} layout - Layout style: 'row', 'column'
+  @param {string} [image_sizes] - Image size for article media
+
+  @example
+  {%- content_for 'block', type: '_article-card', id: 'article-card', article: article, layout: 'column' -%}
+{% enddoc %}
+{%- liquid
+  assign alignment = block.settings.text_alignment
+  assign image_ratio = settings.blog_card_aspect_ratio
+-%}
+{%- capture tag_html -%}
+  {%- content_for 'block', type: '_article-card-tag', id: 'article-card-tag', article: article, layout: layout -%}
+{%- endcapture -%}
+{%- capture title_html -%}
+  {%- content_for 'block', type: '_article-card-title', id: 'article-card-title', article: article, layout: layout -%}
+{%- endcapture -%}
+{%- capture meta_html -%}
+  {%- content_for 'block', type: '_article-card-meta', id: 'article-card-meta', article: article, layout: layout, alignment: alignment -%}
+{%- endcapture -%}
+{%- capture children -%}
+  {%- content_for 'blocks', closest.article: article -%}
+{%- endcapture -%}
+
+{%- render 'article-card-markup',
+  article: article,
+  block: block,
+  layout: layout,
+  alignment: alignment,
+  image_ratio: image_ratio,
+  image_sizes: image_sizes,
+  tag_html: tag_html,
+  title_html: title_html,
+  meta_html: meta_html,
+  children: children
+-%}
+{% schema %}
+{
+  "name": "t:names.article_card",
+  "tag": null,
+  "blocks": [{ "type": "_article-card-excerpt" }, { "type": "_article-card-button" }],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.card_settings"
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "t:settings.alignment",
+      "options": [
+        {
+          "value": "left",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        }
+      ],
+      "default": "left"
+    }
+  ],
+  "presets": []
+}
+{% endschema %}

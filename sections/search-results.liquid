@@ -1,0 +1,477 @@
+{%- liquid
+  assign enable_filtering = section.settings.enable_filtering
+  assign columns = 3
+  assign columns_mobile = 2
+
+  # The grid's entrance, a section setting like every other list in the theme.
+  # Defaults to 'none' on purpose: on a collection page the first row's images
+  # are the usual LCP candidate, and an opacity entrance takes an element out of
+  # the running until it finishes (docs/motion.md, "Above the fold"). Opting in
+  # is the merchant's call. Every value except 'none' IS a preset name and
+  # passes straight through; motion-group validates it against the registry.
+  assign list_motion = ''
+  assign list_sequence = false
+  if settings.animations_enabled
+    assign content_animation = section.settings.content_animation
+    if content_animation != 'none' and content_animation != blank
+      assign list_motion = content_animation
+      if section.settings.content_animation_sequence
+        assign list_sequence = true
+      endif
+    endif
+  endif
+  # motion-group is a customized built-in registered on <div> only, so the grid
+  # is a <div role="list"> rather than a <ul>: on a <ul> the attribute would
+  # never upgrade and the entrance would silently not exist.
+  capture list_motion_attrs
+    if list_motion != blank
+      echo ' is="motion-group"'
+      render 'motion-attributes', type: list_motion, sequence: list_sequence
+    endif
+  endcapture
+-%}
+{%- capture media_sizes -%}
+  {%- capture container_size -%}min(100vw, {{ settings.page_width | plus: 32 }}px){%- endcapture -%}
+  {% if enable_filtering %}(min-width: 1200px) calc(({{ container_size }} - 345px - 32px) / {{ columns }}), (min-width: 1024px) calc(({{ container_size }} - 295px - 32px) / {{ columns }}), {% endif %}(min-width: 768px) calc(({{ container_size }} - 32px) / {{ columns }}), calc((100vw - 32px) / {{ columns_mobile }})
+{%- endcapture -%}
+<script
+  src="{{ 'results-list.js' | asset_url }}"
+  type="module"
+  fetchpriority="low"
+></script>
+<results-list
+  class="collection main-collection spacing-style section-grid section-grid--{{ section.settings.container }}{% if search.results_count == 0 %} collection-empty{% endif %}{% unless search.performed %} hidden{% endunless %} color-{{ section.settings.color_scheme }}"
+  pagination-type="{{ section.settings.pagination }}"
+  show-filtering="{{ enable_filtering }}"
+  preload="false"
+  section-id="{{ section.id }}"
+  style="{% render 'spacing-style', settings: section.settings %}"
+>
+  {% if enable_filtering %}
+    {% unless request.design_mode %}
+      {% comment %}
+        `?sidebar=open|closed` (showcase links) overrides the desktop sidebar's initial state for this page
+        only — nothing is stored. Runs before the sidebar is parsed so it never paints in the wrong state.
+        Desktop only by construction: below lg the sidebar is a drawer and this attribute does nothing.
+      {% endcomment %}
+      <script>
+        (() => {
+          const sidebar = new URLSearchParams(location.search).get('sidebar');
+          if (sidebar !== 'open' && sidebar !== 'closed') return;
+          document.currentScript.parentElement.setAttribute('show-filtering', sidebar === 'open');
+        })();
+      </script>
+    {% endunless %}
+  {% endif %}
+  <div class="collection__wrapper">
+    {% render 'filters',
+      section_settings: section.settings,
+      results: search,
+      results_size: search.results_count,
+      total_products_count: search.results_count
+    %}
+    {% paginate search.results by section.settings.items_per_page %}
+      {% capture children %}
+        {% for item in search.results %}
+          {%- liquid
+            # Preload the first row: every card in it is on screen at load, so an
+            # eager one is visible to the preload scanner (responsive-image renders
+            # liquid mode) instead of waiting for the bundle. Only the FIRST card
+            # gets fetchpriority high — LCP is one element, and a row of equal
+            # cards resolves to the first; several "high" images are none.
+            assign card_loading = 'lazy'
+            assign card_fetchpriority = nil
+            if section.settings.enable_preload_image and forloop.index0 < columns
+              assign card_loading = 'eager'
+              if forloop.index0 == 0
+                assign card_fetchpriority = 'high'
+              endif
+            endif
+          -%}
+          {%- case item.object_type -%}
+          {%- when 'product' -%}
+            <div
+              id="{{ section.id }}-{{ item.id }}"
+              class="product-grid__item product-grid__item--{{ forloop.index0 }}"
+              data-page="{{ paginate.current_page }}"
+              data-product-id="{{ item.id }}"
+              ref="cards[]"
+              role="listitem"
+            >
+              {% # theme-check-disable %}
+              {% content_for 'block', type: '_product-card', id: 'product-card', product: item, media_sizes: media_sizes, show_compare_checkbox: true, loading: card_loading, fetchpriority: card_fetchpriority %}
+              {% # theme-check-enable %}
+            </div>
+          {%- when 'page' -%}
+            <div
+              id="{{ section.id }}-{{ item.id }}"
+              class="product-grid__item product-grid__item--{{ forloop.index0 }} h-full"
+              data-page="{{ paginate.current_page }}"
+              data-page-id="{{ item.id }}"
+              ref="cards[]"
+              role="listitem"
+            >
+              {% # theme-check-disable %}
+              <a href="{{ item.url }}" class="search-result-card flex flex-col items-start gap-2 reversed-link">
+                <span class="search-result-card__type badge">{{ item.object_type }}</span>
+                <h4 class="search-result-card__title reversed-link__text">{{ item.title }}</h4>
+              </a>
+              {% # theme-check-enable %}
+            </div>
+          {%- when 'article' -%}
+            <div
+              id="{{ section.id }}-{{ item.id }}"
+              class="product-grid__item product-grid__item--{{ forloop.index0 }} h-full"
+              data-page="{{ paginate.current_page }}"
+              data-article-id="{{ item.id }}"
+              ref="cards[]"
+              role="listitem"
+            >
+              {% # theme-check-disable %}
+              <a href="{{ item.url }}" class="search-result-card flex flex-col items-start gap-2 reversed-link">
+                <span class="search-result-card__type badge">{{ item.object_type }}</span>
+                <h4 class="search-result-card__title reversed-link__text">{{ item.title }}</h4>
+              </a>
+              {% # theme-check-enable %}
+            </div>
+          {%- endcase -%}
+        {% endfor %}
+      {% endcapture %}
+
+      <div
+        id="ResultsList"
+        is="sticky-column"
+        class="main-collection-grid sticky-element sticky-element--adapt"
+        style="--sticky-element-top: 3rem;"
+      >
+        {% if search.results_count == 0 %}
+          <div class="main-collection-grid__empty flex flex-col gap-2 items-center justify-center">
+            <h3 class="main-collection-grid__empty-title h2">
+              {{ 'content.no_products_found' | t }}
+            </h3>
+            {%- comment -%}
+              url_encode first: appended raw, an `&` in the terms ends `q` and starts a
+              parameter of its own, cutting this link's search at the first ampersand.
+            {%- endcomment -%}
+            {% assign search_terms_query = search.terms | url_encode %}
+            {% assign link = routes.search_url
+              | append: '?q='
+              | append: search_terms_query
+              | append: '&options%5Bprefix%5D=last'
+              | append: '&sort_by='
+              | append: search.sort_by
+            %}
+            <p>
+              {{ 'content.use_fewer_filters_html' | t: link: link, class: 'main-collection-grid__empty-link link link--underline' }}
+            </p>
+          </div>
+        {% else %}
+          <div class="grid gap-6 xl:gap-8">
+            {% if children != blank %}
+              <div
+                class="product-grid gap-style list-unstyled layout-panel-grid"
+                {{- list_motion_attrs -}}
+                {% if section.settings.enable_card_layout_switch %}
+                  data-layout="{{ section.settings.default_card_layout | default: 'grid' }}"
+                {% endif %}
+                ref="grid"
+                role="list"
+                data-last-page="{{ paginate.pages }}"
+                style="--f-columns-mobile: {{ columns_mobile }}; --f-columns-md: {{ columns }}; {% render 'gap-style', settings: section.settings %}"
+              >
+                {{- children -}}
+              </div>
+            {% endif %}
+            {% if paginate.pages > 1 %}
+              {%- liquid
+                assign ref = null
+                if section.settings.pagination == 'load-more'
+                  assign ref = 'loadMoreBtn'
+                elsif section.settings.pagination == 'infinite'
+                  assign ref = 'viewMoreNext'
+                endif
+              -%}
+              {% render 'pagination', paginate: paginate, type: section.settings.pagination, ref: ref %}
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endpaginate %}
+  </div>
+</results-list>
+
+{% if section.settings.enable_card_layout_switch %}
+  {% unless request.design_mode %}
+    <script>
+      (() => {
+        const grid = document.querySelector('.product-grid');
+        if (!grid) return;
+
+        // `?layout=grid|list` (showcase links) wins over the tab's stored choice for this page only — never
+        // persisted. Not `view`: Shopify reserves that one for alternate templates.
+        const layoutParam = new URLSearchParams(location.search).get('layout');
+        const cardLayout = layoutParam === 'grid' || layoutParam === 'list' ? layoutParam : sessionStorage.getItem('data-layout');
+        if (cardLayout) {
+          grid.setAttribute('data-layout', cardLayout);
+          for (const option of document.querySelectorAll('input[type="radio"][name="card-layout"]')) {
+            option.checked = option.value === cardLayout;
+          }
+        }
+      })();
+    </script>
+  {% endunless %}
+{% endif %}
+
+{% schema %}
+{
+  "name": "t:names.search_results",
+  "enabled_on": {
+    "templates": ["search"]
+  },
+  "settings": [
+    {
+      "type": "select",
+      "id": "pagination",
+      "label": "t:settings.pagination_type",
+      "options": [
+        { "value": "number", "label": "t:options.number" },
+        { "value": "infinite", "label": "t:options.infinite" },
+        { "value": "load-more", "label": "t:options.load_more" }
+      ],
+      "default": "number"
+    },
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        { "value": "full", "label": "t:options.full" },
+        { "value": "fixed", "label": "t:options.fixed" }
+      ],
+      "default": "fixed"
+    },
+    {
+      "type": "range",
+      "id": "items_per_page",
+      "label": "t:settings.items_per_page",
+      "min": 12,
+      "max": 48,
+      "step": 1,
+      "default": 24
+    },
+    {
+      "type": "range",
+      "id": "column_gap",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "row_gap",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 30
+    },
+    {
+      "type": "header",
+      "content": "t:content.filtering_and_sorting"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_filtering",
+      "label": "t:settings.enable_filtering",
+      "info": "t:info.enable_filtering_info",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_sorting",
+      "label": "t:settings.enable_sorting",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_card_layout_switch",
+      "label": "t:settings.enable_card_layout_switch",
+      "default": false
+    },
+    {
+      "type": "select",
+      "id": "default_card_layout",
+      "label": "t:settings.default_card_layout",
+      "options": [
+        { "value": "grid", "label": "t:options.grid" },
+        { "value": "list", "label": "t:options.list" }
+      ],
+      "default": "grid"
+    },
+    {
+      "type": "text",
+      "id": "expand_filter_groups",
+      "label": "t:settings.expand_filter_groups",
+      "info": "t:info.expand_filter_groups_info"
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_layout"
+    },
+    {
+      "type": "range",
+      "id": "column_gap_mobile",
+      "label": "t:settings.horizontal_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 8
+    },
+    {
+      "type": "range",
+      "id": "row_gap_mobile",
+      "label": "t:settings.vertical_gap",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 24
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 50,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.animation",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "select",
+      "id": "content_animation",
+      "label": "t:settings.animation_items",
+      "options": [
+        {
+          "value": "none",
+          "label": "t:options.none"
+        },
+        {
+          "value": "fade-in",
+          "label": "t:options.fade_in"
+        },
+        {
+          "value": "fade-up",
+          "label": "t:options.fade_up"
+        },
+        {
+          "value": "fade-down",
+          "label": "t:options.fade_down"
+        },
+        {
+          "value": "slide-in-start",
+          "label": "t:options.slide_in_start"
+        },
+        {
+          "value": "slide-in-end",
+          "label": "t:options.slide_in_end"
+        }
+      ],
+      "default": "fade-up",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "content_animation_sequence",
+      "label": "t:settings.content_animation_sequence",
+      "info": "t:info.content_animation_sequence",
+      "default": true,
+      "visible_if": "{{ settings.animations_enabled == true and section.settings.content_animation != 'none' }}"
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_preload_image",
+      "label": "t:settings.enable_preload_image",
+      "info": "t:info.enable_preload_image"
+    }
+  ]
+}
+{% endschema %}

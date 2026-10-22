@@ -1,0 +1,111 @@
+{% doc %}
+  Arms the motion prestage, and disarms it if the motion runtime never boots.
+
+  Entrance animations start from a hidden state, and that hiding has to happen
+  before first paint or the content flashes. The obvious way to do that — a CSS
+  rule that hides every un-animated element — has a failure mode with no
+  recovery: if the runtime 404s, throws, or simply never arrives, the content
+  stays hidden forever and nothing notices.
+
+  So the prestage rules in critical-css are keyed on `data-motion-armed`, and
+  this script owns that attribute:
+
+    - it sets it, so a page that never runs this script hides nothing;
+    - it removes it again if the runtime never arrives, so a failed load
+      degrades to "no animation" rather than "no content".
+
+  That second check is no longer a 2s timer. The timer was a guess racing a
+  normal page load, and on a slow connection the load won: measured on Slow 3G,
+  motion-component.js finished at 7.3s, the watchdog had disarmed at 2s, and all
+  8 elements on the page stayed un-animated while the runtime sat there fully
+  loaded — plus a state nothing reconciles, booted=true with armed=false.
+
+  Three triggers replace it, all calling the same flag-gated check, first one to
+  fire wins:
+
+    - a `error` on one of the motion scripts. A script that failed to load is a
+      definitive answer AT THAT MOMENT, so a 404 or a blocked request recovers
+      in milliseconds instead of waiting out the page.
+    - `window.load`. NOT DOMContentLoaded: the obvious reading is that deferred
+      module scripts always run before DCL, but this repo already carries a
+      workaround saying otherwise — see the "Safari 15: Module scripts may load
+      after DOMContentLoaded has fired" comment in src/js/modules/page-transition.js.
+      Settling on DCL there would disarm the prestage while the runtime was
+      still on its way, which is no animation at all on that browser, on every
+      load, however fast the connection.
+    - a 20s backstop, because `load` has no upper bound either. A single hung
+      request — not failed, just never answered — means neither of the events
+      above ever fires, and the content stays hidden for as long as the network
+      stack takes to give up. That is the exact bug this mechanism exists to
+      prevent, arriving from the other direction. 20s is chosen to sit clear of
+      the 16.6s DOMContentLoaded measured on Slow 3G above, so a genuinely slow
+      page is never mistaken for a broken one.
+
+  Each half of the runtime reports for ITSELF, because each gates a different
+  prestage rule and they can fail independently:
+
+    - `data-motion-booted` (motion-component.js) gates the single-element
+      prestage;
+    - `data-motion-groups-booted` (motion-group.js) gates the list prestage,
+      together with `data-motion-builtins`;
+    - `data-motion-text-booted` (motion-text.js) gates the word-by-word
+      heading prestage, `data-motion-text-armed`.
+
+  One flag for both would hide the case this pairing exists for: motion-group.js
+  failing on its own left every list prestaged and invisible forever, while
+  motion-component.js reporting in told the watchdog everything was fine.
+
+  `data-motion-builtins` is separate again and set below by probing, because
+  `customElements.define` with `extends` can be unsupported even when the module
+  loads perfectly — and that probe has to happen before first paint.
+
+  Must render in <head> BEFORE critical-css.
+
+  @example
+  {% render 'motion-boot' %}
+{% enddoc %}
+
+{%- if settings.animations_enabled -%}
+  <script>
+    (function () {
+      var root = document.documentElement;
+      root.setAttribute('data-motion-armed', '');
+      root.setAttribute('data-motion-text-armed', '');
+
+      /* Customized built-in support, tested by trying — there is no capability
+         flag for it. This has to happen HERE rather than when motion-group
+         loads: a prestage that only applies after the module arrives is a
+         prestage that arrives after first paint, which is the flash it exists
+         to prevent. */
+      try {
+        var probe = 'motion-probe-' + Math.random().toString(36).slice(2);
+        customElements.define(probe, class extends HTMLDivElement {}, { extends: 'div' });
+        root.setAttribute('data-motion-builtins', '');
+      } catch (e) {}
+
+      /* Idempotent and gated on the flags, so every trigger below is safe to
+         fire, in any order, more than once. */
+      function settle() {
+        if (!root.hasAttribute('data-motion-booted')) root.removeAttribute('data-motion-armed');
+        if (!root.hasAttribute('data-motion-groups-booted')) root.removeAttribute('data-motion-builtins');
+        if (!root.hasAttribute('data-motion-text-booted')) root.removeAttribute('data-motion-text-armed');
+      }
+
+      /* A script that errored is a definitive answer right now. Capture phase:
+         `error` on a script element does not bubble. */
+      document.addEventListener(
+        'error',
+        function (event) {
+          var target = event.target;
+          if (target && target.tagName === 'SCRIPT' && /motion-(component|group|text)\./.test(target.src || '')) settle();
+        },
+        true
+      );
+
+      if (document.readyState === 'complete') settle();
+      else window.addEventListener('load', settle, { once: true });
+
+      setTimeout(settle, 20000);
+    })();
+  </script>
+{%- endif -%}

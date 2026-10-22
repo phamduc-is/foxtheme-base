@@ -1,0 +1,254 @@
+{% doc %}
+  Renders the predictive search form with an input field and live-updating results panel.
+  Renders a recommendations panel (keywords + products) when the cart is empty and settings are configured.
+
+  @param {object} [predictive_search] - Shopify global (implicit). `performed`, `terms`, and
+
+  `resources` (`queries`, `products`, `collections`, `articles`, `pages`). Do not pass to `{% render 'predictive-search' %}`.
+
+  @param {string} unique_id - Scopes form/input IDs (`PredictiveSearch-*`, `SearchInput-*`); pass `section.id` so multiple instances per page stay unique.
+  @param {string} [context] - Rendering context: 'drawer' adjusts result image sizes (default: full-width)
+  @param {string} [form_style] - Form appearance: 'solid' | 'transparent' (default: 'solid')
+  @param {string} [placeholder_text] - Search input placeholder; defaults to `content.search_input_placeholder_long` via `t`.
+  @param {string} [color_scheme] - Scheme id on `.search__content` (`color-*`). Passed from header; omit in drawer.
+
+  @example
+  {% render 'predictive-search', unique_id: section.id, context: 'drawer' %}
+{% enddoc %}
+
+{%- liquid
+  assign columns_xxl = 3
+  assign columns_xl = columns_xxl | at_most: 4
+  assign columns_lg = columns_xxl | at_most: 3
+  assign columns_md = columns_xxl | at_most: 3
+  assign columns_mobile = 2
+  assign column_gap = 10
+  assign column_gap_mobile = 8
+  assign form_style = form_style | default: 'solid'
+
+  assign is_empty_recommendations = true
+  if settings.search_recommendation_keywords != blank or settings.search_recommendation_products != blank
+    assign is_empty_recommendations = false
+  endif
+
+  assign default_placeholder_text = 'content.search_input_placeholder_long' | t
+  assign placeholder_text = placeholder_text | default: default_placeholder_text
+
+  assign form_id = 'PredictiveSearch-' | append: unique_id
+  assign search_results_id = 'PredictiveSearchResults-' | append: unique_id
+
+  assign current_search_value = search.terms
+  assign current_search_type = ''
+  if search.terms contains 'product_type:'
+    assign current_search_value = search.terms | split: ' AND ' | last | strip
+    assign type_part = search.terms | split: ' AND ' | first | strip
+    assign current_search_type = type_part | remove_first: 'product_type:' | strip
+  endif
+-%}
+
+{%- capture media_sizes -%}
+  {%- capture container_width -%}{% if context == 'drawer' %}(min(100vw, 500px) - 32px){% else %}(min(100vw, 554px) - 60px){% endif %}{%- endcapture -%}
+  (min-width: 768px) calc({{ container_width }} / {{ columns_xxl }}), calc(min(500px, 100vw) * 0.38)
+{%- endcapture -%}
+<predictive-search
+  class="search__form search__form--{{ form_style }}{% if settings.search_predictive_enabled %} search__form--predictive{% endif %} flex flex-col w-full dir-rtl"
+  data-empty-recommendations="{{ is_empty_recommendations }}"
+  data-results-limit="{{ settings.search_number_results_to_show }}"
+  data-context="{{ context }}"
+>
+  <div class="search__header flex dir-ltr">
+    <form
+      class="w-full min-w-0"
+      on:submit="/onSubmit"
+      action="{{ routes.search_url }}"
+      method="get"
+      role="search"
+      id="{{ form_id }}"
+    >
+      <input type="hidden" name="options[prefix]" value="last">
+      <div class="search__field form-control-group flex items-center w-full">
+        {%- if settings.search_by_product_type_enabled -%}
+          {%- liquid
+            assign shop_types = shop.types
+            if shop_types.first == blank
+              assign shop_types = shop_types | slice: 1, shop_types.size
+            endif
+          -%}
+          {%- if shop_types.size > 0 -%}
+            <search-type-select
+              class="search__types"
+              data-types-url="{{ routes.root_url }}?section_id=section-rendering-search-product-types"
+            >
+              <label
+                for="searchProductType--{{ unique_id }}"
+                class="visually-hidden"
+              >
+                {{ 'accessibility.search_type' | t }}
+              </label>
+              <div class="select">
+                <select
+                  ref="searchType"
+                  on:change="/onProductTypeChange"
+                  id="searchProductType--{{ unique_id }}"
+                  class="form-control-element"
+                >
+                  <option value="">{{ 'content.all_product_types' | t }}</option>
+                  {%- if search.performed and current_search_type != blank -%}
+                    <option
+                      value="{{ current_search_type | escape }}"
+                      data-current
+                      selected
+                    >
+                      {{- current_search_type -}}
+                    </option>
+                  {%- endif -%}
+                </select>
+              </div>
+            </search-type-select>
+          {%- endif -%}
+        {%- endif -%}
+        <div class="search__input-wrap relative w-full flex items-center">
+          <input
+            ref="searchInput"
+            on:focus="/onFocus"
+            id="SearchInput-{{ unique_id }}"
+            class="search__input form-control-element w-full"
+            type="search"
+            name="q"
+            {% if search.performed and template.name != 'search' %}
+              value="{{ current_search_value | escape }}"
+            {% endif %}
+            placeholder="{{ placeholder_text | escape }}"
+            {% if settings.search_predictive_enabled %}
+              on:input="/onInputDebounced"
+              role="combobox"
+              aria-expanded="false"
+              aria-owns="{{ search_results_id }}"
+              aria-controls="{{ search_results_id }}"
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+              autocorrect="off"
+              autocomplete="off"
+              autocapitalize="off"
+              spellcheck="false"
+            {% endif %}
+          >
+          <label class="visually-hidden" for="SearchInput-{{ unique_id }}">
+            {{- 'content.search_input_label' | t -}}
+          </label>
+          <button
+            ref="clearButton"
+            on:click="/clear"
+            type="reset"
+            class="search__reset button-unstyled btn absolute flex items-center justify-center cursor-pointer"
+          >
+            <span>{{ 'actions.search_clear' | t }}</span>
+          </button>
+          {%- if settings.search_predictive_enabled -%}
+            {% render 'loading-spinner', class: 'search__spinner pointer-events-none absolute flex items-center', attributes: 'ref="spinner"' %}
+          {%- endif -%}
+          {%- if settings.search_predictive_enabled and context != 'drawer' -%}
+            <button
+              on:click="/close"
+              type="button"
+              class="search__close button-unstyled absolute z-1 pointer-events-none flex items-center justify-center cursor-pointer"
+              aria-label="{{ 'actions.close' | t }}"
+            >
+              {%- render 'icon', icon: 'close', size: 'large' -%}
+            </button>
+          {%- endif -%}
+          <button
+            type="submit"
+            class="search__submit{% if settings.search_predictive_enabled %} search__submit--predictive{% endif %} button-unstyled absolute flex items-center justify-center cursor-pointer"
+            aria-label="{{ 'content.search' | t }}"
+          >
+            {%- render 'icon', icon: 'search', size: 'large' -%}
+          </button>
+        </div>
+      </div>
+    </form>
+    {%- if context == 'drawer' -%}
+      <button
+        class="dialog__close color-current shrink-0"
+        on:click="#search-drawer/closeDialog"
+        aria-label="{{ 'accessibility.close_dialog' | t }}"
+      >
+        {% render 'icon', icon: 'close', size: 'large' %}
+      </button>
+    {%- endif -%}
+  </div>
+  <div
+    ref="searchContent"
+    class="search__content dir-ltr flex flex-col{% unless color_scheme == blank %} color-{{ color_scheme }}{% endunless %}"
+  >
+    <div
+      class="search__content-inner v-scrollable"
+      data-search-content-inner
+    >
+      {%- unless is_empty_recommendations -%}
+        <div
+          ref="recommendations"
+          class="search__recommendations flex flex-col gap-6"
+          data-recommendations-url="{{ routes.root_url }}?section_id=section-rendering-search-recommendation-products"
+        >
+          {% render 'predictive-search-recommendation-keywords-markup' %}
+          {%- comment -%}
+            The products carousel is fetched on first interaction and swapped in over this
+            skeleton — see the section for why only that half is deferred.
+          {%- endcomment -%}
+          {%- if settings.search_recommendation_products != blank -%}
+            {% render 'predictive-search-recommendation-placeholder-markup',
+              columns_xxl: columns_xxl,
+              columns_xl: columns_xl,
+              columns_lg: columns_lg,
+              columns_md: columns_md,
+              columns_mobile: columns_mobile,
+              column_gap: column_gap,
+              column_gap_mobile: column_gap_mobile
+            %}
+          {%- endif -%}
+        </div>
+      {%- endunless -%}
+      <div
+        ref="searchResults"
+        id="{{ search_results_id }}"
+        role="listbox"
+        class="search__results gap-6 w-full"
+      >
+        {%- if predictive_search.performed -%}
+          {%- comment -%} Read by search.js to settle the standard shopify:search:update. {%- endcomment -%}
+          <span hidden data-total-results="{{ predictive_search.resources.products.size }}"></span>
+          {%- if predictive_search.resources.queries.size > 0
+            or predictive_search.resources.products.size > 0
+            or predictive_search.resources.collections.size > 0
+            or predictive_search.resources.articles.size > 0
+            or predictive_search.resources.pages.size > 0
+          -%}
+            {% render 'predictive-search-result-queries-markup' %}
+
+            {% render 'predictive-search-result-products-markup',
+              columns_xxl: columns_xxl,
+              columns_xl: columns_xl,
+              columns_lg: columns_lg,
+              columns_md: columns_md,
+              columns_mobile: columns_mobile,
+              column_gap: column_gap,
+              column_gap_mobile: column_gap_mobile,
+              media_sizes: media_sizes
+            %}
+
+            {% render 'predictive-search-result-collections-markup' %}
+
+            {% render 'predictive-search-result-articles-markup' %}
+
+            {% render 'predictive-search-result-pages-markup' %}
+
+            {% render 'predictive-search-result-view-all-markup', form_id: form_id %}
+          {%- else -%}
+            {% render 'predictive-search-no-results-markup' %}
+          {%- endif -%}
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+</predictive-search>

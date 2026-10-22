@@ -1,0 +1,11 @@
+node_modules
+release
+assets/*.css
+assets/*.js
+*.zip
+
+# Generated — reformatting it makes `yarn check-motion-prestage` fail, and
+# theme-check still passes, so nothing else catches the break.
+# Source: scripts/build-motion-prestage.mjs
+snippets/motion-prestage.liquid
+

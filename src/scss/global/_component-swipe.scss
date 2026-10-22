@@ -1,0 +1,334 @@
+// @capability CSS scroll-snap row engine — turns a container into a full-bleed, snap-scrolling horizontal grid (or a contained vertical snap-scroll column via .is--axis-y) with per-breakpoint activation (always / up to tablet / mobile only) and column-width presets (1/2/3 columns, auto, custom fraction), scrollbar hidden.
+// @when Mobile/tablet "swipeable" rows of cards without Swiper (product rows, collection lists, tab bars); pairs with src/js/modules/swipe-component.js for is--active/is--beginning/is--end state and .edge__shadows fades. Prefer this over new overflow-x/overflow-y CSS.
+// @contract .swipe-all / .swipe-tablet / .swipe-mobile on the scroll box (modifiers --2-cols/--3-cols/--auto-cols/--custom-width; .swipe-mobile also takes --rows-2/--rows-3 for several rows filled column by column, row gap from --f-row-gap-mobile) wrapping .swipe__inner; widths from --swipe-container-width, --swipe-column-width, and --1-col-percent/--2-cols-percent/--3-cols-percent variables. Add .is--axis-y (toggled by swipe-component.js from data-axis) for vertical scroll — .swipe__inner becomes a flex column; the scroll box REQUIRES an explicit --swipe-container-height (no default, or overflow is a no-op) and each item's height adapts to content, overridable via --swipe-row-height. A scroll box whose DIRECT child is a `[is="motion-group"]` stops snapping while that group carries `data-motion-staged` — an entrance transform moves the cell's snap area, and a mandatory container would otherwise chase it.
+// @keywords scroll snap, swipe row, horizontal scroll, vertical scroll, mobile carousel, card row, snap points, full bleed scroll, overflow scroll, hidden scrollbar
+
+@use "../mixins" as *;
+
+// ─── Swipe ────────────────────────────────────────────────────────────────────
+
+// stylelint-disable-next-line custom-property-pattern
+$swipe-1-col: calc(min(var(--swipe-container-width, 100vw), 100vw) * var(--1-col-percent, 0.76));
+// stylelint-disable-next-line custom-property-pattern
+$swipe-2-cols: calc(min(var(--swipe-container-width, 100vw), 100vw) * var(--2-cols-percent, 0.38));
+// stylelint-disable-next-line custom-property-pattern
+$swipe-3-cols: calc(min(var(--swipe-container-width, 100vw), 100vw) * var(--3-cols-percent, 0.28));
+
+// ─── Swipe all (always active) ────────────────────────────────────────────────
+
+.swipe-all {
+  --column-width: #{$swipe-1-col};
+
+  overflow: auto hidden !important;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scroll-behavior: smooth;
+  padding-inline: var(--page-padding);
+  margin-inline: calc(var(--page-padding) * -1);
+  scroll-padding-inline: var(--page-padding);
+  scrollbar-width: none;
+  display: grid !important;
+  align-self: stretch;
+
+  .swipe__inner {
+    --slider-grid: auto / auto-flow var(--column-width);
+
+    display: grid !important;
+    grid: var(--slider-grid);
+    column-gap: var(--f-column-gap-mobile, var(--f-column-gap));
+    margin-inline: 0 !important;
+
+    > * {
+      scroll-snap-align: start;
+      width: var(--swipe-item-width, 100%);
+    }
+  }
+
+  &--auto-cols {
+    --column-width: fit-content(100%);
+    --swipe-item-width: auto;
+  }
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  // Vertical scroll: contained column, no full-bleed page-padding (no vertical
+  // gutter equivalent). Requires an explicit height from the consuming
+  // section (--swipe-container-height) — without it there's nothing to
+  // overflow and scrolling stays a no-op. Item height adapts to its content;
+  // override per item with --swipe-row-height.
+  // Deliberately NO `overscroll-behavior-y`, and the horizontal containment the base rule applies is
+  // deliberately reset. Containing an axis stops scroll chaining out of this box on that axis, and the
+  // two axes are not symmetrical here. Vertically the PAGE scrolls, so containing it takes the page
+  // scroll away from a pointer that merely happens to rest over this box — once the column is read to
+  // its end the wheel moves nothing, and a column short enough not to overflow never chains at all.
+  // Horizontally this box cannot scroll, so containment would only swallow gestures meant for
+  // something else: an ancestor that CAN scroll sideways (a carousel viewport this column sits inside)
+  // stops receiving them, as does the browser's back-swipe. A row that genuinely wants to keep a
+  // vertical gesture to itself should ask for that; the default must not surprise.
+  &.is--axis-y {
+    overflow: hidden auto !important;
+    scroll-snap-type: y mandatory;
+    overscroll-behavior-x: initial;
+    padding-inline: 0;
+    margin-inline: 0;
+    scroll-padding-inline: 0;
+    height: var(--swipe-container-height);
+
+    .swipe__inner {
+      display: flex !important;
+      flex-direction: column;
+      row-gap: var(--f-row-gap-mobile, var(--f-row-gap));
+
+      > * {
+        flex-shrink: 0;
+        height: var(--swipe-row-height, auto);
+      }
+    }
+  }
+
+  @include media-breakpoint-up(md) {
+    .swipe__inner {
+      column-gap: var(--f-column-gap);
+    }
+  }
+}
+
+// ─── Swipe tablet (active up to 1023px) ──────────────────────────────────────
+
+@include media-breakpoint-down(lg) {
+  .swipe-tablet {
+    --column-width-tablet: #{$swipe-1-col};
+
+    overflow: auto hidden !important;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
+    padding-inline: var(--page-padding);
+    margin-inline: calc(var(--page-padding) * -1);
+    scroll-padding-inline: var(--page-padding);
+    scrollbar-width: none;
+    display: grid !important;
+    align-self: stretch;
+
+    &.swiper {
+      padding-inline: var(--page-padding);
+      margin-inline: calc(var(--page-padding) * -1);
+    }
+
+    .swipe__inner {
+      --slider-grid: auto / auto-flow var(--column-width-tablet);
+
+      display: grid !important;
+      grid: var(--slider-grid);
+      column-gap: var(--f-column-gap-mobile, var(--f-column-gap));
+      margin-inline: 0 !important;
+      scroll-snap-align: start;
+
+      > * {
+        scroll-snap-align: start;
+        width: var(--swipe-item-width, 100%);
+      }
+    }
+
+    &--2-cols {
+      --column-width-tablet: #{$swipe-2-cols};
+    }
+
+    &--3-cols {
+      --column-width-tablet: #{$swipe-3-cols};
+    }
+
+    &--auto-cols {
+      --column-width-tablet: fit-content(100%);
+      --swipe-item-width: auto;
+    }
+
+    &--custom-width {
+      --column-width-tablet: calc(var(--swipe-container-width, 100vw) * var(--swipe-column-width, 0.5));
+    }
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &.is--axis-y {
+      overflow: hidden auto !important;
+      scroll-snap-type: y mandatory;
+      overscroll-behavior-x: initial;
+      padding-inline: 0;
+      margin-inline: 0;
+      scroll-padding-inline: 0;
+      height: var(--swipe-container-height);
+
+      &.swiper {
+        padding-inline: 0;
+        margin-inline: 0;
+      }
+
+      .swipe__inner {
+        display: flex !important;
+        flex-direction: column;
+        row-gap: var(--f-row-gap-mobile, var(--f-row-gap));
+
+        > * {
+          flex-shrink: 0;
+          height: var(--swipe-row-height, auto);
+        }
+      }
+    }
+  }
+}
+
+// ─── Swipe mobile (active only on mobile) ────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .swipe-mobile {
+    --column-width-mobile: #{$swipe-1-col};
+
+    overflow: auto hidden !important;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
+    padding-inline: var(--page-padding);
+    margin-inline: calc(var(--page-padding) * -1);
+    scroll-padding-inline: var(--page-padding);
+    scrollbar-width: none;
+    display: grid !important;
+    align-self: stretch;
+
+    &.swiper {
+      padding-inline: var(--page-padding);
+      margin-inline: calc(var(--page-padding) * -1);
+    }
+
+    .swipe__inner {
+      --slider-grid: auto / auto-flow var(--column-width-mobile);
+
+      display: grid !important;
+      grid: var(--slider-grid);
+      column-gap: var(--f-column-gap-mobile, var(--f-column-gap));
+      margin-inline: 0 !important;
+      scroll-snap-align: start;
+
+      > * {
+        scroll-snap-align: start;
+        width: var(--swipe-item-width, 100%);
+      }
+    }
+
+    &--2-cols {
+      --column-width-mobile: #{$swipe-2-cols};
+    }
+
+    &--3-cols {
+      --column-width-mobile: #{$swipe-3-cols};
+    }
+
+    &--auto-cols {
+      --column-width-mobile: fit-content(100%);
+      --swipe-item-width: auto;
+    }
+
+    &--custom-width {
+      --column-width-mobile: calc(var(--swipe-container-width, 100vw) * var(--swipe-column-width, 0.5));
+    }
+
+    // Several rows scrolling together. The rows are explicit and the columns stay
+    // auto-flow, so items fill each column top to bottom (1↓2, 3↓4…) and the row
+    // needs no item count: an odd count only leaves the last column short.
+    &--rows-2,
+    &--rows-3 {
+      .swipe__inner {
+        --slider-grid: repeat(var(--swipe-rows-mobile), auto) / auto-flow var(--column-width-mobile);
+
+        row-gap: var(--f-row-gap-mobile, var(--f-row-gap, 0));
+      }
+    }
+
+    &--rows-2 {
+      --swipe-rows-mobile: 2;
+    }
+
+    &--rows-3 {
+      --swipe-rows-mobile: 3;
+    }
+
+    // Never more rows than the items can fill: min(rows, ceil(items / columns)).
+    // Two items in two columns with two rows would otherwise stack in column one
+    // and leave column two empty. Counted in CSS so it also holds for rows that
+    // are filled after load (recommendations, recently viewed) or morphed.
+    // A custom column width has no fixed column count, so it counts as one.
+    // The smallest fill comes last so it wins when several match.
+    @each $rows in 2, 3 {
+      @for $cols from 1 through 3 {
+        $width: ".swipe-mobile--#{$cols}-cols:not(.swipe-mobile--custom-width)";
+
+        @if $cols == 1 {
+          $width: ":is(.swipe-mobile--1-cols, .swipe-mobile--custom-width)";
+        }
+
+        @for $fill from $rows - 1 through 1 {
+          &.swipe-mobile--rows-#{$rows}#{$width} .swipe__inner:not(:has(> :nth-child(#{$fill * $cols + 1}))) {
+            --swipe-rows-mobile: #{$fill};
+          }
+        }
+      }
+    }
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    &.is--axis-y {
+      overflow: hidden auto !important;
+      scroll-snap-type: y mandatory;
+      overscroll-behavior-x: initial;
+      padding-inline: 0;
+      margin-inline: 0;
+      scroll-padding-inline: 0;
+      height: var(--swipe-container-height);
+
+      &.swiper {
+        padding-inline: 0;
+        margin-inline: 0;
+      }
+
+      .swipe__inner {
+        display: flex !important;
+        flex-direction: column;
+        row-gap: var(--f-row-gap-mobile, var(--f-row-gap));
+
+        > * {
+          flex-shrink: 0;
+          height: var(--swipe-row-height, auto);
+        }
+      }
+    }
+  }
+}
+
+// ─── Entrance motion vs snapping ─────────────────────────────────────────────
+// A snap area is the cell's TRANSFORMED border box, so the prestage transform a
+// motion-group writes moves it: a mandatory container re-snaps to the staged
+// position, then chases the animation frame by frame — and `scroll-behavior:
+// smooth` above turns each correction into its own scroll. Measured on
+// flex-carousel at 390px: the row sat at scrollLeft 15 for as long as the
+// section stayed off screen, and during the entrance the FIRST card travelled
+// 0.9px of its 15px because the snap kept pinning the card it was snapped to.
+
+// Only a row whose snap child IS the animated element can hit this. Every other
+// section here animates the cell's first child, which sits inside the snap
+// child and moves no snap area; flex-carousel animates the child itself
+// (`data-motion-cells=":scope > *"`) because its blocks render their own slide
+// roots. So this is a latent trap for any section that does the same, not a
+// one-section patch.
+
+// Stand the snap down for the staged window only. motion-group drops the
+// attribute in the same call that clears the inline transform, and scrollLeft
+// is 0 by then — a snap position — so restoring it moves nothing. The one cost
+// is that a swipe DURING the entrance does not snap.
+:is(.swipe-all, .swipe-tablet, .swipe-mobile):has(> [is="motion-group"][data-motion-staged]) {
+  scroll-snap-type: none;
+}

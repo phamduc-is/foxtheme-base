@@ -1,0 +1,329 @@
+// @capability Portal-rendered tooltip system — fixed #tooltip-portal layer, directional tooltips with arrow and per-direction transform origins, color-scheme skin, high-contrast/reduced-motion handling, and an opt-in mobile bottom-sheet mode with backdrop (works inside open dialogs/drawers too).
+// @when Any hover/focus tooltip or info popover; pairs with the TooltipManager in src/js/modules/utilities.js (binds [data-tooltip]/[data-tooltip-html], positions into the portal, toggles state classes). Never absolute-position ad-hoc tooltips.
+// @contract #tooltip-portal > .tooltip (--visible/--closing/--interactive/--top/--bottom/--left/--right/--color-scheme/--mobile-sheet) with [data-tooltip-arrow], .tooltip__content / .tooltip__title, .tooltip-mobile-backdrop; triggers carry data-tooltip / data-tooltip-html (+ data-tooltip-mobile-sheet).
+// @keywords tooltip, popover, hint, info bubble, hover tip, portal, tooltip arrow, bottom sheet, mobile tooltip
+
+// ─── Tooltip CSS variables ────────────────────────────────────────────────────
+
+:root {
+  --tooltip-bg: hsl(220deg 13% 18%);
+  --tooltip-color: hsl(220deg 9% 89%);
+  --tooltip-border-radius: 6px;
+  --tooltip-padding: 8px 12px;
+  --tooltip-font-size: 14px;
+  --tooltip-line-height: 1.4;
+  --tooltip-max-width: 250px;
+  --tooltip-box-shadow: 0 4px 6px -1px hsl(220deg 22% 5% / 10%), 0 2px 4px -1px hsl(220deg 22% 5% / 6%);
+  --tooltip-z-index: 1000;
+  --tooltip-arrow-size: 6px;
+
+  // A hover hint, not an overlay: 500ms (the overlay tier) left a linear fade
+  // at half opacity 250ms after the pointer arrived, which read as lag.
+  --tooltip-transition-duration: 150ms;
+  --tooltip-transition-easing: var(--motion-ease-out);
+}
+
+// ─── Portal container ─────────────────────────────────────────────────────────
+
+#tooltip-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: var(--tooltip-z-index);
+  isolation: isolate;
+
+  // Backdrop opacity follows sheet panel state (sibling .tooltip--mobile-sheet; no extra classes on backdrop)
+  &:has(.tooltip.tooltip--mobile-sheet.tooltip--visible:not(.tooltip--closing)) .tooltip-mobile-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  &:has(.tooltip.tooltip--mobile-sheet.tooltip--closing) .tooltip-mobile-backdrop {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+// ─── Tooltip ──────────────────────────────────────────────────────────────────
+
+.tooltip {
+  position: absolute;
+  max-width: var(--tooltip-max-width);
+  padding: var(--tooltip-padding);
+  color: var(--tooltip-color);
+  font-size: var(--tooltip-font-size);
+  line-height: var(--tooltip-line-height);
+  border-radius: var(--tooltip-border-radius);
+  box-shadow: var(--tooltip-box-shadow);
+  overflow-wrap: break-word;
+  hyphens: auto;
+  z-index: 1;
+  opacity: 0;
+  visibility: hidden;
+
+  // --tooltip-transition-easing is ease-out, which is right for the movement
+  // but not for the fade; opacity takes the shared fade curve instead. The
+  // local variable stays as the one place the tooltip's own timing is tuned.
+  transition:
+    opacity var(--tooltip-transition-duration) var(--motion-ease-fade),
+    visibility var(--tooltip-transition-duration) var(--tooltip-transition-easing);
+  user-select: none;
+  pointer-events: none;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-color: var(--tooltip-bg);
+    border-radius: inherit;
+  }
+
+  &--visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  &--interactive {
+    pointer-events: auto;
+  }
+
+  @media (prefers-contrast: high) {
+    --tooltip-bg: hsl(0deg 0% 0%);
+    --tooltip-color: hsl(0deg 0% 100%);
+
+    border: 1px solid var(--tooltip-color);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    --tooltip-transition-duration: 0ms;
+
+    transform: scale(1) !important;
+  }
+
+  // Mobile adjustments
+  @media (max-width: 640px) {
+    --tooltip-max-width: calc(100vw - 32px);
+    --tooltip-font-size: 16px; // Prevent zoom on iOS
+
+    // Larger touch targets on mobile
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+// ─── Directional transform origins ───────────────────────────────────────────
+
+.tooltip.tooltip--top {
+  transform-origin: center bottom;
+}
+
+.tooltip.tooltip--bottom {
+  transform-origin: center top;
+}
+
+.tooltip.tooltip--left {
+  transform-origin: var(--transform-origin-end) center;
+}
+
+.tooltip.tooltip--right {
+  transform-origin: var(--transform-origin-start) center;
+}
+
+// ─── Arrow ────────────────────────────────────────────────────────────────────
+
+[data-tooltip-arrow] {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: var(--tooltip-arrow-size) solid transparent;
+  z-index: -2;
+
+  // Arrow positioning for each direction (JS will control exact position)
+  .tooltip--top & {
+    bottom: calc(var(--tooltip-arrow-size) * -1);
+    border-bottom-width: 0;
+    border-top-color: var(--tooltip-bg);
+  }
+
+  .tooltip--bottom & {
+    top: calc(var(--tooltip-arrow-size) * -1);
+    border-top-width: 0;
+    border-bottom-color: var(--tooltip-bg);
+  }
+
+  .tooltip--left & {
+    inset-inline-end: calc(var(--tooltip-arrow-size) * -1);
+    border-inline-end-width: 0;
+    border-inline-start-color: var(--tooltip-bg);
+  }
+
+  .tooltip--right & {
+    inset-inline-start: calc(var(--tooltip-arrow-size) * -1);
+    border-inline-start-width: 0;
+    border-inline-end-color: var(--tooltip-bg);
+  }
+}
+
+// ─── Content ──────────────────────────────────────────────────────────────────
+
+.tooltip__content {
+  &:empty {
+    display: none;
+  }
+}
+
+.tooltip__title {
+  font-weight: 600;
+  margin-bottom: 4px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// ─── Focus visible ────────────────────────────────────────────────────────────
+
+.tooltip:focus-visible {
+  outline: 2px solid var(--tooltip-color);
+  outline-offset: 2px;
+}
+
+// Skins
+.tooltip--color-scheme {
+  --tooltip-bg: rgb(var(--color-background));
+  --tooltip-color: rgb(var(--color-foreground));
+  --tooltip-box-shadow: 0 0 20px rgb(var(--color-foreground) / 15%);
+
+  [data-tooltip-arrow] {
+    filter: drop-shadow(0 0 10px rgb(var(--color-foreground) / 20%));
+  }
+}
+
+// Opt-in bottom sheet on small viewports (data-tooltip-mobile-sheet + JS mobile breakpoint)
+.tooltip-mobile-backdrop {
+  --tooltip-mobile-backdrop-duration: 0.5s;
+
+  // The backdrop only ever animates opacity, so it takes the fade curve rather
+  // than the overlay one. Found by check-motion-easing: the earlier sweep
+  // rewrote literal curves and --motion-ease* references, and missed this
+  // because the easing was one indirection away behind a local variable.
+  --tooltip-mobile-backdrop-easing: var(--motion-ease-fade);
+
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: rgb(0 0 0 / var(--dialog-backdrop-opacity, 60%));
+  cursor: zoom-out;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--tooltip-mobile-backdrop-duration) var(--tooltip-mobile-backdrop-easing);
+
+  dialog & {
+    z-index: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    --tooltip-mobile-backdrop-duration: 0.01ms;
+  }
+}
+
+// Sheet inside modal `dialog`: same :has → backdrop (siblings under dialog)
+dialog[open]:has(.tooltip.tooltip--mobile-sheet.tooltip--visible:not(.tooltip--closing)) .tooltip-mobile-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+dialog[open]:has(.tooltip.tooltip--mobile-sheet.tooltip--closing) .tooltip-mobile-backdrop {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tooltip.tooltip--mobile-sheet {
+  --tooltip-sheet-duration: 0.5s;
+  --tooltip-sheet-easing: var(--motion-ease-overlay);
+  --tooltip-sheet-offset: 4rem;
+
+  display: block;
+  position: fixed !important;
+  inset-block: auto 0;
+  inset-inline: 0;
+  margin: 0;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: calc(100dvh - var(--tooltip-sheet-offset));
+  height: auto;
+  top: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0;
+  z-index: 3;
+  pointer-events: auto;
+  transform: translateY(100%);
+  border-radius: min(2rem, var(--dialog-radius, 0)) min(2rem, var(--dialog-radius, 0)) 0 0;
+  padding-inline: var(--dialog-content-padding-inline, 2.4rem);
+  padding-block: var(--dialog-content-padding-block, 2.4rem);
+  opacity: 1;
+  visibility: hidden;
+  transition: none;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  user-select: text;
+
+  [data-tooltip-arrow] {
+    display: none;
+  }
+
+  &.tooltip--visible {
+    visibility: visible;
+    animation: slideInBottom var(--tooltip-sheet-duration) var(--tooltip-sheet-easing) forwards;
+  }
+
+  &.tooltip--closing {
+    // Stay visible during slide-out (removing --visible must not apply base visibility:hidden yet)
+    visibility: visible;
+    animation: slideOutBottom var(--tooltip-sheet-duration) var(--tooltip-sheet-easing) forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    --tooltip-sheet-duration: 0.01ms;
+
+    transform: none !important;
+
+    &.tooltip--visible,
+    &.tooltip--closing {
+      animation: none;
+    }
+  }
+}
+
+dialog[open] {
+  &:is(.dialog--drawer-right, .dialog--drawer-bottom--right, .dialog--drawer-left, .dialog--drawer-bottom--left)
+    > .tooltip.tooltip--mobile-sheet {
+    width: min(var(--dialog-max-width, 50rem), calc(100dvi - var(--dialog-drawer-offset-horizontal))) !important;
+    max-width: none !important;
+    inset-inline: auto !important;
+  }
+
+  &:is(.dialog--drawer-right, .dialog--drawer-bottom--right) > .tooltip.tooltip--mobile-sheet {
+    margin-inline: auto var(--dialog-drawer-offset-horizontal);
+  }
+
+  &:is(.dialog--drawer-left, .dialog--drawer-bottom--left) > .tooltip.tooltip--mobile-sheet {
+    margin-inline: var(--dialog-drawer-offset-horizontal) auto;
+  }
+}
+
+// ─── Print ────────────────────────────────────────────────────────────────────
+
+@media print {
+  .tooltip,
+  #tooltip-portal,
+  .tooltip-mobile-backdrop {
+    display: none !important;
+  }
+}

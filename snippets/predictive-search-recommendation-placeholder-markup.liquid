@@ -1,0 +1,53 @@
+{% doc %}
+  Skeleton standing in for the predictive-search recommendation products until search.js fetches
+  them from `section-rendering-search-recommendation-products`. `revealSwap` morphs this element
+  into the fetched one, so the `data-recommendations-content` wrapper must match on both sides.
+
+  It mirrors the carousel's wrapper markup (minus `carousel-slider`, which would boot Swiper on
+  placeholders) so the pre-init rules in src/scss/modules/swiper.scss lay the slides out at the
+  right width per breakpoint. Only as many placeholders as fit the visible width: the carousel is
+  one row, so its height comes from a single card and the rest would be off-screen markup.
+
+  @param {number} columns_xxl - Slides per view on desktop (≥1440px); also the placeholder count cap.
+  @param {number} [columns_xl] - Slides per view at ≥1200px.
+  @param {number} [columns_lg] - Slides per view at ≥1024px.
+  @param {number} [columns_md] - Slides per view at ≥768px.
+  @param {number} columns_mobile - Slides per view on mobile (`swipe-mobile` cols).
+  @param {number} column_gap - Gap (px) between slides on desktop.
+  @param {number} column_gap_mobile - Gap (px) between slides on mobile.
+
+  @example
+  {% render 'predictive-search-recommendation-placeholder-markup',
+    columns_xxl: columns_xxl,
+    columns_mobile: columns_mobile,
+    column_gap: column_gap,
+    column_gap_mobile: column_gap_mobile
+  %}
+{% enddoc %}
+{%- liquid
+  assign columns_xl = columns_xl | default: columns_xxl
+  assign columns_lg = columns_lg | default: columns_xl
+  assign columns_md = columns_md | default: columns_lg
+  assign placeholder_count = settings.search_recommendation_products.size | at_most: columns_xxl
+-%}
+<div data-recommendations-content>
+  <div class="search__recommendation--products flex flex-col gap-3">
+    <h4 class="search__recommendation-heading h6">
+      {{- 'content.search_recommendations_products' | t -}}
+    </h4>
+    <div
+      class="carousel carousel--grid relative w-full"
+      style="--f-columns-xxl: {{ columns_xxl }};--f-columns-xl: {{ columns_xl }};--f-columns-lg: {{ columns_lg }};--f-columns-md: {{ columns_md }};{% render 'gap-style', column_gap: column_gap, column_gap_mobile: column_gap_mobile %}"
+    >
+      <div class="swiper swipe-mobile swipe-mobile--{{ columns_mobile }}-cols">
+        <div class="swiper-wrapper swipe__inner">
+          {%- for i in (1..placeholder_count) -%}
+            <div class="swiper-slide">
+              {% render 'product-card-placeholder' %}
+            </div>
+          {%- endfor -%}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,169 @@
+{%- liquid
+  assign type = block.settings.type
+  assign image = block.settings.image
+  assign video = block.settings.video
+  assign heading = block.settings.heading
+
+  # Gallery tiles of an early section fill the first viewport: eager/high makes
+  # responsive-image render them in liquid mode (preload scanner). Section-gated —
+  # a nested block cannot resolve its own index.
+  capture priority
+    render 'image-priority', section: section, preload: block.settings.enable_preload_image
+  endcapture
+  assign priority = priority | split: ','
+  assign loading = priority[0]
+  assign fetchpriority = priority[1]
+-%}
+
+<div 
+  class="media-gallery__item relative"
+  {{ block.shopify_attributes }}
+>
+  <div class="media-gallery__media border-style"
+    style="{% render 'border-style', settings: block.settings %}"
+  > 
+    {%- if type == 'image' -%}
+      {% render 'responsive-image',
+        mode: 'js',
+        image: image,
+        loading: loading,
+        fetchpriority: fetchpriority,
+        image_ratio: '1/1'
+      %}
+    {%- else -%}
+      {% capture video_style %}
+        {% if video == blank %}
+          --size-style-aspect-ratio: 1/1;
+        {% endif %}
+      {% endcapture %}
+      {% render 'video-markup',
+        player_only: true,
+        video: video,
+        video_loop: false,
+        video_autoplay: false,
+        disable_controls: true,
+        enable_toggle_button: true,
+        enable_toggle_volume_button: true,
+        video_preview_image: video.preview_image,
+        video_style: video_style,
+        video_ratio: '1/1',
+        loading: loading,
+        fetchpriority: fetchpriority,
+        section_id: section.id
+      %}
+    {%- endif -%}
+  </div>
+  <div class="media-gallery__content rte">
+    <p class="media-gallery__title {{ block.settings.type_preset }}">
+      {{ heading }}
+    </p>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.gallery_item",
+  "tag": null,
+  "settings": [
+    {
+      "type": "select",
+      "id": "type",
+      "label": "t:settings.type",
+      "options": [
+        {
+          "value": "image",
+          "label": "t:settings.image"
+        },
+        {
+          "value": "video",
+          "label": "t:settings.video"
+        }
+      ],
+      "default": "image"
+    },
+    {
+      "type": "image_picker",
+      "id": "image",
+      "label": "t:settings.image",
+      "visible_if": "{{ block.settings.type == 'image' }}"
+    },
+    {
+      "type": "video",
+      "id": "video",
+      "label": "t:settings.video",
+      "visible_if": "{{ block.settings.type == 'video' }}"
+    },
+    {
+      "type": "inline_richtext",
+      "id": "heading",
+      "label": "t:settings.heading",
+      "default": "Gallery item"
+    },
+    {
+      "type": "select",
+      "id": "type_preset",
+      "label": "t:settings.preset",
+      "options": [
+        {
+          "value": "paragraph",
+          "label": "t:options.paragraph"
+        },
+        {
+          "value": "text-subheading",
+          "label": "t:options.subheading"
+        },
+        {
+          "value": "h1",
+          "label": "t:options.h1"
+        },
+        {
+          "value": "h2",
+          "label": "t:options.h2"
+        },
+        {
+          "value": "h3",
+          "label": "t:options.h3"
+        },
+        {
+          "value": "h4",
+          "label": "t:options.h4"
+        },
+        {
+          "value": "h5",
+          "label": "t:options.h5"
+        },
+        {
+          "value": "h6",
+          "label": "t:options.h6"
+        }
+      ],
+      "default": "paragraph"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    },
+    {
+      "type": "checkbox",
+      "id": "enable_preload_image",
+      "label": "t:settings.enable_preload_image",
+      "info": "t:info.enable_preload_image"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.gallery_item"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,56 @@
+{% doc %}
+  Decides `loading` / `fetchpriority` for an image that MAY sit in the first
+  viewport. One place for the ladder that used to be copy-pasted into every
+  hero, slide, gallery tile and banner — and drifted (the collection banner
+  said `< 2` while everything else said `<= 3`).
+
+  The heuristic is the section's position: an early section is probably on
+  screen at load, so its first image loads eagerly, and the very first section
+  also gets `fetchpriority="high"`. A position is only a guess — three short
+  text sections above a media section leave it above the fold at index 4 — so
+  the merchant's `enable_preload_image` checkbox OVERRIDES it: checked forces
+  eager + high; unchecked leaves the heuristic in charge, which is exactly what
+  every store shipped with.
+
+  Template flow only: `section.index` restarts at 1 per LOCATION, so the first
+  section of the footer/header GROUP is also index 1 — the guess therefore
+  applies only to sections whose id carries `template--`. Group sections keep
+  the lazy default; the checkbox stays the escape hatch.
+
+  Emits `<loading>,<fetchpriority>` — split it on the comma.
+
+  @param {object} [section] - Host section; `section.index` drives the heuristic. Nil → lazy unless `preload`.
+  @param {number} [index] - The item's position inside the section (0-based). Only the first item is eager.
+  @param {boolean} [preload] - Merchant override (`enable_preload_image`): eager + high whatever the position.
+
+  @example
+  {%- liquid
+    capture priority
+      render 'image-priority', section: section, preload: block.settings.enable_preload_image
+    endcapture
+    assign priority = priority | split: ','
+    assign loading = priority[0]
+    assign fetchpriority = priority[1]
+  -%}
+{% enddoc -%}
+{%- liquid
+  assign loading = 'lazy'
+  assign fetchpriority = 'low'
+  assign item = index | default: 0
+
+  if preload
+    assign loading = 'eager'
+    assign fetchpriority = 'high'
+  elsif item == 0 and section.index <= 3 and section.id contains 'template--'
+    assign loading = 'eager'
+    # Never keep the lazy default's LOW on an eager image: eager + low told
+    # Chrome to fetch an on-screen image immediately but queue it behind
+    # everything (seen live: a hero at section index 2 shipped exactly that).
+    assign fetchpriority = 'auto'
+    if section.index == 1
+      assign fetchpriority = 'high'
+    endif
+  endif
+
+  echo loading | append: ',' | append: fetchpriority
+-%}

@@ -1,0 +1,25 @@
+{% doc %}
+  Markup for the icon-list theme block (no schema). List items must be captured in the block file (`content_for 'blocks'`).
+
+  @param {object} settings - Block settings (gaps, icon style, alignment, spacing).
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+  @param {string} list_items_html - Captured `content_for 'blocks'` output.
+  @param {string} [motion_attrs] - Pre-built `is="motion-group"` + motion attribute string from the block file — built THERE because the global `settings` is shadowed by the block settings param here.
+
+  A `<div role="list">` rather than a `<ul>`: motion-group is a customized built-in on `div` only, so `<ul is="motion-group">` would silently never
+  upgrade. The role attributes keep the list semantics.
+{% enddoc %}
+{%- capture inline_style -%}
+  --item-ver-align: {{ settings.item_vertical_alignment }};
+  {% render 'gap-style', settings: settings %}
+  {% render 'spacing-style', settings: settings %}
+{%- endcapture -%}
+<div
+  role="list"
+  class="icon-list-block list-unstyled flex flex-col gap-style spacing-style icon-list--{{ settings.item_icon_style }}"
+  style="{{ inline_style }}"
+  {{ shopify_attributes }}
+  {{- motion_attrs -}}
+>
+  {{ list_items_html }}
+</div>

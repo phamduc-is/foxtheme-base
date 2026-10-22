@@ -1,0 +1,97 @@
+@use "../mixins" as *;
+
+// ─── Scroll row ───────────────────────────────────────────────────────────────
+// blocks/scroll-row.liquid: one row, children at their own width, scrolls once they no longer
+// fit. The house scroll row (swipe-component + .swipe-all) drives it; the overrides below turn
+// swipe-all's full-bleed, mandatory-snap GRID row into a contained, proximity-snap FLEX row.
+// Every override is compound (0-2-0 / 0-4-0) because _component-swipe and
+// _component-edge-shadows load after this partial at the same weights; `display` also needs
+// !important to beat swipe's own `display: grid !important`.
+
+.scroll-row {
+  display: block;
+  min-width: 0;
+}
+
+// Never wider than its parent: width "Fit" is fit-content, and a scroll row's content is the
+// whole unwrapped row — it would grow past the page instead of scrolling. A pixel-width cap
+// (--size-style-max-width) still wins when narrower.
+.scroll-row.size-style {
+  max-width: min(100%, var(--size-style-max-width, 100%));
+}
+
+// Stay inside the box: swipe-all bleeds the row out to the page edges. "Full width on mobile"
+// keeps that bleed below md (the first child still lines up with the page gutter at rest).
+.scroll-row .scroll-row__track.swipe-all {
+  padding-inline: 0;
+  margin-inline: 0;
+  scroll-padding-inline: 0;
+}
+
+.scroll-row--full-mobile .scroll-row__track.swipe-all {
+  @include media-breakpoint-down(md) {
+    padding-inline: var(--page-padding);
+    margin-inline: calc(var(--page-padding) * -1);
+    scroll-padding-inline: var(--page-padding);
+  }
+}
+
+.scroll-row__track.swipe-all {
+  // `proximity`, not `mandatory`: a row overflowing by a few pixels was parked at its END on
+  // load, the first child cut off before anyone scrolled.
+  scroll-snap-type: x proximity;
+
+  // `safe`: a centred / end-aligned row that overflows would split the overflow to both sides,
+  // and the start side sits in negative scroll space nobody can reach. `safe` falls back to the
+  // start once it overflows and keeps the merchant's alignment while it fits.
+  justify-content: safe var(--scroll-row-justify, flex-start);
+}
+
+// A nowrap FLEX row, not swipe's grid: in a grid area every child with `height: 100%` (icon
+// boxes, anything on .layout-panel-flex) filled the row and Position did nothing.
+// `width: max-content` — at the box's width the row would squeeze its children instead of
+// overflowing.
+.scroll-row .scroll-row__track.swipe-all > .swipe__inner {
+  display: flex !important;
+  flex-wrap: nowrap;
+  align-items: var(--scroll-row-align, center);
+  width: max-content;
+  column-gap: var(--f-column-gap-mobile, var(--f-column-gap));
+
+  @include media-breakpoint-up(md) {
+    column-gap: var(--f-column-gap);
+  }
+
+  > * {
+    flex: 0 0 auto;
+  }
+}
+
+// Fade INSIDE the box: .edge__shadows is drawn for full-bleed rows and paints outside them,
+// which here left the row hard-cut at both edges with the solid part over the neighbour.
+// A full-width-on-mobile row bleeds below md, so there it keeps the stock outside fade.
+@mixin scroll-row-contained-fade {
+  &::before,
+  &::after {
+    width: clamp(2.4rem, 10%, 6.4rem);
+    background-image: linear-gradient(to right, rgb(var(--color-background) / 100%), rgb(var(--color-background) / 0%));
+  }
+
+  &::before {
+    inset-inline-start: 0;
+  }
+
+  &::after {
+    inset-inline-end: 0;
+  }
+}
+
+.scroll-row:not(.scroll-row--full-mobile) .edge__shadows.scroll-row__viewport {
+  @include scroll-row-contained-fade;
+}
+
+.scroll-row--full-mobile .edge__shadows.scroll-row__viewport {
+  @include media-breakpoint-up(md) {
+    @include scroll-row-contained-fade;
+  }
+}

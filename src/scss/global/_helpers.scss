@@ -1,0 +1,1090 @@
+// @capability Tailwind-style utility class library (~38 categories) — display/flex/grid alignment, position + z-index + inset, size, overflow, spacing, opacity, background/color, text align/wrap/transform/decoration, line-clamp, cursor, state, list reset, visually-hidden, hover image scale, notification/alert colors, scrollable rows, edge gap, shapes, responsive hide/show per breakpoint.
+// @when ALWAYS check here before writing a one-off rule for layout/visibility/text tweaks — a class almost certainly exists (.hidden, .flex, .items-center, .justify-between, .relative, .text-center, .line-clamp, .visually-hidden, .list-unstyled, .rounded-full, .hidden-mobile/.hidden-desktop…). Hand-writing these duplicates the helper and bloats the diff.
+// @contract Flat utility classes applied in Liquid markup; browse the // ─── section dividers in this file for the full per-category list.
+// @keywords utility classes, helper classes, hidden, show hide, flex, grid, align, justify, position, z-index, truncate, line clamp, ellipsis, visually hidden, screen reader, responsive visibility, list reset, rounded, hover zoom
+
+@use "../mixins" as *;
+
+$columns: 8;
+$span: 5;
+
+// ─── Display utilities ────────────────────────────────────────────────────────
+
+.flex {
+  display: flex;
+}
+
+.block {
+  display: block;
+}
+
+.grid {
+  display: grid;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.inline-flex {
+  display: inline-flex;
+}
+
+.hidden {
+  display: none;
+}
+
+.empty-hidden:empty {
+  display: none;
+}
+
+.table-cell {
+  display: table-cell;
+}
+
+// ─── Flex direction ───────────────────────────────────────────────────────────
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+.flex-column-reverse {
+  flex-direction: column-reverse;
+}
+
+// ─── Flex grow / shrink / basis ───────────────────────────────────────────────
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-auto {
+  flex: auto;
+}
+
+.shrink-0 {
+  flex-shrink: 0;
+}
+
+.flex-grow {
+  flex-grow: 1;
+}
+
+// ─── Flex wrap ────────────────────────────────────────────────────────────────
+
+.flex {
+  &-wrap {
+    flex-wrap: wrap;
+  }
+
+  &-nowrap {
+    flex-wrap: nowrap;
+  }
+}
+
+// ─── Align items ──────────────────────────────────────────────────────────────
+
+.items {
+  &-start {
+    align-items: flex-start;
+  }
+
+  &-center {
+    align-items: center;
+  }
+
+  &-end {
+    align-items: flex-end;
+  }
+
+  &-stretch {
+    align-items: stretch;
+  }
+}
+
+// ─── Justify content ──────────────────────────────────────────────────────────
+
+.justify {
+  &-start,
+  &-left {
+    justify-content: flex-start;
+  }
+
+  &-center {
+    justify-content: center;
+  }
+
+  &-end,
+  &-right {
+    justify-content: flex-end;
+  }
+
+  &-between {
+    justify-content: space-between;
+  }
+
+  &-around {
+    justify-content: space-around;
+  }
+}
+
+// ─── Align self ───────────────────────────────────────────────────────────────
+
+.self {
+  &-start {
+    align-self: flex-start;
+  }
+
+  &-center {
+    align-self: center;
+  }
+
+  &-end {
+    align-self: flex-end;
+  }
+
+  &-auto {
+    align-self: auto;
+  }
+
+  &-stretch {
+    align-self: stretch;
+  }
+}
+
+// ─── Justify self ─────────────────────────────────────────────────────────────
+
+.justify-self {
+  &-start {
+    justify-self: start;
+  }
+
+  &-center {
+    justify-self: center;
+  }
+
+  &-end {
+    justify-self: end;
+  }
+}
+
+// ─── Align content ────────────────────────────────────────────────────────────
+
+.content {
+  &-end {
+    align-content: flex-end;
+  }
+}
+
+// ─── Grid utilities ───────────────────────────────────────────────────────────
+
+.row-span-full {
+  grid-row: 1 / -1;
+}
+
+.col-span-full {
+  grid-column: 1 / -1;
+}
+
+.col-2 {
+  grid-column: 2;
+}
+
+@for $i from 1 through $span {
+  .col-span-#{$i} {
+    grid-column: span $i / span $i;
+  }
+}
+
+@for $i from 1 through $columns {
+  .col-start-#{$i} {
+    grid-column-start: $i;
+  }
+}
+
+// ─── Position utilities ───────────────────────────────────────────────────────
+
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.static {
+  position: static;
+}
+
+.sticky {
+  position: sticky;
+}
+
+.fixed {
+  position: fixed;
+}
+
+@include media-breakpoint-up(md) {
+  .sticky-element {
+    position: sticky;
+    top: var(--sticky-element-top, 0);
+    transition: top var(--motion-ui) var(--motion-ease-out);
+  }
+
+  .header-pinned .sticky-element--adapt {
+    top: calc(var(--sticky-element-top, 0) + var(--header-height, 0));
+  }
+}
+
+// ─── Z-index ──────────────────────────────────────────────────────────────────
+
+.z--1 {
+  z-index: -1;
+}
+
+.z-0 {
+  z-index: 0;
+}
+
+.z-1 {
+  z-index: 1;
+}
+
+// ─── Inset / position values ──────────────────────────────────────────────────
+
+.top-0 {
+  inset-block-start: 0;
+}
+
+.bottom-0 {
+  inset-block-end: 0;
+}
+
+.left-0 {
+  inset-inline-start: 0;
+}
+
+.right-0 {
+  inset-inline-end: 0;
+}
+
+.inset-0 {
+  inset: 0;
+}
+
+// ─── Direction utilities ───────────────────────────────────────────────────────
+
+.dir-ltr {
+  direction: ltr;
+}
+
+.dir-rtl {
+  direction: rtl;
+}
+
+// ─── Size utilities ───────────────────────────────────────────────────────────
+
+.w-full {
+  width: 100%;
+}
+
+.max-w-full {
+  max-width: 100%;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.h-full {
+  height: 100%;
+}
+
+// ─── Overflow utilities ───────────────────────────────────────────────────────
+
+.overflow {
+  &-hidden {
+    overflow: hidden;
+  }
+
+  &-visible {
+    overflow: visible;
+  }
+
+  &-auto {
+    overflow: auto;
+  }
+
+  &-x-clip {
+    overflow-x: clip;
+  }
+
+  &-y-clip {
+    overflow-y: clip;
+  }
+}
+
+// ─── Object utilities ─────────────────────────────────────────────────────────
+
+.object-cover {
+  object-fit: cover;
+}
+
+// ─── Spacing utilities ────────────────────────────────────────────────────────
+
+.m-0 {
+  margin: 0;
+}
+
+.p-0 {
+  padding: 0;
+}
+
+// ─── Opacity / visibility ─────────────────────────────────────────────────────
+
+.opacity-0 {
+  opacity: 0;
+}
+
+.visibility-hidden {
+  visibility: hidden;
+}
+
+// ─── Background utilities ─────────────────────────────────────────────────────
+
+.\!bg-none {
+  background-color: transparent !important;
+}
+
+.\!bg-transparent-20 {
+  background-color: rgb(var(--color-background) / 20%) !important;
+}
+
+.color-background {
+  background-color: rgb(var(--color-background));
+}
+
+.color-background-2 {
+  background-color: rgb(var(--color-background-secondary));
+}
+
+// ─── Color utilities ──────────────────────────────────────────────────────────
+
+.color-transparent {
+  color: transparent;
+}
+
+.color-subtext {
+  color: var(--color-foreground-secondary);
+}
+
+.color-text {
+  color: rgb(var(--color-foreground));
+}
+
+.color-current {
+  color: currentcolor;
+}
+
+.color-custom {
+  color: var(--color-text-custom);
+}
+
+.color-gradient {
+  background: var(--color-gradient);
+  color: transparent;
+  background-clip: text;
+
+  > * {
+    // Fix children z-index issue that causes gradient color to be lost.
+    background: inherit;
+    color: inherit;
+  }
+}
+
+// ─── Text alignment ───────────────────────────────────────────────────────────
+
+.text {
+  &-left {
+    --text-align-revert: start;
+
+    text-align: start;
+  }
+
+  &-center {
+    --text-align-revert: center;
+
+    text-align: center;
+  }
+
+  &-right {
+    --text-align-revert: end;
+
+    text-align: end;
+  }
+}
+
+// ─── Text wrapping ────────────────────────────────────────────────────────────
+
+.text-wrap-auto {
+  text-wrap: auto;
+}
+
+.text-wrap {
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+.text-nowrap {
+  text-wrap: nowrap;
+}
+
+.text-ellipsis {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.text-trim {
+  &-both {
+    text-box-trim: trim-both;
+  }
+
+  &-start {
+    text-box-trim: trim-start;
+  }
+}
+
+// ─── Text line limiting ───────────────────────────────────────────────────────
+
+[class*="text-limit-"] {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: var(--line-clamp, unset);
+  line-clamp: var(--line-clamp, unset);
+  -webkit-box-orient: vertical;
+}
+
+.text-limit {
+  &-1-line {
+    --line-clamp: 1;
+  }
+
+  &-2-lines {
+    --line-clamp: 2;
+  }
+
+  &-3-lines {
+    --line-clamp: 3;
+  }
+
+  &-4-lines {
+    --line-clamp: 4;
+  }
+
+  &-5-lines {
+    --line-clamp: 5;
+  }
+}
+
+// ─── Text transform ───────────────────────────────────────────────────────────
+
+.text {
+  &-capitalize {
+    text-transform: capitalize;
+  }
+}
+
+// ─── Text decoration ──────────────────────────────────────────────────────────
+
+.text-decoration {
+  &-none {
+    text-decoration: none;
+  }
+}
+
+// ─── Typography ───────────────────────────────────────────────────────────────
+
+.font-bold {
+  font-weight: 700;
+}
+
+// ─── Cursor / pointer events ──────────────────────────────────────────────────
+
+.pointer-events {
+  &-auto {
+    pointer-events: all;
+  }
+
+  &-none {
+    pointer-events: none;
+  }
+}
+
+.pointer-pass-through {
+  pointer-events: none;
+  position: relative;
+
+  :is(a[href], button, input, select, textarea, summary) {
+    pointer-events: auto;
+  }
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.cursor-auto {
+  cursor: auto;
+}
+
+.cursor-help {
+  cursor: help;
+}
+
+// ─── State utilities ──────────────────────────────────────────────────────────
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.disabled > * {
+  cursor: not-allowed;
+}
+
+// ─── List utilities ───────────────────────────────────────────────────────────
+
+.list-unstyled {
+  list-style: none;
+
+  &:not(.spacing-style) {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.list-disc {
+  padding-inline-start: 1.4rem;
+}
+
+// ─── Accessibility ────────────────────────────────────────────────────────────
+
+.visually-hidden {
+  position: absolute !important;
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: rect(0 0 0 0);
+  overflow-wrap: normal !important;
+}
+
+.focus-visible {
+  &--inset {
+    &:focus-visible {
+      z-index: 9;
+      outline: none;
+      box-shadow:
+        inset 0 0 0 2px rgb(var(--color-focus-ring)),
+        inset 0 0 0 3px Canvas !important;
+      border-radius: var(--focus-radius, min(4px, inherit));
+    }
+
+    .dialog.keyboard-navigation & {
+      &:focus {
+        outline: none !important;
+      }
+    }
+  }
+
+  &--absolute {
+    &:focus-visible {
+      outline: none;
+
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 9;
+        box-shadow:
+          inset 0 0 0 2px rgb(var(--color-focus-ring)),
+          inset 0 0 0 3px Canvas;
+        border-radius: var(--focus-radius, var(--border-radius, inherit));
+      }
+    }
+
+    .dialog.keyboard-navigation & {
+      &:focus {
+        outline: none !important;
+      }
+    }
+  }
+}
+
+.focus-within {
+  &--inset {
+    *:focus {
+      outline: none;
+      box-shadow: none !important;
+    }
+
+    &:has(:focus-visible) {
+      box-shadow:
+        0 0 0 2px rgb(var(--color-focus-ring)),
+        inset 0 0 0 3px Canvas;
+    }
+  }
+
+  &--absolute {
+    *:focus {
+      outline: none;
+      box-shadow: none !important;
+    }
+
+    &:has(:focus-visible) {
+      &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 9;
+        box-shadow:
+          inset 0 0 0 2px rgb(var(--color-focus-ring)),
+          inset 0 0 0 3px Canvas;
+        border-radius: var(--focus-radius, var(--border-radius, inherit));
+      }
+    }
+  }
+}
+
+// ─── Hover image scale ────────────────────────────────────────────────────────
+
+.media-hover {
+  &--scale {
+    .media-hover__element {
+      // Use 'scale' instead of 'transform': prevents conflict with motion-component transform animations.
+      scale: var(--hover-scale-x, 1) var(--hover-scale-y, 1);
+      transition:
+        scale var(--motion-overlay) var(--motion-ease-out),
+        opacity var(--motion-ui) var(--motion-ease-fade);
+      object-position: var(--focal-position, center);
+    }
+
+    @media screen and (pointer: fine) {
+      // Same Firefox pixel-snapping as the zoom reveal (see _component-media):
+      // the 0.5s hover scale steps at the edges instead of gliding. Held for
+      // the life of the card rather than only on :hover, because the return
+      // half plays after :hover is gone and would step without it. Pointer
+      // devices only — nothing hovers on touch, so nothing is promoted there.
+      .media-hover__element {
+        will-change: transform;
+      }
+
+      &:hover {
+        // The amount comes from the Image hover setting via css-variables.liquid,
+        // which is the only place the number exists. Falling back to 1 rather
+        // than to the design's 1.05 keeps that true: a second copy here would be
+        // free to drift, and an unset variable should mean "no zoom" rather than
+        // "zoom anyway".
+        --hover-scale-x: var(--media-hover-scale, 1);
+        --hover-scale-y: var(--media-hover-scale, 1);
+      }
+    }
+  }
+}
+
+// ─── Notification colors ──────────────────────────────────────────────────────
+
+.notification {
+  &--success {
+    color: rgb(var(--color-notification-success));
+  }
+
+  &--error {
+    color: rgb(var(--color-notification-error));
+  }
+
+  &--warning {
+    color: rgb(var(--color-notification-warning));
+  }
+
+  &--info {
+    color: rgb(var(--color-notification-info));
+  }
+
+  &--out-of-stock {
+    color: rgb(var(--color-notification-out-of-stock));
+  }
+}
+
+// ─── Alert component ──────────────────────────────────────────────────────────
+
+.alert {
+  padding: 1.2rem 1.6rem;
+  border-radius: min(1rem, var(--badge-corner-radius));
+
+  &--success {
+    color: rgb(var(--color-notification-success));
+    background-color: rgb(var(--color-notification-success) / 10%);
+  }
+
+  &--error {
+    color: rgb(var(--color-notification-error));
+    background-color: rgb(var(--color-notification-error) / 10%);
+  }
+
+  &--warning {
+    color: rgb(var(--color-notification-warning));
+    background-color: rgb(var(--color-notification-warning) / 10%);
+  }
+
+  &--info {
+    color: rgb(var(--color-notification-info));
+    background-color: rgb(var(--color-notification-info) / 10%);
+  }
+
+  &--small {
+    padding: 0.6rem 1.2rem;
+  }
+
+  &__content {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  &__content .icon {
+    flex-shrink: 0;
+  }
+}
+
+// ─── Scrollable ───────────────────────────────────────────────────────────────
+
+.v-scrollable {
+  scroll-behavior: smooth;
+  scroll-snap-type: y mandatory;
+  overflow: hidden auto;
+
+  &::-webkit-scrollbar {
+    width: 0.6rem;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 1rem;
+    background-clip: padding-box;
+    background: rgb(var(--color-foreground) / 10%);
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+    border: none;
+  }
+
+  &--hidden {
+    &::-webkit-scrollbar {
+      width: 0;
+    }
+  }
+}
+
+.h-scrollable {
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  overflow: auto hidden;
+
+  &--nice {
+    &::-webkit-scrollbar {
+      height: 0.2rem;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      border-radius: 0;
+      background-clip: padding-box;
+      background: rgb(var(--color-foreground));
+    }
+
+    &::-webkit-scrollbar-track {
+      background: rgb(var(--color-foreground) / 10%);
+      border: none;
+    }
+  }
+}
+
+// ─── Edge gap ─────────────────────────────────────────────────────────────────
+
+.edge-gap {
+  padding-block: var(--edge-padding-block);
+  padding-inline: var(--edge-padding-inline);
+
+  @include media-breakpoint-down(md) {
+    padding-block: var(--edge-padding-block-mobile, var(--edge-padding-block));
+    padding-inline: var(--edge-padding-inline-mobile, var(--edge-padding-inline));
+  }
+
+  &--none {
+    --edge-padding-block: 0;
+    --edge-padding-inline: 0;
+  }
+
+  &--lg {
+    --edge-padding-block: 4rem;
+    --edge-padding-inline: 4rem;
+    --edge-padding-block-mobile: 2.4rem;
+    --edge-padding-inline-mobile: 2rem;
+  }
+
+  &--md {
+    --edge-padding-block: 3.2rem;
+    --edge-padding-inline: 3.2rem;
+    --edge-padding-block-mobile: 2.4rem;
+    --edge-padding-inline-mobile: 2rem;
+  }
+
+  &--sm {
+    --edge-padding-block: 2.4rem;
+    --edge-padding-inline: 2.4rem;
+    --edge-padding-block-mobile: 2.4rem;
+    --edge-padding-inline-mobile: 2rem;
+  }
+}
+
+// ─── Shape utilities ──────────────────────────────────────────────────────────
+
+.rounded {
+  --focus-radius: 99.9rem;
+
+  overflow: hidden;
+  border-radius: 99.9rem;
+}
+
+.media-mask-clip {
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  overflow: hidden;
+}
+
+// ─── Responsive utilities ─────────────────────────────────────────────────────
+
+@each $name, $br in $grid-breakpoints {
+  @media (min-width: $br) {
+    // Display
+    .#{$name}\:flex {
+      display: flex;
+    }
+
+    .#{$name}\:block {
+      display: block;
+    }
+
+    .#{$name}\:grid {
+      display: grid;
+    }
+
+    .#{$name}\:inline-block {
+      display: inline-block;
+    }
+
+    .#{$name}\:inline-flex {
+      display: inline-flex;
+    }
+
+    .#{$name}\:hidden {
+      display: none;
+    }
+
+    .\!#{$name}\:hidden {
+      display: none !important;
+    }
+
+    .#{$name}\:table-cell {
+      display: table-cell;
+    }
+
+    // Flex direction
+    .#{$name}\:flex-col {
+      flex-direction: column;
+    }
+
+    .#{$name}\:flex-row {
+      flex-direction: row;
+    }
+
+    .#{$name}\:flex-row-reverse {
+      flex-direction: row-reverse;
+    }
+
+    .#{$name}\:flex-column-reverse {
+      flex-direction: column-reverse;
+    }
+
+    // Flex grow / shrink / basis
+    .#{$name}\:flex-1 {
+      flex: 1;
+    }
+
+    .#{$name}\:flex-auto {
+      flex: auto;
+    }
+
+    .#{$name}\:shrink-0 {
+      flex-shrink: 0;
+    }
+
+    .#{$name}\:flex-grow {
+      flex-grow: 1;
+    }
+
+    // Flex wrap
+    .#{$name}\:flex {
+      &-wrap {
+        flex-wrap: wrap;
+      }
+
+      &-nowrap {
+        flex-wrap: nowrap;
+      }
+    }
+
+    // Align items
+    .#{$name}\:items {
+      &-start {
+        align-items: flex-start;
+      }
+
+      &-center {
+        align-items: center;
+      }
+
+      &-end {
+        align-items: flex-end;
+      }
+
+      &-stretch {
+        align-items: stretch;
+      }
+    }
+
+    // Justify content
+    .#{$name}\:justify {
+      &-start,
+      &-left {
+        justify-content: flex-start;
+      }
+
+      &-center {
+        justify-content: center;
+      }
+
+      &-end,
+      &-right {
+        justify-content: flex-end;
+      }
+
+      &-between {
+        justify-content: space-between;
+      }
+
+      &-around {
+        justify-content: space-around;
+      }
+    }
+
+    // Align self
+    .#{$name}\:self {
+      &-start {
+        align-self: flex-start;
+      }
+
+      &-center {
+        align-self: center;
+      }
+
+      &-end {
+        align-self: flex-end;
+      }
+
+      &-auto {
+        align-self: auto;
+      }
+
+      &-stretch {
+        align-self: stretch;
+      }
+    }
+
+    // Justify self
+    .#{$name}\:justify-self {
+      &-start {
+        justify-self: start;
+      }
+
+      &-center {
+        justify-self: center;
+      }
+
+      &-end {
+        justify-self: end;
+      }
+    }
+
+    // Align content
+    .#{$name}\:content {
+      &-end {
+        align-content: flex-end;
+      }
+    }
+
+    // Text alignment
+    .#{$name}\:text {
+      &-left {
+        --text-align-revert: start;
+
+        text-align: start;
+      }
+
+      &-center {
+        --text-align-revert: center;
+
+        text-align: center;
+      }
+
+      &-right {
+        --text-align-revert: end;
+
+        text-align: end;
+      }
+    }
+
+    .#{$name}\:w-full {
+      width: 100%;
+    }
+
+    // Grid span
+    @for $i from 1 through $span {
+      .#{$name}\:col-span-#{$i} {
+        grid-column: span $i / span $i;
+      }
+    }
+
+    @for $i from 1 through $columns {
+      .#{$name}\:col-start-#{$i} {
+        grid-column-start: $i;
+      }
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .mobile-contents {
+    display: contents;
+  }
+}

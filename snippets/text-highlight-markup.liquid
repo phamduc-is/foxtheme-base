@@ -1,0 +1,31 @@
+{%- doc -%}
+  Renders a text-like block (`text`, `_simple-text`, `_text-plain`, `collapsible-text`,
+  `_list-item`) with its highlight settings applied to `settings.text`, then hands the result
+  to `text-markup`. Render it instead of `text-markup` when the block's `highlight_style` is
+  not 'none' — `text-markup` itself knows nothing about highlights. The rewriting lives in
+  `highlight-text`, which headings outside a block call directly.
+
+  Reads from block.settings: text, highlight_style, highlight_font_style,
+  highlight_text_color, highlight_shape_color.
+
+  @param {object} block - The block
+  @param {string} [class] - Forwarded to `text-markup`'s `class`
+  @param {string} [fallback_text] - Forwarded to `text-markup`'s `fallback_text`
+
+  @example
+  {% render 'text-highlight-markup', block: block %}
+{%- enddoc -%}
+
+{%- assign block_settings = block.settings -%}
+
+{%- capture highlight_text -%}
+  {%- render 'highlight-text',
+    text: block_settings.text,
+    style: block_settings.highlight_style,
+    font_style: block_settings.highlight_font_style,
+    text_color: block_settings.highlight_text_color,
+    shape_color: block_settings.highlight_shape_color
+  -%}
+{%- endcapture -%}
+
+{% render 'text-markup', block: block, text: highlight_text, class: class, fallback_text: fallback_text %}

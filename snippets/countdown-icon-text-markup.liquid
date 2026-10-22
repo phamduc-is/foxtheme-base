@@ -1,0 +1,56 @@
+{% doc %}
+  Theme block entry for `blocks/countdown-icon-text.liquid` (no schema). Static child `countdown-timer` must be captured in the block file.
+
+  @param {object} settings - Block settings (`block.settings`).
+  @param {string} attributes - Theme editor attributes (`block.shopify_attributes`).
+  @param {string} countdown_timer_html - Captured static `countdown-timer` block output.
+{% enddoc %}
+{{ 'scoped-countdown-icon-text.css' | asset_url | stylesheet_tag }}
+{{ 'scoped-countdown-timer.css' | asset_url | stylesheet_tag }}
+{%- liquid
+  assign style = settings.style
+  assign wrap_class = 'coundown-timer-iwt coundown-timer-iwt--' | append: style
+
+  # Left keeps the row that wraps and spreads; centre/right stack the heading over the
+  # timer on phones instead, so the two never sit side by side off-centre.
+  if settings.alignment_mobile == 'center' or settings.alignment_mobile == 'right'
+    assign wrap_class = wrap_class | append: ' coundown-timer-iwt--mobile-' | append: settings.alignment_mobile
+  endif
+
+  if style == 'card'
+    assign wrap_class = wrap_class | append: ' border-style'
+
+    unless settings.inherit_color_scheme
+      assign wrap_class = wrap_class | append: ' color-' | append: settings.color_scheme
+    endunless
+  endif
+-%}
+{%- capture wrap_style -%}
+  {% render 'size-style', settings: settings %}
+  {% render 'border-style', settings: settings %}
+  {%- if settings.gap != blank -%}
+    --iwt-gap: {{ settings.gap }}px;
+  {%- endif -%}
+{%- endcapture -%}
+<div
+  class="flex flex-wrap justify-between size-style {{ wrap_class }}"
+  style="{{ wrap_style | strip | strip_newlines }}"
+  {{ attributes }}
+>
+  <div class="flex items-center gap-2">
+    <div class="coundown-timer-iwt__icon flex shrink-0">
+      {% render 'icon-or-image',
+        icon: settings.icon,
+        image_upload: settings.icon_image_upload,
+        icon_size: settings.icon_size,
+        width: settings.icon_width,
+        width_mobile: settings.icon_width_mobile,
+        class_name: ''
+      %}
+    </div>
+    {%- if settings.heading != blank -%}
+      {% render 'text-markup', fallback_text: settings.heading, preset: settings.heading_preset, width: '100%' %}
+    {%- endif -%}
+  </div>
+  {{- countdown_timer_html -}}
+</div>

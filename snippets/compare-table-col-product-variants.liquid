@@ -1,0 +1,44 @@
+{% doc %}
+  Renders a product's variant options inside a compare table cell.
+  Swatch-backed options render as color/image swatches with tooltips; others render as a comma-separated text list.
+
+  @param {product} product - Product whose options_with_values are rendered.
+{% enddoc %}
+<div class="compare-table__col-variant-options flex flex-col gap-3">
+  {%- for option in product.options_with_values -%}
+    {%- liquid
+      assign swatch_count = option.values | map: 'swatch' | compact | size
+      assign picker_type = 'text'
+      if swatch_count > 0
+        assign picker_type = 'swatch'
+      endif
+    -%}
+    {%- capture option_value_class -%}
+      flex flex-wrap
+      {%- if picker_type == 'swatch' %} swatches gap-2{% else %} gap-1{% endif -%}
+    {%- endcapture -%}
+    <div class="compare-table__col-variant-option flex flex-col {% if picker_type == 'swatch' %}gap-2{% else %}gap-1{% endif %}">
+      <span class="compare-table__col-variant-option-label block">{{ option.name }}</span>
+      <div class="compare-table__col-variant-option-values color-subtext {{ option_value_class | strip | strip_newlines }}">
+        {%- if picker_type == 'swatch' -%}
+          {%- for value in option.values -%}
+            <div
+              class="compare-table__col-swatch relative"
+              data-tooltip="{{ value | escape }}"
+              data-tooltip-position="top"
+            >
+              {% render 'swatch', swatch: value.swatch %}
+            </div>
+          {%- endfor -%}
+        {%- else -%}
+          {%- for value in option.values -%}
+            <span>
+              {{- value -}}
+              {%- unless forloop.last -%},{%- endunless -%}
+            </span>
+          {%- endfor -%}
+        {%- endif -%}
+      </div>
+    </div>
+  {%- endfor -%}
+</div>

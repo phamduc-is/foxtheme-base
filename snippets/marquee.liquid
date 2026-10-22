@@ -1,0 +1,61 @@
+{% doc %}
+  Renders the marquee-component wrapper that scrolls its children content horizontally.
+  Speed, direction, angle, pause-on-hover, and edge-fade are driven by block settings.
+  When used inside a stacked marquee section, pass order and marquee_position to reverse
+  direction and apply positional modifiers.
+
+  @param {object} settings - Block settings (speed, direction, angle, show_edge_fade, pause_on_hover, color_scheme, etc.)
+  @param {string} children - Pre-rendered HTML string to display inside the scrolling track
+  @param {string} shopify_attributes - Shopify block attributes ({{ block.shopify_attributes }})
+  @param {number} [order] - Scroll order index; negated when marquee_position is 'top' to reverse direction
+  @param {string} [marquee_position] - Position modifier applied as CSS class: 'top' | 'bottom'
+
+  @example
+  {% render 'marquee', settings: block.settings, children: children, shopify_attributes: block.shopify_attributes %}
+{% enddoc %}
+{{ 'scoped-marquee.css' | asset_url | stylesheet_tag }}
+
+{% liquid
+  assign speed = settings.speed
+  assign duration = 6.0
+  assign duration = duration | divided_by: speed
+  assign angle = settings.angle
+  if marquee_position and marquee_position == 'top'
+    assign order = order | times: -1
+  endif
+%}
+
+{%- capture styles -%}
+  --angle: {{ angle | abs }}deg;
+  --angle-raw: {{ angle }}deg;
+  {% if order %}
+    --order: {{ order }};
+  {% endif %}
+{%- endcapture -%}
+
+{%- comment -%}
+  data-motion-essential: the scroll IS the content here. The global
+  reduced-motion floor clamps every animation in the theme, and a marquee that
+  does not move is an unreadable clipped row rather than a calmer one. The
+  component still honours prefers-reduced-motion itself, in JS, where it can
+  slow down instead of stopping dead.
+{%- endcomment -%}
+<marquee-component
+  data-motion-essential
+  class="marquee{% if settings.show_edge_fade or settings.angle != 0 %} marquee--has-edge{% endif %}{% if settings.show_edge_fade %} marquee--edge-fade{% endif %}{% if settings.angle != 0 %} marquee--rotated{% endif %} relative w-full border-style spacing-style color-{{ settings.color_scheme }}{% if marquee_position %} marquee--{{ marquee_position }}{% endif %}"
+  {% if settings.pause_on_hover %}
+    on:pointerenter="/onPause"
+    on:pointerleave="/onPlay"
+  {% endif %}
+  data-direction="{{ settings.direction }}"
+  data-duration="{{ duration }}"
+  data-parallax="{{ settings.enable_parallax }}"
+  style="{% render 'gap-style', settings: settings %}{%- render 'border-style', settings: settings -%}{% render 'spacing-style', settings: settings %}{{ styles }}"
+  {{ shopify_attributes }}
+>
+  <div class="marquee__inner flex items-center" ref="inner">
+    <div data-marquee-items class="marquee__items flex items-center">
+      {{ children }}
+    </div>
+  </div>
+</marquee-component>

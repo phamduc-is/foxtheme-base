@@ -1,0 +1,292 @@
+// @capability Native dialog system — centered modal plus drawer variants sliding from left/right/bottom (with mobile-bottom / mobile-right overrides), animated backdrop, offset "floating drawer" support, rotating close button, and keyboard-only focus outlines.
+// @when Any modal, drawer, popup, or bottom sheet; pairs with src/js/modules/dialog.js (DialogComponent adds .dialog-closing for exit animations). Never build a custom overlay from scratch.
+// @contract <dialog> with .dialog--modal or .dialog--drawer(-left/-right/-bottom/-mobile-bottom/-mobile-right), .dialog__inner > .dialog__content, .dialog__close (--absolute), state class .dialog-closing; sizing via --dialog-max-width / --dialog-radius.
+// @keywords dialog, modal, drawer, popup, side panel, bottom sheet, backdrop, slide in, close button, focus outline, overlay
+
+@use "../mixins" as *;
+
+// ─── Dialog base ──────────────────────────────────────────────────────────────
+
+dialog {
+  --dialog-duration: 0.5s;
+  --dialog-backdrop-duration: 0.7s;
+  --dialog-drawer-offset-horizontal: 0rem;
+  --dialog-drawer-offset-vertical: 0rem;
+  --bottom-dialog-radius: min(2rem, var(--dialog-radius, 0)) min(2rem, var(--dialog-radius, 0)) 0 0;
+
+  contain: layout;
+  margin: auto;
+  border: none;
+  padding: 0;
+
+  // Fix tooltip not showing in dialog.
+  &:has([data-tooltip], [data-tooltip-html]) {
+    contain: unset;
+  }
+
+  &::backdrop {
+    background-color: rgb(0 0 0 / var(--dialog-backdrop-opacity));
+  }
+
+  &[open] {
+    &::backdrop {
+      cursor: zoom-out;
+      animation: dialogBackdropIn var(--dialog-backdrop-duration) var(--motion-ease-overlay);
+    }
+  }
+
+  &.dialog-closing {
+    &::backdrop {
+      animation: dialogBackdropOut var(--dialog-backdrop-duration) var(--motion-ease-overlay);
+    }
+  }
+
+  @include media-breakpoint-up(xl) {
+    --dialog-drawer-offset-horizontal: 0rem;
+    --dialog-drawer-offset-vertical: 0rem;
+    --slide-in-left-from: calc(100% + var(--dialog-drawer-offset-horizontal));
+    --slide-out-left-to: calc(100% + var(--dialog-drawer-offset-horizontal));
+    --slide-out-right-to: calc(-100% - var(--dialog-drawer-offset-horizontal));
+    --slide-in-right-to: calc(-100% - var(--dialog-drawer-offset-horizontal));
+    --slide-in-bottom-from: calc(100% + var(--dialog-drawer-offset-vertical));
+    --slide-out-bottom-to: calc(100% + var(--dialog-drawer-offset-vertical));
+  }
+}
+
+// ─── Dialog variants ──────────────────────────────────────────────────────────
+
+.dialog {
+  // Swipe components inside a dialog scroll within the dialog width, not the full
+  // viewport. The swipe column-width calc caps at 100vw, so on small screens (drawer
+  // == 100vw) this still resolves correctly.
+  --swipe-container-width: var(--dialog-max-width, 50rem);
+
+  color: rgb(var(--color-foreground));
+  background-color: rgb(var(--color-background));
+
+  &--modal {
+    position: fixed;
+    width: calc(100% - 3.2rem);
+    max-width: var(--dialog-max-width, 88rem);
+    max-height: calc(100dvh - 6.4rem);
+    border-radius: var(--dialog-radius, 0);
+
+    &[open] {
+      animation: dialogScaleIn var(--dialog-duration) var(--motion-ease-overlay);
+    }
+
+    &.dialog-closing {
+      animation: dialogScaleOut var(--dialog-duration) var(--motion-ease-overlay);
+    }
+  }
+
+  &--drawer {
+    top: 0;
+    position: fixed;
+    width: 100%;
+    max-width: var(--dialog-max-width, 50rem);
+
+    &-left,
+    &-right {
+      margin-block: var(--dialog-drawer-offset-vertical);
+      height: calc(100dvh - var(--dialog-drawer-offset-vertical) * 2);
+      max-height: calc(100dvh - var(--dialog-drawer-offset-vertical) * 2);
+    }
+
+    &-left {
+      margin-inline: var(--dialog-drawer-offset-horizontal) auto;
+
+      &[open] {
+        animation: slideInRight var(--dialog-duration) var(--motion-ease-overlay);
+      }
+
+      &.dialog-closing {
+        animation: slideOutRight var(--dialog-duration) var(--motion-ease-overlay);
+      }
+    }
+
+    &-right {
+      margin-inline: auto var(--dialog-drawer-offset-horizontal);
+
+      &[open] {
+        animation: slideInLeft var(--dialog-duration) var(--motion-ease-overlay);
+      }
+
+      &.dialog-closing {
+        animation: slideOutLeft var(--dialog-duration) var(--motion-ease-overlay);
+      }
+    }
+
+    &-bottom {
+      margin: auto auto var(--dialog-drawer-offset-vertical) auto;
+
+      &--left,
+      &--right {
+        margin-block: auto var(--dialog-drawer-offset-vertical);
+        border-radius: var(--dialog-radius, 0) var(--dialog-radius, 0) 0 0;
+
+        @include media-breakpoint-up(xl) {
+          border-radius: 0 0 var(--dialog-radius, 0) var(--dialog-radius, 0);
+        }
+      }
+
+      &--left {
+        margin-inline: var(--dialog-drawer-offset-horizontal) auto;
+      }
+
+      &--right {
+        margin-inline: auto var(--dialog-drawer-offset-horizontal);
+      }
+
+      &[open] {
+        animation: slideInBottom var(--dialog-duration) var(--motion-ease-overlay);
+      }
+
+      &.dialog-closing {
+        animation: slideOutBottom var(--dialog-duration);
+      }
+    }
+
+    &-mobile-bottom {
+      @include media-breakpoint-down(md) {
+        --dialog-drawer-offset-vertical: 4rem;
+
+        inset-block: auto 0;
+        margin: 0;
+        max-height: calc(100dvh - var(--dialog-drawer-offset-vertical));
+        height: auto;
+        width: 100%;
+        max-width: 100%;
+        border-radius: var(--bottom-dialog-radius);
+
+        &[open] {
+          animation: slideInBottom var(--dialog-duration) var(--motion-ease-overlay);
+        }
+
+        &.dialog-closing {
+          animation: slideOutBottom var(--dialog-duration);
+        }
+      }
+    }
+
+    &-mobile-right {
+      @include media-breakpoint-down(md) {
+        inset: 0;
+        width: 100%;
+        max-width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        margin: 0;
+        border-radius: 0;
+
+        &[open] {
+          animation: slideInLeft var(--dialog-duration) var(--motion-ease-overlay);
+        }
+
+        &.dialog-closing {
+          animation: slideOutLeft var(--dialog-duration) var(--motion-ease-overlay);
+        }
+      }
+    }
+  }
+
+  &__close {
+    position: relative;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: inherit;
+    background: none;
+    border: none;
+    cursor: pointer;
+
+    &::before {
+      content: "";
+      position: absolute;
+      width: 3.8rem;
+      height: 3.8rem;
+      border-radius: 50%;
+      background: rgb(var(--color-background));
+      z-index: -1;
+    }
+
+    &--absolute {
+      position: absolute;
+      top: var(--dialog-close-offset-top, 2rem);
+      inset-inline-end: var(--dialog-close-offset-right, 2rem);
+      z-index: 2;
+    }
+
+    .icon {
+      transition-property: transform;
+      transition-duration: var(--motion-ui-fast);
+      transition-timing-function: var(--motion-ease);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        .icon {
+          transform: rotate(180deg);
+        }
+      }
+    }
+  }
+
+  &__inner {
+    max-height: inherit;
+  }
+
+  &__content {
+    padding-inline: var(--dialog-content-padding-inline, 0);
+    padding-block: var(--dialog-content-padding-block, 0);
+  }
+}
+
+// ─── Focus management ─────────────────────────────────────────────────────────
+// Show outline only during keyboard navigation, suppress for mouse users.
+
+dialog {
+  .focus-no-outline:focus {
+    outline: none !important;
+  }
+
+  &.keyboard-navigation *:focus {
+    outline: 2px solid rgb(var(--color-focus-ring));
+    outline-offset: 2px;
+  }
+
+  &:not(.keyboard-navigation) *:focus {
+    outline: none;
+  }
+}
+
+.dialog-focus-trap {
+  *:focus {
+    outline: 2px solid rgb(var(--color-focus-ring));
+    outline-offset: 2px;
+  }
+
+  &:not(:focus-within) *:focus {
+    outline: none;
+  }
+
+  &:focus-within *:focus {
+    outline: 2px solid rgb(var(--color-focus-ring));
+    outline-offset: 2px;
+  }
+}
+
+// ─── Reduced motion ───────────────────────────────────────────────────────────
+
+@media (prefers-reduced-motion: reduce) {
+  dialog {
+    --dialog-duration: 0.1s;
+    --dialog-backdrop-duration: 0.1s;
+  }
+
+  .dialog__close .icon {
+    transition: none;
+  }
+}

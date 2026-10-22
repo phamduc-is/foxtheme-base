@@ -1,0 +1,217 @@
+{% doc %}
+  Shared markup of one product-quiz answer card, rendered by `blocks/_finder-quiz-option.liquid`
+  and `blocks/_recommendation-quiz-option.liquid`.
+
+  A `<label>` holding a visually hidden, stretched radio (the swatch technique,
+  src/scss/global/_component-swatch.scss). ONE markup serves both card styles and both layouts:
+  media (an image; with neither image nor icon, a placeholder SVG in the image's slots) → body
+  (icons → title → subtitle (inline richtext, links inert like the title's), each only if
+  filled). The
+  option cannot see its question's settings, so `product-quiz-question-markup` rewrites tokens:
+    - `__PQ_RADIO__` (the radio `name`) and `__PQ_CARD_SCHEME__` (the card's scheme class);
+    - `__PQ_TITLE_SIZE__` (the title's type preset class, the question's `title_size`);
+    - `__PQ_SUBTITLE_COLOR__` (the subtitle's `.color-*` helper suffix, the question's `subtitle_color`);
+    - `__PQ_IMG_SIZES__` (the image `sizes`, computed by the question for its image size mode);
+    - every part wrapped in `<!--pq-media-->…<!--/pq-media-->` (image, icons, subtitle) is cut out
+      when the question's style is Text only, so a text card ships no image request at all.
+  Image placement (the question's effective image mode): the option's ONE `image` is written twice
+  into the captured string, once per mode, each copy fenced by a mode marker:
+    - `<!--pq-fill-->…<!--/pq-fill-->`: the media slot (before the body): the full-bleed image of
+      a vertical Fill card, or the left thumbnail of a horizontal card (always this slot);
+    - `<!--pq-custom-->…<!--/pq-custom-->`: a vertical Custom card's image in the body's icon
+      slot, image first, then the SVG icon. Its own `.media` box (`__custom-image`), NOT in an
+      `__icon`.
+  Both image boxes carry `.media`, so the theme's loading backdrop shows until the image loads
+  (responsive-image toggles `.loading` / `.loaded` on its parent `.media`). They are spans, not
+  responsive-image's own `<div>` wrapper: the card is a `<label>`, which takes phrasing content only.
+  The question cuts the fence of the mode it is NOT in (Text only cuts `pq-media`, which encloses
+  both), so the rendered DOM holds the image once: one `<img>`, one download. Never render the
+  option outside a question, the markers would both survive.
+  Layout (vertical / horizontal), image size and the selected look come from modifier classes and
+  CSS vars on the question's options grid, so generated cards inherit them too: the image takes
+  `--product-quiz-image-size` (width; horizontal and Custom) and `--product-quiz-image-ratio`.
+  The icon look (`--product-quiz-icon-size`, + `--product-quiz-icon-color` /
+  `--product-quiz-icon-bg` when set, and the `--icon-bg` modifier) reaches the SVG icon only.
+  The media slot and the icons row are `aria-hidden`: the card is the radio's `<label>`, so an
+  image alt (responsive-image always prefers `image.alt`) would leak into the option's name; the
+  title and subtitle, outside both, name it.
+  Everything the runtime needs travels on the radio as `data-*`: the matching data of the host
+  quiz (`matching`), the branching list and the no-preference flag.
+
+  @param {object} block - The option block (its id, settings and shopify_attributes).
+  @param {string} matching - `filter` (Finder quiz) or `products` (Recommendation quiz).
+  @param {string} title - The card title as inline-richtext HTML (already defaulted by the caller).
+    Rendered as HTML in the card; every plain-text use (the radio's `data-label`, which feeds the
+    summary, `[token]` values, customer tags and the editor notice, and the image alt) reads
+    `title_text` instead: tags stripped, entities decoded so `escape` encodes them once.
+  @param {string} [filter_value] - `filter` only: the store-filter value this card selects.
+  @param {string} [strong_ids] - `products` only: comma-separated product ids recommended first.
+  @param {string} [partial_ids] - `products` only: comma-separated product ids recommended next.
+  @param {string} [exclude_ids] - `products` only: comma-separated product ids removed from results.
+
+  @example
+  {% render 'product-quiz-option-markup',
+    block: block,
+    matching: 'filter',
+    title: title,
+    filter_value: filter_value
+  %}
+{% enddoc %}
+
+{%- liquid
+  comment
+    The whole card is the radio's <label>, so a link inside the title must not act as one:
+    `tabindex="-1"` takes it out of the tab order here (server-side, no JS needed) and the SCSS
+    sets `pointer-events: none` on it, so a click falls through to the radio. The subtitle is
+    inline richtext too and is neutralised the same way; one with no text renders nothing.
+  endcomment
+  assign title_html = title | replace: '<a ', '<a tabindex="-1" '
+  assign subtitle_html = ''
+  assign subtitle_text = block.settings.subtitle | strip_html | replace: '&nbsp;', ' ' | strip
+  if subtitle_text != blank
+    assign subtitle_html = block.settings.subtitle | replace: '<a ', '<a tabindex="-1" '
+  endif
+  assign title_text = title | strip_html | replace: '&nbsp;', ' ' | replace: '&lt;', '<' | replace: '&gt;', '>' | replace: '&quot;', '"' | replace: '&#39;', "'" | replace: '&amp;', '&' | strip
+
+  comment
+    The image's own aspect, as a var on the card: under `adapt` (no question ratio) the SCSS
+    falls back to it, so the box keeps its height before the image loads. A plain
+    `aspect-ratio: auto` would override the img's width/height attribute ratio and collapse it.
+  endcomment
+  assign has_image = false
+  assign card_style = ''
+  if block.settings.image != blank
+    assign has_image = true
+    assign card_style = '--product-quiz-image-natural-ratio: ' | append: block.settings.image.aspect_ratio | append: ';'
+  endif
+  assign has_icon = false
+  if block.settings.icon != blank and block.settings.icon != 'none'
+    assign has_icon = true
+  endif
+
+  comment
+    Onboarding: an option with neither an image nor an icon shows a placeholder SVG where the
+    image would be, on the storefront too. It takes the image's two fenced slots, so the
+    question's mode places it like a real image (Text only cuts both). An icon is media enough:
+    no placeholder then.
+  endcomment
+  assign has_placeholder = false
+  unless has_image or has_icon
+    assign has_placeholder = true
+  endunless
+-%}
+<label
+  class="product-quiz-card color-__PQ_CARD_SCHEME__"
+  data-quiz-option
+  {% if card_style != blank %}style="{{ card_style }}"{% endif %}
+  {{ block.shopify_attributes }}
+>
+  <input
+    class="product-quiz-card__input"
+    type="radio"
+    name="__PQ_RADIO__"
+    value="{{ block.id }}"
+    data-label="{{ title_text | escape }}"
+    {% if matching == 'filter' %}
+      data-filter-value="{{ filter_value | strip | escape }}"
+    {% else %}
+      data-strong="{{ strong_ids }}"
+      data-partial="{{ partial_ids }}"
+      data-exclude="{{ exclude_ids }}"
+    {% endif %}
+    data-skip-questions="{{ block.settings.skip_questions | escape }}"
+    data-no-preference="{{ block.settings.no_preference }}"
+    on:change="product-quiz/onOptionChange"
+    on:click="product-quiz/onOptionClick"
+    on:keydown="product-quiz/onOptionKeydown"
+  >
+  {%- if has_image -%}
+    <!--pq-media--><!--pq-fill-->
+    <span class="product-quiz-card__media media" aria-hidden="true">
+      {%- render 'responsive-image',
+        image: block.settings.image,
+        mode: 'liquid',
+        with_wrapper: false,
+        class: 'product-quiz-card__image',
+        sizes: '__PQ_IMG_SIZES__',
+        widths: '120, 240, 360, 480, 600, 800, 1000, 1200',
+        default_alt: title_text,
+        use_zoom: false,
+        use_hover: false
+      -%}
+    </span>
+    <!--/pq-fill--><!--/pq-media-->
+  {%- elsif has_placeholder -%}
+    <!--pq-media--><!--pq-fill-->
+    <span class="product-quiz-card__media product-quiz-card__media--placeholder media--placeholder" aria-hidden="true">
+      {{- 'image' | placeholder_svg_tag: 'placeholder' -}}
+    </span>
+    <!--/pq-fill--><!--/pq-media-->
+  {%- endif -%}
+  <span class="product-quiz-card__body">
+    {%- comment -%}
+      Icon slot: the Custom image (first, a `.media` box sized by the question's `image_width` +
+      `image_ratio`, never inside the icon background circle) and the SVG icon in its own
+      `__icon`. With an icon, only the image is fenced `pq-custom`; with no icon the whole slot
+      is, so a Fill card without an icon gets no empty slot. The fences never nest with
+      themselves: the cut in `product-quiz-question-markup` is not nesting-aware.
+    {%- endcomment -%}
+    {%- if has_image or has_icon or has_placeholder -%}
+      <!--pq-media-->
+      {%- unless has_icon %}<!--pq-custom-->{% endunless -%}
+      <span class="product-quiz-card__icons" aria-hidden="true">
+        {%- if has_placeholder -%}
+          <span class="product-quiz-card__custom-image product-quiz-card__custom-image--placeholder media--placeholder">
+            {{- 'image' | placeholder_svg_tag: 'placeholder' -}}
+          </span>
+        {%- endif -%}
+        {%- if has_image -%}
+          {%- if has_icon %}<!--pq-custom-->{% endif -%}
+          <span class="product-quiz-card__custom-image media">
+            {%- render 'responsive-image',
+              image: block.settings.image,
+              mode: 'liquid',
+              with_wrapper: false,
+              class: 'product-quiz-card__image',
+              sizes: '__PQ_IMG_SIZES__',
+              widths: '120, 240, 360, 480, 600, 800, 1000, 1200',
+              default_alt: title_text,
+              use_zoom: false,
+              use_hover: false
+            -%}
+          </span>
+          {%- if has_icon %}<!--/pq-custom-->{% endif -%}
+        {%- endif -%}
+        {%- if has_icon -%}
+          <span class="product-quiz-card__icon">
+            {%- render 'icon', icon: block.settings.icon -%}
+          </span>
+        {%- endif -%}
+      </span>
+      {%- unless has_icon %}<!--/pq-custom-->{% endunless -%}
+      <!--/pq-media-->
+    {%- endif -%}
+    <span class="product-quiz-card__title __PQ_TITLE_SIZE__">
+      {{- title_html -}}
+    </span>
+    {%- if subtitle_html != blank -%}
+      <!--pq-media-->
+      <span class="product-quiz-card__subtitle color-__PQ_SUBTITLE_COLOR__">{{ subtitle_html }}</span>
+      <!--/pq-media-->
+    {%- endif -%}
+  </span>
+  {%- comment -%}
+    Theme editor only: shown (with `data-quiz-editor-hidden` on the card) when no product matches
+    this card's Filter value, so the storefront hides it. The full reason rides in `title`.
+  {%- endcomment -%}
+  {%- if request.design_mode and matching == 'filter' -%}
+    <span
+      class="product-quiz-card__badge"
+      title="{{ 'blocks.product_quiz.editor_option_unmatched' | t | escape }}"
+      data-quiz-editor-badge
+      hidden
+    >
+      {{- 'blocks.product_quiz.editor_hidden_badge' | t -}}
+    </span>
+  {%- endif -%}
+</label>

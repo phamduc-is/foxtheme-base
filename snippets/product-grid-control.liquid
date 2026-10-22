@@ -1,0 +1,97 @@
+{% doc %}
+  Renders radio-button controls that let users switch the product grid density or layout on desktop.
+  Hidden on mobile (lg:block) and hidden when JS is disabled.
+  Fires a results-list event on change to update the grid.
+
+  @param {string} [mode] - Control type: 'density' (columns per row) | 'layout' (grid/list toggle) (default: 'density')
+
+  @example
+  {% render 'product-grid-control' %}
+  @example
+  {% render 'product-grid-control', mode: 'layout' %}
+{% enddoc %}
+
+{%- liquid
+  assign mode = mode | default: 'density'
+  assign event_handler = 'results-list/updateLayout'
+  if mode == 'layout'
+    assign event_handler = 'results-list/updateDataLayout'
+  endif
+-%}
+<div class="column-options-wrapper hidden lg:block">
+  <fieldset class="column-options flex items-center gap-2">
+    <legend class="column-options__legend visually-hidden">
+      {{ 'content.grid_view.grid_fieldset' | t }}
+    </legend>
+    <span class="column-options__label">
+      {{ 'content.grid_view.view_as' | t }}
+    </span>
+    {%- if mode == 'layout' -%}
+      <label for="GridControl-{{ section.id }}-grid" class="column-options__option inline-block relative">
+        <span class="column-picker btn btn--outline btn--icon-only focus-within--absolute">
+          <input
+            type="radio"
+            id="GridControl-{{ section.id }}-grid"
+            name="card-layout"
+            value="grid"
+            class="column-options__option-input"
+            {% if default_layout == 'grid' or default_layout == blank %}checked{% endif %}
+            aria-label="{{ 'content.grid_view.default_view' | t }}"
+            on:change="{{ event_handler }}"
+            data-skip-node-update
+          >
+          {% render 'icon', icon: 'grid-default', size: 'extra-large', class: 'pointer-events-none' %}
+        </span>
+      </label>
+      <label for="GridControl-{{ section.id }}-list" class="column-options__option inline-block relative">
+        <span class="column-picker btn btn--outline btn--icon-only focus-within--absolute">
+          <input
+            type="radio"
+            id="GridControl-{{ section.id }}-list"
+            name="card-layout"
+            value="list"
+            class="column-options__option-input"
+            {% if default_layout == 'list' %}checked{% endif %}
+            aria-label="{{ 'content.grid_view.list_view' | t }}"
+            on:change="{{ event_handler }}"
+            data-skip-node-update
+          >
+          {% render 'icon', icon: 'list', size: 'extra-large', class: 'pointer-events-none' %}
+        </span>
+      </label>
+    {%- else -%}
+      <label for="GridControl-{{ section.id }}-default" class="column-options__option inline-block relative">
+        <span class="column-picker column-picker--3 btn btn--outline btn--icon-only focus-within--absolute">
+          <input
+            type="radio"
+            id="GridControl-{{ section.id }}-default"
+            name="grid"
+            value="default"
+            class="column-options__option-input"
+            checked
+            aria-label="{{ 'content.grid_view.default_view' | t }}"
+            data-grid-layout="desktop-default-option"
+            on:change="{{ event_handler }}"
+            data-skip-node-update
+          >
+          {% render 'icon', icon: 'grid-default', size: 'extra-large', class: 'pointer-events-none' %}
+        </span>
+      </label>
+      <label for="GridControl-{{ section.id }}-zoom-out" class="column-options__option inline-block relative">
+        <span class="column-picker column-picker--4 btn btn--outline btn--icon-only focus-within--absolute">
+          <input
+            type="radio"
+            id="GridControl-{{ section.id }}-zoom-out"
+            name="grid"
+            value="zoom-out"
+            class="column-options__option-input"
+            aria-label="{{ 'content.grid_view.zoom_out' | t }}"
+            on:change="{{ event_handler }}"
+            data-skip-node-update
+          >
+          {% render 'icon', icon: 'grid-dense', size: 'extra-large', class: 'pointer-events-none' %}
+        </span>
+      </label>
+    {%- endif -%}
+  </fieldset>
+</div>

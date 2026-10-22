@@ -1,0 +1,32 @@
+{% doc %}
+  Articles list for predictive search results.
+  Reads `predictive_search.resources.articles`; renders nothing when empty.
+
+  @example
+  {% render 'predictive-search-result-articles-markup' %}
+{% enddoc %}
+{%- if predictive_search.resources.articles.size > 0 -%}
+  <div class="search__result search__result--articles w-full flex flex-col gap-3">
+    <h4 class="search__result-heading h6">
+      {{- 'content.search_results_resource_articles' | t -}}
+    </h4>
+    <ul
+      role="group"
+      class="search__result-list search__result-list--vertical flex flex-col list-unstyled"
+    >
+      {%- for article in predictive_search.resources.articles -%}
+        <li
+          class="search__result-list-item flex"
+          role="option"
+          aria-selected="false"
+        >
+          <a href="{{ article.url }}" class="reversed-link color-subtext">
+            <span class="reversed-link__text">
+              {{- article.title | escape -}}
+            </span>
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}

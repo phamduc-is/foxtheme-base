@@ -1,0 +1,144 @@
+{% doc %}
+  Renders the mobile menu drawer dialog with logo, navigation links, and locale/currency selectors.
+  Navigation links come from the `menu_mobile` param (the caller passes section.settings.menu_mobile,
+  already defaulted to section.settings.menu when blank).
+  The drawer logo is resolved in priority order: settings.logo_menu_drawer → settings.logo_mobile → settings.logo.
+
+  @param {object} section - The header section object
+  @param {object} menu_mobile - The mobile linklist to render (section.settings.menu_mobile, already defaulted to section.settings.menu by the caller)
+  @param {string} [mega_menu_blocks_html] - Rendered HTML of the `_mega-menu` blocks (same capture used by desktop-menu). Each block is delimited by `<!-- @megaMenu/split -->`; its mobile drawer markup follows a `<!-- @megaMenu/context/mobile -->` marker so this snippet can split and match it per nav link.
+
+  @example
+  {% render 'menu-drawer', section: section, menu_mobile: menu_mobile, mega_menu_blocks_html: mega_menu_blocks_html %}
+{% enddoc %}
+
+{%- liquid
+  assign logo_drawer = settings.logo_menu_drawer | default: settings.logo_mobile | default: settings.logo
+
+  assign mega_menus = mega_menu_blocks_html | strip | split: '<!-- @megaMenu/split -->'
+
+  unless settings.dialog_color_scheme_inherit
+    assign dialog_color_scheme = settings.dialog_color_scheme
+  else
+    assign dialog_color_scheme = settings.color_schemes | first
+  endunless
+-%}
+<menu-drawer
+  id="menu-drawer"
+  class="menu-drawer pointer-events-auto"
+>
+  <dialog
+    id="menu-drawer-dialog"
+    ref="dialog"
+    aria-label="{{ 'accessibility.menu_drawer' | t }}"
+    class="dialog dialog--drawer dialog--drawer-left color-{{ dialog_color_scheme }}"
+    scroll-lock
+  >
+    <div
+      data-menu-drawer-header
+      class="dialog__header menu-drawer__header relative z-1 shrink-0 flex"
+    >
+      <div class="menu-drawer__logo flex-grow flex flex-col justify-center">
+        <a
+          href="{{ routes.root_url }}"
+          class="h3 relative flex{% if logo_drawer == blank %} menu-drawer__logo--text{% else %} menu-drawer__logo--image{% endif %}"
+        >
+          {%- if logo_drawer != blank -%}
+            {%- liquid
+              assign logo_width_drawer = settings.logo_width_menu_drawer
+              assign logo_width_drawer_2x = logo_width_drawer | times: 2
+            -%}
+            <img
+              srcset="{{ logo_drawer | image_url: width: logo_width_drawer }} 1x, {{ logo_drawer | image_url: width: logo_width_drawer_2x }} 2x"
+              src="{{ logo_drawer | image_url: width: logo_width_drawer }}"
+              loading="eager"
+              width="{{ logo_drawer.width }}"
+              height="{{ logo_drawer.height }}"
+              alt="{{ logo_drawer.alt | default: shop.name | escape }}"
+              class="logo"
+            >
+          {%- else -%}
+            {{ shop.name }}
+          {%- endif -%}
+        </a>
+      </div>
+      <button
+        class="dialog__close color-current shrink-0 focus-visible--inset"
+        on:click="#menu-drawer/closeDialog"
+        aria-label="{{ 'accessibility.close_dialog' | t }}"
+      >
+        {% render 'icon', icon: 'close', size: 'large' %}
+      </button>
+    </div>
+    <div class="dialog__content flex-grow flex flex-col gap-6 overflow-x-clip relative">
+      <div
+        class="menu-drawer__menus v-scrollable flex flex-col w-full h-full"
+        data-parent
+      >
+        <ul class="menu-drawer__menu">
+          {%- for link in menu_mobile.links -%}
+            <li class="menu-drawer__item">
+              {%- liquid
+                assign mega_menu_mobile_html = ''
+                # theme-check-disable UnusedAssign
+                assign link_title_handle = link.title | downcase | handle
+                # theme-check-enable UnusedAssign
+              -%}
+              {%- capture mega_menu_handle_id -%}<!-- @megaMenu/handle/{{ link_title_handle }} -->{%- endcapture -%}
+              {%- liquid
+                for chunk in mega_menus
+                  if chunk contains mega_menu_handle_id
+                    assign mega_menu_mobile_html = chunk | split: '<!-- @megaMenu/context/mobile -->' | last | strip
+                    break
+                  endif
+                endfor
+              -%}
+              {%- if mega_menu_mobile_html != blank -%}
+                {{ mega_menu_mobile_html }}
+              {%- elsif link.links != blank -%}
+                {%- capture submenu_content -%}
+                  <div class="menu-drawer__nav flex flex-col gap-5">
+                    {%- render 'menu-drawer-sublinks', link: link -%}
+                  </div>
+                {%- endcapture -%}
+                {%- render 'menu-drawer-details', link: link, content: submenu_content -%}
+              {%- else -%}
+                <a
+                  href="{{ link.url }}"
+                  class="menu-drawer__item-link menu-drawer__item-link--lv1 flex items-center justify-between focus-visible--inset h3"
+                >
+                  {{- link.title | escape -}}
+                </a>
+              {%- endif -%}
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+      <div class="menu-drawer__footer flex justify-center flex-col gap-y-6">
+        <div class="flex flex-col gap-3 items-center">
+          {% render 'header-account',
+            context: 'menu-drawer',
+            menu: section.settings.customer_account_menu,
+            show_icon: false,
+            show_text: true,
+            wrapper_class: 'block w-full',
+            button_class: 'btn btn--primary w-full'
+          %}
+          {%- if section.settings.enable_language_selector or section.settings.enable_country_selector -%}
+            {%- # The header can render its own localization form from the same section; suffix so the two never share ids. -%}
+            {%- assign drawer_localization_id = section.id | append: '-drawer' -%}
+            {%- render 'dropdown-localization',
+              block_id: drawer_localization_id,
+              show_country: section.settings.enable_country_selector,
+              show_country_flag: true,
+              show_language: section.settings.enable_language_selector
+            -%}
+          {%- endif -%}
+          {%- if section.settings.enable_social_media_icons -%}
+            {%- render 'social-icons' -%}
+          {%- endif -%}
+        </div>
+      </div>
+    </div>
+  </dialog>
+</menu-drawer>

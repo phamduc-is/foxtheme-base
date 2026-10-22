@@ -1,0 +1,25 @@
+// @capability Global prefers-reduced-motion floor — collapses every CSS transition and keyframe animation in the theme to a near-zero duration when the visitor asks for reduced motion, with a [data-motion-essential] opt-out for the handful of things that ARE the content (marquee, loading spinners).
+// @when Never imported by hand — it is the last import in theme.scss and applies theme-wide. Add data-motion-essential to an element whose animation carries meaning rather than decoration; do NOT re-state a DURATION in a per-component prefers-reduced-motion block, which is what let twelve components each solve this differently and any new one forget entirely — a component block is only for what a duration clamp cannot reach, namely a custom property another layer reads (--dialog-duration) or an end state that should not happen at all (transform: scale(1)).
+// @contract [data-motion-essential] on an element (or an ancestor) exempts it and its subtree. JS-driven entrances are handled separately, in the components' own prefersReducedMotion() checks.
+// @keywords reduced motion, prefers-reduced-motion, accessibility, a11y, motion sickness, vestibular, disable animation, marquee exception
+
+@media (prefers-reduced-motion: reduce) {
+  // 0.01ms, not 0s, and not `animation: none`. A zero-length transition never
+  // fires `transitionend`, and several components in this theme wait on that
+  // event to clean up or to advance a sequence — they would hang. An almost-zero
+  // duration still dispatches, so the code paths stay identical and only the
+  // motion disappears.
+  // !important is load-bearing here: this has to beat inline styles and
+  // component rules alike, and an accessibility floor that a component can
+  // accidentally out-specify is not a floor.
+  *:not([data-motion-essential], [data-motion-essential] *),
+  *:not([data-motion-essential], [data-motion-essential] *)::before,
+  *:not([data-motion-essential], [data-motion-essential] *)::after {
+    animation-delay: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-delay: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,52 @@
+{% doc %}
+  Renders the primary desktop navigation bar.
+  Iterates over menu.links and matches each link against the provided blocks by title handle
+  to decide whether to render a mega-menu dropdown or a standard dropdown.
+
+  @param {object} menu - The Shopify linklist object to render (from section.settings.menu)
+  @param {string} [mega_menu_blocks_html] - Rendered HTML of the `_mega-menu` blocks, with each block delimited by a `<!-- @megaMenu/split -->` marker so this snippet can split and match them per nav link
+  @param {object} section - Section object
+  @param {string} [nav_class] - Optional extra CSS class(es) appended to the <nav> element
+
+  @example
+  {% render 'desktop-menu', menu: menu, blocks: section.blocks %}
+{% enddoc %}
+
+{%- liquid
+  assign mega_menus = mega_menu_blocks_html | strip | split: '<!-- @megaMenu/split -->'
+-%}
+<nav class="header__navigation {{ nav_class }}" role="navigation" aria-label="Primary">
+  <ul class="header__menu flex flex-wrap">
+    {%- for link in menu.links -%}
+      {%- liquid
+        assign mega_menu_html = ''
+        # theme-check-disable UnusedAssign
+        assign link_title_handle = link.title | downcase | handle
+        # theme-check-enable UnusedAssign
+      -%}
+      {%- capture mega_menu_split_id -%}<!-- @megaMenu/handle/{{ link_title_handle }} -->{%- endcapture -%}
+      {%- liquid
+        for menu in mega_menus
+          if menu contains mega_menu_split_id
+            assign mega_menu_html = menu
+            break
+          endif
+        endfor
+      -%}
+      <li class="inline-flex items-center">
+        {%- if mega_menu_html != blank -%}
+          {{ mega_menu_html | split: '<!-- @megaMenu/context/mobile -->' | first }}
+        {%- elsif link.links != blank -%}
+          {% render 'desktop-menu-dropdown', link: link, menu_trigger: section.settings.menu_trigger %}
+        {%- else -%}
+          <a
+            href="{{ link.url }}"
+            class="menu__item reversed-link"
+          >
+            <span class="reversed-link__text">{{- link.title | escape -}}</span>
+          </a>
+        {%- endif -%}
+      </li>
+    {%- endfor -%}
+  </ul>
+</nav>

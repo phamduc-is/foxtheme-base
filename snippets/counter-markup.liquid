@@ -1,0 +1,67 @@
+{% doc %}
+  Markup shell for the counter theme block (no schema). Child slots must be captured in the block file so `content_for` stays in block scope.
+
+  @param {object} settings - Block settings (layout, appearance, border).
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+  @param {string} counter_number_html - Captured output of `content_for` static counter number.
+  @param {string} counter_blocks_html - Captured output of `content_for` nested blocks.
+  @param {number} blocks_count - `block.blocks.size` from the parent block.
+{% enddoc %}
+{%- liquid
+  assign style = settings.style
+  assign direction = settings.direction
+  assign direction_mobile = settings.direction_mobile
+  assign wrap_class = ''
+  assign content_class = ''
+
+  if direction == 'vertical'
+    assign horizontal_alignment = settings.horizontal_alignment
+    assign flex_value = horizontal_alignment | replace: 'left', 'start' | replace: 'right', 'end'
+
+    assign wrap_class = wrap_class | append: ' md:flex-col md:text-' | append: horizontal_alignment | append: ' md:items-' | append: flex_value
+    assign content_class = content_class | append: ' md:items-' | append: flex_value | append: ' md:text-' | append: horizontal_alignment
+  else
+    assign vertical_alignment = settings.vertical_alignment
+    assign flex_value = vertical_alignment | replace: 'top', 'start' | replace: 'middle', 'center' | replace: 'bottom', 'end'
+
+    assign wrap_class = wrap_class | append: ' md:flex-row md:text-left' | append: ' md:items-' | append: flex_value
+    assign content_class = content_class | append: ' md:items-start md:text-left'
+  endif
+
+  if direction_mobile == 'vertical'
+    assign horizontal_alignment = settings.horizontal_alignment_mobile
+    assign flex_value = horizontal_alignment | replace: 'left', 'start' | replace: 'right', 'end'
+
+    assign wrap_class = wrap_class | append: ' flex-col text-' | append: horizontal_alignment | append: ' items-' | append: flex_value
+    assign content_class = content_class | append: ' items-' | append: flex_value | append: ' text-' | append: horizontal_alignment
+  else
+    assign vertical_alignment = settings.vertical_alignment_mobile
+    assign flex_value = vertical_alignment | replace: 'top', 'start' | replace: 'middle', 'center' | replace: 'bottom', 'end'
+
+    assign wrap_class = wrap_class | append: ' flex-row text-left' | append: ' items-' | append: flex_value
+  endif
+
+  if style == 'card'
+    assign wrap_class = wrap_class | append: ' border-style'
+
+    if settings.border == 'solid'
+      assign wrap_class = wrap_class | append: ' counter--shadow'
+    endif
+
+    unless settings.inherit_color_scheme
+      assign wrap_class = wrap_class | append: ' color-' | append: settings.color_scheme
+    endunless
+  endif
+-%}
+<div
+  class="counter-block counter--{{ style }} flex gap-style {{ wrap_class }}"
+  style="{% render 'border-style', settings: settings %}{% render 'gap-style', settings: settings %}"
+  {{ shopify_attributes }}
+>
+  {{ counter_number_html }}
+  {%- if blocks_count > 0 -%}
+    <div class="counter__content min-w-0 flex-grow flex flex-col {{ content_class }}">
+      {{ counter_blocks_html }}
+    </div>
+  {%- endif -%}
+</div>

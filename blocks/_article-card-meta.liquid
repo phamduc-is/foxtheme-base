@@ -1,0 +1,58 @@
+{% doc %}
+  Article card meta (published date + author). Static block nested inside `_article-card`;
+  receives `article`, `layout` and `alignment` from the `content_for` context.
+{% enddoc %}
+{%- liquid
+  assign show_date = block.settings.show_date
+  assign show_author = block.settings.show_author
+  assign justify = alignment | default: 'left' | replace: 'left', 'start' | replace: 'right', 'end'
+-%}
+{%- if show_date or show_author -%}
+  <div
+    class="article-card__metas color-subtext flex justify-{{ justify }} gap-2"
+    {{ block.shopify_attributes }}
+  >
+    {%- if show_date -%}
+      <span class="article-card__meta article-card__date">
+        {%- if article != blank -%}
+          {{ article.published_at | time_tag: format: 'abbreviated_date' }}
+        {%- else -%}
+          {{ 'now' | time_tag: format: 'abbreviated_date' }}
+        {%- endif -%}
+      </span>
+    {%- endif -%}
+    {%- if show_date and show_author -%}
+      <span class="article-card__separator rounded"></span>
+    {%- endif -%}
+    {%- if show_author -%}
+      <span class="article-card__meta article-card__author">
+        {%- if article != blank -%}
+          {{ article.author }}
+        {%- else -%}
+          {{ 'blogs.article.article_author' | t }}
+        {%- endif -%}
+      </span>
+    {%- endif -%}
+  </div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "t:names.meta",
+  "tag": null,
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_date",
+      "label": "t:settings.show_date",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "show_author",
+      "label": "t:settings.show_author",
+      "default": true
+    }
+  ]
+}
+{% endschema %}

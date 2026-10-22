@@ -1,0 +1,87 @@
+[
+  {
+    "file": "src/js/modules/carousel/features/thumbnails.js",
+    "classes": [
+      ".carousel__thumbnails-swiper"
+    ]
+  },
+  {
+    "file": "src/js/modules/flex-carousel.js",
+    "classes": [
+      ".edge__shadows"
+    ]
+  },
+  {
+    "file": "src/js/modules/footer-details.js",
+    "classes": [
+      ".accordion__content"
+    ]
+  },
+  {
+    "file": "src/js/modules/marquee.js",
+    "classes": [
+      ".marquee__items",
+      ".media"
+    ]
+  },
+  {
+    "file": "src/js/modules/marquee.js",
+    "classes": [
+      ".media"
+    ]
+  },
+  {
+    "file": "src/js/modules/marquee.js",
+    "classes": [
+      ".marquee__items"
+    ]
+  },
+  {
+    "file": "src/js/modules/marquee.js",
+    "classes": [
+      ".marquee__items"
+    ]
+  },
+  {
+    "file": "src/js/modules/scroll-progress-bar.js",
+    "classes": [
+      ".progress-bar"
+    ]
+  },
+  {
+    "file": "src/js/modules/swipe-component.js",
+    "classes": [
+      ".swipe__element"
+    ]
+  },
+  {
+    "file": "src/js/modules/swipe-component.js",
+    "classes": [
+      ".swipe__inner"
+    ]
+  },
+  {
+    "file": "src/js/modules/utilities.js",
+    "classes": [
+      ".btn--loading"
+    ]
+  },
+  {
+    "file": "src/js/modules/variant-picker.js",
+    "classes": [
+      ".variant-option--fieldset"
+    ]
+  },
+  {
+    "file": "src/js/modules/variant-picker.js",
+    "classes": [
+      ".variant-option--fieldset"
+    ]
+  },
+  {
+    "file": "src/js/modules/variant-picker.js",
+    "classes": [
+      ".variant-option--fieldset"
+    ]
+  }
+]

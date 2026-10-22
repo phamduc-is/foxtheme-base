@@ -1,0 +1,101 @@
+{% doc %}
+  Presentation shell for the `product-finder` block.
+
+  Renders `<product-finder>` → native GET `<form>` → a header row (heading slot + a toggle button)
+  and a `__panel` (the captured field selects + submit button). The `<product-finder>` custom element
+  drives the collapse: desktop = always open / toggle hidden; mobile = collapsible accordion or
+  always-open per `mobile_collapsible`, animated. Works without JS: the panel renders open (the CSS that hides a
+  collapsible panel before JS runs is undone by the `<noscript>` style below) and native GET navigates to the
+  filtered collection; a `<noscript>` link is the hard fallback.
+
+  @param {object} settings - The parent block settings.
+  @param {string} [heading_html] - Captured `_product-finder-heading` static-block HTML (header slot).
+  @param {string} [button_html] - Captured `_product-finder-button` static-block HTML (the submit button).
+  @param {string} fields_html - Captured `_product-finder-field` children HTML (the field selects).
+  @param {string} target_url - Collection URL the form submits to.
+  @param {string} [color_scheme] - Color scheme suffix (blank when inheriting).
+  @param {string} [block_style] - Inline spacing/border/size CSS vars for the root.
+  @param {string} block_id - Unique id prefix for the panel id.
+  @param {string} [shopify_attributes] - Theme editor attributes for the outer root.
+
+  @example
+  {% render 'product-finder-markup', settings: block.settings, fields_html: fields_html, target_url: url, block_id: block.id %}
+{% enddoc %}
+{{ 'scoped-product-finder.css' | asset_url | stylesheet_tag }}
+
+{%- liquid
+  assign mobile_collapsible = settings.mobile_collapsible | default: true, allow_false: true
+  assign layout = settings.layout | default: 'vertical'
+
+  assign root_class = 'product-finder product-finder--' | append: layout
+  assign root_class = root_class | append: ' spacing-style border-style size-style'
+  if color_scheme != blank
+    assign root_class = root_class | append: ' color-' | append: color_scheme
+  endif
+  if settings.border == 'solid' and settings.hide_border_desktop
+    assign root_class = root_class | append: ' product-finder--no-border-desktop'
+  endif
+  if settings.border == 'solid' and settings.hide_border_mobile
+    assign root_class = root_class | append: ' product-finder--no-border-mobile'
+  endif
+
+  assign panel_id = block_id | append: '-ProductFinderPanel'
+  assign has_heading = false
+  if heading_html != blank and heading_html != ''
+    assign trimmed_heading = heading_html | strip
+    if trimmed_heading != blank
+      assign has_heading = true
+    endif
+  endif
+-%}
+
+<product-finder
+  class="{{ root_class }}"
+  style="{{ block_style | strip | strip_newlines }}"
+  data-collection-url="{{ target_url }}"
+  data-mobile-collapsible="{{ mobile_collapsible }}"
+  {%- if shopify_attributes %}
+    {{ shopify_attributes -}}
+  {% endif %}
+>
+  <form
+    class="product-finder__form"
+    method="get"
+    action="{{ target_url }}"
+  >
+    <button
+      type="button"
+      class="product-finder__header"
+      ref="toggle"
+      aria-expanded="true"
+      aria-controls="{{ panel_id }}"
+    >
+      {%- if has_heading -%}
+        {{ heading_html }}
+      {%- endif -%}
+      <span class="product-finder__toggle" aria-hidden="true">
+        {% render 'icon', icon: 'plus', class: 'product-finder__toggle-icon' %}
+      </span>
+    </button>
+    <div class="product-finder__panel" id="{{ panel_id }}" ref="panel">
+      <div class="product-finder__panel-inner" ref="panelInner">
+        <div class="product-finder__fields">
+          {{ fields_html }}
+        </div>
+        {{ button_html }}
+      </div>
+    </div>
+    <noscript>
+      {%- comment -%}
+        scoped-product-finder.css hides a mobile-collapsible panel until the component's first sync so
+        first paint does not jump (see the SCSS). With no JS nothing would ever show it — undo that here.
+      {%- endcomment -%}
+      <style>
+        .product-finder__panel {
+          display: block !important;
+        }
+      </style>
+      <a class="product-finder__fallback" href="{{ target_url }}">{{ 'actions.continue_shopping' | t }}</a>
+    </noscript>
+  </form>
+</product-finder>

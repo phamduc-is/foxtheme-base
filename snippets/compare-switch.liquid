@@ -1,0 +1,24 @@
+{% doc %}
+  Renders a switch toggle (<compare-switch>) to enable/disable the product compare feature.
+
+  @param {string} unique_id - Unique suffix for the checkbox id/label association (e.g. section.id), to avoid duplicate ids when rendered multiple times.
+{% enddoc %}
+<compare-switch class="flex items-center switch">
+  <input
+    ref="checkbox"
+    on:change="/onSwitch"
+    class="switch__checkbox visually-hidden"
+    id="CompareSwitch-{{ unique_id }}"
+    type="checkbox"
+  >
+  <label
+    class="switch__label flex items-center gap-2"
+    for="CompareSwitch-{{ unique_id }}"
+  >
+    <span class="text-nowrap">
+      {{- 'accessibility.compare' | t -}}
+      :
+    </span>
+    <span class="switch__slider"></span>
+  </label>
+</compare-switch>

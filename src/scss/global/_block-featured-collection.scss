@@ -1,0 +1,19 @@
+@use "../mixins" as *;
+
+// ─── Featured collection ──────────────────────────────────────────────────────
+
+.featured-collection-block {
+  &__header {
+    .carousel__controls {
+      margin: 0;
+    }
+  }
+
+  @include media-breakpoint-down(md) {
+    &__header {
+      .carousel__controls {
+        display: none;
+      }
+    }
+  }
+}

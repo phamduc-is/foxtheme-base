@@ -1,0 +1,219 @@
+{% doc %}
+  Markup for the icon-box theme block (no schema).
+
+  @param {string} icon_html - Captured output of the static `_icon` block, which owns every icon setting.
+  @param {string} [content_html] - Rendered content markup — the static `_text-plain` heading + body blocks. Legacy single-capture path; ignored when `heading_html` is given.
+  @param {string} [heading_html] - Rendered heading text block on its own, so the link caret can sit inline beside it.
+  @param {string} [description_html] - Rendered description text block; only read alongside `heading_html`.
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+  @param {string} [content_direction] - Desktop flex direction: 'column' | 'row'
+  @param {string} [content_direction_mobile] - Mobile flex direction; falls back to `content_direction`
+  @param {string} [horizontal_alignment] - Horizontal-axis flex value: 'flex-start' | 'center' | 'flex-end' (also drives text-align)
+  @param {string} [vertical_alignment] - Vertical-axis flex value: 'flex-start' | 'center' | 'flex-end'
+  @param {string} [horizontal_alignment_mobile] - Mobile horizontal-axis flex value
+  @param {string} [vertical_alignment_mobile] - Mobile vertical-axis flex value
+  @param {number} [column_gap] - Horizontal gap in px
+  @param {number} [row_gap] - Vertical gap in px
+  @param {number} [column_gap_mobile] - Horizontal gap in px on mobile
+  @param {number} [row_gap_mobile] - Vertical gap in px on mobile
+  @param {number} [content_row_gap] - Gap between heading and text in px
+  @param {string} [padding_style] - Pre-rendered `spacing-style` custom-property vars for card padding (consumed by `.icon-box--card`)
+  @param {string} [link] - Makes the whole box clickable
+  @param {boolean} [show_link_icon] - Render the link icon
+  @param {string} [link_icon] - Icon name for the link icon (default: 'caret-right')
+  @param {string} [link_icon_position] - Where the caret goes: 'end' (default — the button at the trailing edge: after the content in a row, below it in a column) | 'after_heading' (inline beside the heading, any layout)
+  @param {string} [link_icon_style] - Trailing-edge icon chrome: 'solid' (default — a small button chip) | 'default' (a bare 20px icon). Ignored at the 'after_heading' position, which is always bare.
+  @param {color} [link_icon_color] - Bare trailing icon colour; blank inherits the ambient colour. Only read when `link_icon_style` is 'default'.
+  @param {string} [link_icon_size] - Bare trailing icon size modifier from the `.icon--*` scale: 'extra-small' | 'small' | 'medium' | 'large' (default, 2rem) | 'extra-large'. Only read when `link_icon_style` is 'default'.
+  @param {string} [style] - 'standard' | 'card'
+  @param {boolean} [inherit_color_scheme] - Card only; when false the `color_scheme` class is applied
+  @param {string} [color_scheme] - Card colour scheme id
+  @param {string} [border] - 'none' | 'solid'
+  @param {number} [border_width] - Border width in px
+  @param {number} [border_opacity] - Border opacity
+  @param {color} [border_color] - Custom resting border colour (at `border_opacity`); blank keeps the scheme border. Only read with `border: 'solid'`, plus as the hover colour fallback.
+  @param {boolean} [border_hover] - Card only; show the border at full strength on hover. Default false
+  @param {color} [border_color_hover] - Hover border colour; blank falls back to `border_color` at full alpha, then the text colour
+  @param {number} [border_radius] - Corner radius in px
+{% enddoc %}
+{{ 'scoped-icon-box.css' | asset_url | stylesheet_tag }}
+{%- liquid
+  assign content_direction = content_direction | default: 'column'
+  assign content_direction_mobile = content_direction_mobile | default: content_direction
+  assign link_icon = link_icon | default: 'caret-right'
+  assign link_icon_style = link_icon_style | default: 'solid'
+
+  # The caret sits inline beside the heading only when the heading is captured
+  # separately — the legacy `content_html` path has no seam to insert it into.
+  assign inline_caret = false
+  if link != blank and show_link_icon and link_icon_position == 'after_heading' and heading_html != blank
+    assign inline_caret = true
+  endif
+
+  assign h_align = horizontal_alignment
+  assign v_align = vertical_alignment
+  if content_direction == 'row'
+    assign h_align = 'flex-start'
+  else
+    assign v_align = 'flex-start'
+  endif
+
+  assign h_align_mobile = horizontal_alignment_mobile
+  assign v_align_mobile = vertical_alignment_mobile
+  if content_direction_mobile == 'row'
+    assign h_align_mobile = 'flex-start'
+  else
+    assign v_align_mobile = 'flex-start'
+  endif
+-%}
+{%- capture inline_style -%}
+  --content-gap: {{ content_row_gap | divided_by: 10.0 }}rem;
+  {% render 'layout-panel-style',
+    type: 'flex',
+    content_direction: content_direction,
+    h_alignment: h_align,
+    h_alignment_mobile: h_align_mobile,
+    v_alignment: v_align,
+    v_alignment_mobile: v_align_mobile
+  %}
+  {% render 'gap-style',
+    column_gap: column_gap,
+    row_gap: row_gap,
+    column_gap_mobile: column_gap_mobile,
+    row_gap_mobile: row_gap_mobile
+  %}
+  {% render 'border-style',
+    border: border,
+    border_width: border_width,
+    border_opacity: border_opacity,
+    border_radius: border_radius
+  %}
+  {%- if border_color != blank and border == 'solid' -%}
+    {%- comment -%}
+      Fold border_opacity into the custom border_color so BOTH settings apply together
+      (border-style only applies opacity to the scheme border color, not a custom one).
+      Mirror of feature-callouts.liquid / product-finder.liquid.
+    {%- endcomment -%}
+    {%- assign border_alpha = border_opacity | default: 100 | divided_by: 100.0 -%}
+    --border-color: {{ border_color | color_modify: 'alpha', border_alpha }};
+  {%- endif -%}
+  {%- liquid
+    # Hover reveals the border at full strength, so it reads even when the resting
+    # border is faint or switched off entirely. Its own colour first, then the resting
+    # colour (kept even under border none, so older templates keep their hover colour),
+    # else the SCSS falls back to the text colour.
+    assign hover_color = border_color_hover | default: border_color
+  -%}
+  {%- if border_hover and hover_color != blank -%}
+    --border-color-hover: {{ hover_color | color_modify: 'alpha', 1.0 }};
+  {%- endif -%}
+  {{ padding_style }}
+{%- endcapture -%}
+{%- capture wrapper_class -%}
+  icon-box icon-box--{{ style }} relative layout-panel-flex layout-panel-flex--{{ content_direction }}
+  {%- if content_direction != content_direction_mobile %} layout-panel-flex--{{ content_direction_mobile }}-mobile{%- endif %} gap-style
+  {%- if style == 'card' %} border-style
+    {%- if border == 'solid' %} icon-box--shadow{% endif -%}
+    {%- if border_hover %} icon-box--border-hover{% endif -%}
+    {%- unless inherit_color_scheme %} color-{{ color_scheme }}{% endunless -%}
+  {%- endif -%}
+{%- endcapture -%}
+<div
+  class="{{ wrapper_class }}"
+  style="{{ inline_style | strip | strip_newlines }}"
+  {{ shopify_attributes }}
+>
+  {% if link != blank %}
+    {%- liquid
+      # The stretched link has no content, so without a label it is a nameless
+      # link (axe link-name). Name it after the card's own heading.
+      assign box_link_label = heading_html | default: content_html | strip_html | strip | truncatewords: 12, ''
+    -%}
+    <a
+      href="{{ link }}"
+      class="absolute inset-0 focus-visible--absolute"
+      {% if box_link_label != blank %}aria-label="{{ box_link_label | escape }}"{% endif %}
+    ></a>
+  {% endif -%}
+  <div class="icon-box__icon flex flex-col shrink-0">
+    {{ icon_html }}
+  </div>
+  <div class="icon-box__content min-w-0 flex-grow flex flex-col relative">
+    {%- if heading_html != blank -%}
+      {%- if inline_caret -%}
+        {%- capture caret_html -%}{% render 'icon', icon: link_icon, size: 'extra-small', class: 'icon-box__heading-caret shrink-0' %}{%- endcapture -%}
+        {%- if heading_html contains '</p>' -%}
+          {%- comment -%}
+            Inject the caret INSIDE the heading's last paragraph so it trails the
+            final word. As a flex sibling it jumps to the content edge — and
+            centres against the middle line — the moment the heading wraps.
+          {%- endcomment -%}
+          {%- assign caret_close = caret_html | strip | append: '</p>' -%}
+          {{ heading_html | replace_last: '</p>', caret_close }}
+        {%- else -%}
+          {%- comment -%}
+            Heading isn't paragraph markup (a richtext list, say) — no last `</p>`
+            to ride on, so fall back to keeping the two on one row.
+          {%- endcomment -%}
+          <div class="icon-box__heading-row flex items-center">
+            {{ heading_html }}
+            {{ caret_html }}
+          </div>
+        {%- endif -%}
+      {%- else -%}
+        {{ heading_html }}
+      {%- endif -%}
+      {{ description_html }}
+    {%- else -%}
+      {{ content_html }}
+    {%- endif -%}
+  </div>
+  {%- liquid
+    assign show_arrow = false
+    if link != blank and show_link_icon and inline_caret == false
+      assign show_arrow = true
+    endif
+
+    comment
+      The caret sits on the cross axis, so which alignment governs it flips with the layout.
+      In a ROW the cross axis is vertical and the caret keeps riding the middle, whatever the
+      merchant picked. In a COLUMN it is horizontal, and `self-auto` hands the decision back to
+      the panel's own `align-items` — which `.layout-panel-flex--column` already reads from
+      `--horizontal-alignment` (and `--horizontal-alignment-mobile` below md). So the caret
+      tracks the Icon box alignment setting for free, at both breakpoints, with nothing to
+      keep in sync here.
+    endcomment
+    if content_direction_mobile == 'row'
+      assign arrow_align = 'self-center'
+    else
+      assign arrow_align = 'self-auto'
+    endif
+    if content_direction == 'row'
+      assign arrow_align = arrow_align | append: ' md:self-center'
+    else
+      assign arrow_align = arrow_align | append: ' md:self-auto'
+    endif
+  -%}
+  {%- if show_arrow -%}
+    <div class="icon-box__action shrink-0 flex flex-col {{ arrow_align }}">
+      {%- if link_icon_style == 'solid' -%}
+        <div class="icon-box__arrow rounded right-0 pointer-events-none btn btn--extra-small btn--secondary btn--icon-only">
+          {% render 'icon', icon: link_icon %}
+        </div>
+      {%- else -%}
+        {%- comment -%}
+          Bare icon, no chip: `.icon-box__arrow` is deliberately left off so the
+          card-hover inversion (which repaints the chip in the primary button
+          colours) doesn't reach it.
+        {%- endcomment -%}
+        {%- assign bare_icon_size = link_icon_size | default: 'large' -%}
+        {% render 'icon',
+          icon: link_icon,
+          size: bare_icon_size,
+          icon_color: link_icon_color,
+          class: 'pointer-events-none'
+        %}
+      {%- endif -%}
+    </div>
+  {%- endif -%}
+</div>

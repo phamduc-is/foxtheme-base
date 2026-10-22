@@ -1,0 +1,180 @@
+{% doc %}
+  Theme block entry for `blocks/featured-collection.liquid` (no schema). Product rows with `content_for` must be captured in the block file.
+
+  @param {object} block_settings - Block settings (`block.settings`).
+  @param {string} attributes - Theme editor attributes (`block.shopify_attributes`).
+  @param {string} list_items - Captured product column HTML (includes static `content_for` per product).
+{% enddoc %}
+{%- liquid
+  assign collection = block_settings.collection
+  assign type = block_settings.type
+  assign columns_xxl = block_settings.columns_xxl
+  assign columns_xl = columns_xxl | at_most: 4
+  assign columns_lg = columns_xxl | at_most: 3
+  assign columns_md = columns_xxl | at_most: 3
+  assign columns_mobile = block_settings.columns_mobile | plus: 0
+  assign enable_swipe_on_mobile = block_settings.enable_swipe_on_mobile
+  assign swipe_custom_width_column = block_settings.swipe_custom_width_column
+  assign column_gap = block_settings.column_gap
+
+  assign controls_in_header = true
+  if block_settings.carousel_controls_position == 'below'
+    assign controls_in_header = false
+  endif
+
+  # Swiper builds no bullets unless it is told to, and this config never asked — which is
+  # why `dots` rendered an empty pagination element and `group` showed only the arrows.
+  # In the header the layout is fixed to arrows–counter–arrows, so there are no dots there.
+  assign show_dots = false
+  unless controls_in_header
+    if block_settings.carousel_controls == 'dots' or block_settings.carousel_controls == 'group' or block_settings.carousel_controls == 'float_dots'
+      assign show_dots = true
+    endif
+  endunless
+
+  assign swipe_mobile_classes = ''
+  assign swipe_mobile_inner_classes = ''
+
+  if enable_swipe_on_mobile
+    assign swipe_mobile_classes = 'swipe__element swipe-mobile swipe-mobile--[columns]-cols' | replace: '[columns]', columns_mobile
+    assign swipe_mobile_inner_classes = 'swipe__inner'
+
+    if swipe_custom_width_column
+      assign swipe_mobile_classes = swipe_mobile_classes | append: ' swipe-mobile--custom-width'
+    endif
+    if block_settings.swipe_rows_mobile > 1
+      assign swipe_mobile_classes = swipe_mobile_classes | append: ' swipe-mobile--rows-' | append: block_settings.swipe_rows_mobile
+    endif
+  endif
+
+  if collection != blank
+    assign collection_name = collection.title
+  else
+    assign collection_name = 'placeholders.collection_title' | t
+  endif
+-%}
+
+{% capture wrapper_style %}
+  {% render 'border-style', settings: block_settings %}
+  {% render 'spacing-style', settings: block_settings %}
+  {% render 'size-style', settings: block_settings %}
+{% endcapture %}
+
+{% capture container_style %}
+  {% render 'layout-panel-style', settings: block_settings, type: 'grid', columns_mobile: columns_mobile, columns_md: columns_md, columns_lg: columns_lg, columns_xl: columns_xl, columns_xxl: columns_xxl %}
+  {% render 'gap-style', settings: block_settings %}
+  --swipe-column-width: {{ block_settings.swipe_column_width | divided_by: 100.0 }};
+{% endcapture %}
+<div
+  class="featured-collection-block size-style spacing-style border-style color-{{ block_settings.color_scheme }}"
+  style="{{ wrapper_style | strip_newlines | strip }}"
+  {{ attributes }}
+>
+  <featured-collection
+    class="flex flex-col gap-6 md:gap-7"
+    style="{{ container_style | strip_newlines | strip }}"
+  >
+    <div class="featured-collection-block__header flex items-center justify-between gap-2">
+      <h3 class="h2">{{ collection_name }}</h3>
+      {%- comment -%}
+        Two mount points. In the title row the layout is fixed to arrows–counter–arrows: it
+        is the only shape that fits a content-sized item in a `justify-between` header, and
+        the floating layouts cannot work there at all — the absolute buttons position
+        against the nearest positioned ancestor and the reveal is `.carousel:hover`, neither
+        of which reaches an element outside the carousel. Moving the controls below the
+        carousel puts them inside it, which is what makes every layout reachable.
+
+        `type` is part of the gate, not `controls_in_header` alone. The position setting is
+        `visible_if` type == 'carousel', which HIDES it in the editor but KEEPS its stored
+        value, so a block switched to Grid still read `header` (the default) and this row
+        rendered arrows and a counter with no carousel under them. `hidden md:flex` did not
+        save it: `.md\:flex` is emitted after `.hidden` at equal specificity, so they were
+        visible from 768px up — and dead, since featured-collection.js wires the arrows and
+        bails when `ref="slider"` is absent.
+      {%- endcomment -%}
+      {%- if controls_in_header and type == 'carousel' -%}
+        {%- comment -%}
+          The counter element is rendered here but filled by featured-collection.js, not by
+          the carousel: this row sits outside <flex-carousel>, whose own counter lookup is
+          scoped to itself. `setupCounter` accepts an explicit element for that case.
+        {%- endcomment -%}
+        {% render 'carousel-controls',
+          ref: 'controls',
+          navigation: 'group',
+          combined: 'counter',
+          pagination: 'none',
+          class: 'hidden md:flex'
+        %}
+      {%- endif -%}
+    </div>
+    {%- if type == 'carousel' -%}
+      <flex-carousel
+        ref="slider"
+        class="carousel carousel--grid block {% render 'carousel-class', settings: block_settings %}"
+      >
+        <script type="application/json" ref="config">
+          {
+            "slidesPerView": {{ columns_md }},
+            "slidesPerGroup": {% render 'carousel-slides-per-group' %},
+            "spaceBetween": {{ column_gap }},
+            "loop": false,
+            "autoplay": false,
+            "counter": false,
+            "loopAddBlankSlides": false,
+            "mousewheel": {
+              "enabled": true,
+              "forceToAxis": true,
+              "thresholdTime": 300,
+              "thresholdDelta": 10
+            },
+            "navigationPosition": {
+              "enabled": true,
+              "selector": ".product-card__media"
+            },
+            "navigation": true,
+            "pagination": {% if show_dots %}{ "type": "bullets" }{% else %}false{% endif %},
+            "destroyBelow": 768,
+            "breakpoints": {
+              "1024": {
+                "slidesPerView": {{ columns_lg }}
+              },
+              "1200": {
+                "slidesPerView": {{ columns_xl }}
+              },
+              "1440": {
+                "slidesPerView": {{ columns_xxl }}
+              }
+            }
+          }
+        </script>
+        <div
+          {% if block_settings.carousel_edge_fade_mobile %}
+            is="swipe-component"
+          {% endif -%}
+          class="{% render 'carousel-class', settings: block_settings, part: 'viewport-mobile' %}"
+        >
+          <div class="{% render 'carousel-class', settings: block_settings, part: 'viewport' %}">
+            <div
+              class="swiper {{ swipe_mobile_classes }}"
+              ref="container"
+              style="--f-columns-xxl: {{ columns_xxl }};--f-columns-mobile: {{ columns_mobile }};"
+            >
+              <div {% if settings.animations_enabled %}is="motion-group" {% render 'motion-attributes', type: 'fade-up', sequence: true %}{% endif %} class="swiper-wrapper layout-panel-grid-mobile gap-style {{ swipe_mobile_inner_classes }}">
+                {{- list_items -}}
+              </div>
+            </div>
+          </div>
+        </div>
+        {%- unless controls_in_header -%}
+          {% render 'carousel-controls', ref: 'controls', settings: block_settings, class: 'hidden md:flex' %}
+        {%- endunless -%}
+      </flex-carousel>
+    {%- else -%}
+      <div class="featured-collection-block__wrapper {{ swipe_mobile_classes }}">
+        <div {% if settings.animations_enabled %}is="motion-group" {% render 'motion-attributes', type: 'fade-up', sequence: true %}{% endif %} class="featured-collection-block__inner layout-panel-grid gap-style {{ swipe_mobile_inner_classes }}">
+          {{- list_items -}}
+        </div>
+      </div>
+    {%- endif -%}
+  </featured-collection>
+</div>

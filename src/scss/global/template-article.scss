@@ -1,0 +1,126 @@
+@use "../mixins" as *;
+
+// ─── Article Layout ───────────────────────────────────────────────────────────
+
+.article__main {
+  row-gap: var(--article-main-row-gap);
+}
+
+.article__wrapper > * + * {
+  margin-top: 2.4rem;
+}
+
+.article__footer > * + * {
+  margin-top: 2.4rem;
+}
+
+.article--width {
+  position: relative;
+  width: 100%;
+  max-width: 88rem;
+  margin-inline: auto;
+}
+
+// ─── Article Header ───────────────────────────────────────────────────────────
+
+.article__header {
+  .badge {
+    border: 0.1rem solid rgb(var(--color-border) / 20%);
+  }
+}
+
+// ─── Article Comments ─────────────────────────────────────────────────────────
+
+.article {
+  .comment {
+    padding-bottom: 2.4rem;
+    border-bottom: 0.1rem solid rgb(var(--color-border) / 10%);
+  }
+
+  .comment p {
+    margin-block-end: 1.2rem;
+  }
+
+  .comment + .comment {
+    margin-block-start: 2.4rem;
+  }
+
+  .comment-form {
+    .form-footer {
+      margin-block-start: 2.4rem;
+    }
+  }
+
+  .form-status-list {
+    margin-bottom: 2rem;
+
+    ~ ul {
+      margin-bottom: 2rem;
+    }
+  }
+
+  .form-message svg {
+    flex-shrink: 0;
+  }
+
+  .form-field + .form-field {
+    margin-block-start: 2rem;
+  }
+
+  .form-row .form-field {
+    margin-block-start: 0 !important;
+  }
+
+  .comment-form__warning,
+  .form-message--error {
+    margin-block-start: 0.8rem;
+  }
+
+  .pagination {
+    margin-block-start: 2rem;
+  }
+}
+
+// ─── Article Navigation ───────────────────────────────────────────────────────
+
+.article-navigation {
+  padding-block-start: 2.4rem;
+  border-block-start: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+}
+
+// ─── Article Social Sharing & Tags ────────────────────────────────────────────
+
+.article-tags__heading,
+.article__share-title {
+  font-family: var(--font-button--family);
+  font-weight: var(--font-button--weight);
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(md) {
+  .article__wrapper > * + * {
+    margin-top: 4rem;
+  }
+
+  .article {
+    .comment {
+      padding-block-end: 3.2rem;
+    }
+
+    .comment + .comment {
+      margin-block-start: 4rem;
+    }
+
+    .comment-form .form-footer {
+      margin-block-start: 3.2rem;
+    }
+  }
+}
+
+@include media-breakpoint-up(lg) {
+  .article--width {
+    max-width: 88rem;
+    margin-inline: auto;
+  }
+}

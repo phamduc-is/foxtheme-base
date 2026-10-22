@@ -1,0 +1,99 @@
+# ── Linguist ─────────────────────────────────────────────────────────────────
+*.json linguist-language=jsonc
+
+# ── Merge drivers ────────────────────────────────────────────────────────────
+# Kích hoạt một lần trên mỗi máy sau khi clone:
+#   ./scripts/setup-merge-drivers.sh
+#
+# Script tự register:
+#   - merge.ours.driver (global)        → cho merge=ours
+#   - merge.foxlocale.driver (per-repo) → cho merge=foxlocale
+
+# ── Per-project: luôn giữ version của child ──────────────────────────────────
+templates/*.json           merge=ours
+config/settings_data.json  merge=ours
+bitbucket-pipelines.yml    merge=ours
+README.md                  merge=ours
+# CHANGELOG.md is intentionally NOT merge=ours — it is CORE's changelog, synced
+# DOWN so a child fork sees what each core version changed. A fork never keeps or
+# regenerates its own (it must not run the Auto-release step — see init-child).
+release-notes.md           merge=ours
+
+# ── Source code child sở hữu ─────────────────────────────────────────────────
+src/scss/modules/*         merge=ours
+src/js/custom/*            merge=ours
+src/js/global/custom.js    merge=ours
+
+# ── Per-fork theme identity ──────────────────────────────────────────────────
+# Child fork sets display name + Shopify Theme Store version once and
+# `yarn core:sync` never overwrites these. See FORK-WORKFLOW.md §4.
+snippets/theme-name.liquid    merge=ours
+snippets/theme-version.liquid merge=ours
+
+# ── Built output ─────────────────────────────────────────────────────────────
+assets/*.css               merge=ours
+
+# ── Locales: JSON-aware 3-way merge ──────────────────────────────────────────
+locales/*.json             merge=foxlocale
+
+# ── Claude Code toolkit: core-owned, KHÔNG merge=ours ────────────────────────
+# .claude/ (skills, agents, commands, hooks, settings.json, TOOLKIT-DESIGN.md,
+# USAGE.md) cố ý KHÔNG có rule ở đây → default merge → child INHERIT toolkit mới
+# nhất từ core khi `yarn core:sync`. Đừng thêm merge=ours cho .claude/ (sẽ đóng
+# băng toolkit ở child). Override per-dev ở .claude/settings.local.json (đã
+# gitignore, ngoài sync).
+# Lưu ý: rule `README.md merge=ours` ở trên KHÔNG neo root nên khớp cả
+# `.claude/README.md` → vì vậy dev-guide đặt tên `.claude/USAGE.md` (inherit
+# đúng). Xem .claude/USAGE.md + .claude/TOOLKIT-DESIGN.md §10.
+#
+# NGOẠI LỆ DUY NHẤT trong .claude/: CHILD.md là file child-owned (quy ước
+# riêng + builder agent dev tự viết). Nó — và chỉ nó — phải GIỮ bản của child
+# qua mọi lần sync → merge=ours, neo đúng path để không khớp file khác. Core
+# chỉ ship template ban đầu; sau đó là của child.
+/.claude/CHILD.md          merge=ours
+
+# ── Ratchet baselines: derived state, mỗi fork một superset ──────────────────
+# Baseline của child = vi phạm của core + vi phạm riêng của child, nên nó luôn
+# là SUPERSET của bản core. Lấy bản core (--theirs) sẽ xoá sạch phần riêng của
+# child → check fail hàng loạt. Trộn text cũng không được: hai file là mảng
+# OBJECT nhiều dòng (union → JSON hỏng), hai file còn lại là mảng chuỗi mà phần
+# tử cuối không có dấu phẩy (hai bên cùng append → JSON hỏng).
+# → merge=ours là phía sai ít nhất, vì checker BẤT ĐỐI XỨNG: nó chỉ hỏi
+#   `!baseline.has(key)`, nên key THỪA thì vô hại còn key THIẾU mới fail. Giữ
+#   bản child chỉ rủi ro thiếu entry core thêm sau — và check báo ngay.
+# KHÔNG sửa tay khi conflict, cũng KHÔNG auto-regen trong core:sync (sẽ âm thầm
+# nuốt vi phạm mới — đúng thứ ratchet sinh ra để chặn). Đọc check fail rồi chạy
+# lại đúng script `yarn check-<rule>:baseline` và commit.
+/.js-contract-baseline.json          merge=ours
+/.selector-interp-baseline.json      merge=ours
+/.shorthand-scheme-var-baseline.json merge=ours
+/.capability-headers-baseline.json   merge=ours
+
+# ── Không có rule — manual merge (safety net) ────────────────────────────────
+# Merge-strategy đi theo độ "thuần" của lớp: thuần-logic → core, thuần-visual →
+# giữ child, mixed → manual. Xem FORK-WORKFLOW.md §8 + §10.
+#
+# config/settings_schema.json   → core thêm settings mới, child thêm settings
+#                                  riêng → giữ cả hai phía, không auto-resolve.
+#
+# sections/*.liquid             → MIXED (logic + contract + visual trong 1 file).
+# blocks/*.liquid                  Giữ markup/style của child, áp Liquid logic +
+# snippets/*.liquid                ref/data-* của core. Conflict CÓ CHỦ Ý → dev /
+#                                  fork-sync-resolver review tay.
+#
+# src/scss/global/_component-*  → VISUAL THUẦN = child design layer. Child sửa
+#   _block-* _section-* + token     trực tiếp là BÌNH THƯỜNG (đây là theme thật).
+#   (_typography _base _layout      Khi sync: GIỮ bản child (--ours) nhưng KHÔNG
+#   _spacing _helpers _resets       câm — resolver in diff core kèm note để soi
+#   _keyframes)                     CSS bug fix / feature. File child chưa đụng →
+#                                   tự nhận thay đổi core (3-way auto-merge).
+#
+# src/scss/global/theme.scss    → MANIFEST/entry (append index). Giữ CẢ HAI dòng
+#   _blocks.scss _sections.scss     @use: của core + của child → child nhận
+#                                   component MỚI của core. KHÔNG để merge=ours.
+#
+# src/scss/mixins/*             → core infra (breakpoints/utilities). Sync from
+#                                  core; child không nên sửa.
+#
+# src/js/modules/*              → contract/logic, child KHÔNG được sửa. Conflict
+#                                  = vi phạm contract → git checkout --theirs.

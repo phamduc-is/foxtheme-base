@@ -1,0 +1,58 @@
+// @capability Inline SVG icon sizing scale — one .icon box sized by --icon-size with modifiers from extra-small (1.2rem) to extra-extra-large (3.2rem), plus custom desktop/mobile sizes and an image mode.
+// @when Any inline icon; pick a size modifier or set --icon-custom-size instead of sizing SVGs ad hoc. Rendered by the `icon` snippet; no pairing JS.
+// @contract .icon > svg; modifiers .icon--extra-small/--small/--semi-small/--medium/--large/--extra-large/--extra-extra-large, .icon--custom-size (uses --icon-custom-size / --icon-custom-size-mobile), .icon--image.
+// @keywords icon, svg size, icon scale, inline icon, icon size variable
+
+@use "../mixins" as *;
+
+// ─── Icon ─────────────────────────────────────────────────────────────────────
+
+.icon {
+  display: inline-flex;
+  width: var(--icon-size, 1.6rem);
+  height: var(--icon-size, 1.6rem);
+
+  > svg {
+    width: 100%;
+  }
+}
+
+.icon--extra-small {
+  --icon-size: 1.2rem;
+}
+
+.icon--small {
+  --icon-size: 1.4rem;
+}
+
+.icon--semi-small {
+  --icon-size: 1.6rem;
+}
+
+.icon--medium {
+  --icon-size: 1.8rem;
+}
+
+.icon--large {
+  --icon-size: 2rem;
+}
+
+.icon--extra-large {
+  --icon-size: 2.4rem;
+}
+
+.icon--extra-extra-large {
+  --icon-size: 3.2rem;
+}
+
+.icon--custom-size {
+  --icon-size: var(--icon-custom-size, 1.6rem);
+
+  @include media-breakpoint-down(md) {
+    --icon-size: var(--icon-custom-size-mobile, 1.6rem);
+  }
+}
+
+.icon--image {
+  height: auto;
+}

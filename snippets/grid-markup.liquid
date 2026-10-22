@@ -1,0 +1,113 @@
+{% doc %}
+  Grid layout wrapper for `blocks/grid.liquid` (no schema): spacing, border, size, column panel, and nested `children`.
+
+  @param {string} children - Captured `content_for 'blocks'` output.
+  @param {object} settings - Block settings.
+  @param {string} shopify_attributes - Theme editor attributes for the outer wrapper.
+  @param {string} [class] - Extra classes on the outer grid wrapper.
+  @param {string} [styles] - Extra inline styles on the outer grid wrapper.
+
+  @example
+  {% render 'grid-markup', children: children, settings: block.settings, shopify_attributes: block.shopify_attributes %}
+{% enddoc %}
+{% liquid
+  if settings.custom_columns != blank
+    assign custom_columns_array = settings.custom_columns | split: ','
+    for custom_column in custom_columns_array
+      assign pair = custom_column | strip
+      if pair == ''
+        continue
+      endif
+
+      assign custom_column_key = pair | split: ':' | first | strip
+      assign value_str = pair | split: ':' | last | strip
+      if value_str == ''
+        continue
+      endif
+      assign custom_column_value = value_str | plus: 0
+
+      comment
+        Guard on the NUMBER, because the `value_str == ''` guard above cannot catch every
+        malformed pair. Liquid's `split` drops a trailing empty element, so `"md:"` splits
+        to `["md"]` and `| last` returns `"md"` — not `""` — which sails past that guard and
+        then `| plus: 0` evaluates to 0. A bare key with no colon (`"lg"`) takes the same
+        path. The result was `--f-columns-md: 0`, an invalid `repeat(0, …)`, and the
+        breakpoint silently collapsing to a single column from nothing but a typo.
+        `"abc"` and `":9"` were already safe via the unmatched-key fallthrough.
+      endcomment
+      if custom_column_value < 1
+        continue
+      endif
+
+      case custom_column_key
+        when 'mb'
+          assign columns_mobile = custom_column_value
+        when 'md'
+          assign columns_md = custom_column_value
+        when 'lg'
+          assign columns_lg = custom_column_value
+        when 'xl'
+          assign columns_xl = custom_column_value
+        when 'xxl'
+          assign columns_xxl = custom_column_value
+      endcase
+    endfor
+  endif
+
+  assign column_separator = settings.column_separator | default: 'none'
+  assign separator_color = settings.column_separator_color
+  if separator_color == blank
+    assign separator_color = 'rgb(var(--color-border) / var(--color-border-alpha))'
+  endif
+  assign separator_thickness = settings.column_separator_thickness | default: 1
+  # Compare against false, not truthiness: a grid saved before this setting
+  # existed has nil here, and nil must keep the pre-existing behaviour (shown).
+  assign separator_on_mobile = true
+  if settings.column_separator_mobile == false
+    assign separator_on_mobile = false
+  endif
+  # 0 means "span the whole grid" — the CSS wants a length, so translate it here.
+  assign separator_height = '100%'
+  if settings.column_separator_height > 0
+    assign separator_height = settings.column_separator_height | divided_by: 10.0 | append: 'rem'
+  endif
+  assign separator_height_mobile = '100%'
+  if settings.column_separator_height_mobile > 0
+    assign separator_height_mobile = settings.column_separator_height_mobile | divided_by: 10.0 | append: 'rem'
+  endif
+%}
+{%- capture grid_block_content_class -%}
+  grid-block-content layout-panel-grid gap-style {% if request.design_mode %} grid-block-content--design-mode{% endif %}
+  {% if settings.enable_swipe_on_mobile %} swipe__inner{% endif %}
+  {%- if column_separator != 'none' %} grid-block-content--separator{% if column_separator == 'dashed' %} grid-block-content--separator-dashed{% endif %}{% unless separator_on_mobile %} grid-block-content--separator-desktop-only{% endunless %}{% endif -%}
+{%- endcapture -%}
+{%- capture grid_block_class -%}
+  grid-block spacing-style border-style size-style{% if settings.inherit_color_scheme == false %} color-{{ settings.color_scheme }}{% endif %}{{ class }}
+  grid-block--width-{{ settings.width }} grid-block--width-mobile-{{ settings.width_mobile }}
+  {% if settings.enable_swipe_on_mobile %} swipe-mobile swipe-mobile--{{ settings.columns_mobile }}-cols{% endif %}
+  {% if settings.swipe_custom_width_column %} swipe-mobile--custom-width{% endif %}
+  {% if settings.enable_swipe_on_mobile and settings.swipe_rows_mobile > 1 %} swipe-mobile--rows-{{ settings.swipe_rows_mobile }}{% endif %}
+{%- endcapture -%}
+{%- capture grid_block_content_style -%}
+  {% render 'layout-panel-style', settings: settings, type: 'grid', columns_mobile: columns_mobile, columns_md: columns_md, columns_lg: columns_lg, columns_xl: columns_xl, columns_xxl: columns_xxl %}
+  {% render 'gap-style', settings: settings %}
+  {%- if column_separator != 'none' -%}
+    --grid-sep-color: {{ separator_color }};--grid-sep-thickness: {{ separator_thickness | divided_by: 10.0 }}rem;--grid-sep-height: {{ separator_height }};--grid-sep-height-mobile: {{ separator_height_mobile }};
+  {%- endif -%}
+{%- endcapture -%}
+{%- capture grid_block_style -%}
+  {% render 'spacing-style', settings: settings %}{% render 'border-style', settings: settings %}{% render 'size-style', settings: settings, type: 'grid', swipe_on_mobile: settings.enable_swipe_on_mobile %}{{ styles }}
+  {% if settings.swipe_custom_width_column %} --swipe-column-width: {{ settings.swipe_column_width | divided_by: 100.0 }};{% endif %}
+{%- endcapture -%}
+<div
+  class="{{ grid_block_class | strip_newlines }}"
+  style="{{ grid_block_style | strip | strip_newlines }}"
+  {{ shopify_attributes }}
+>
+  <div
+    class="{{ grid_block_content_class | strip_newlines }}"
+    style="{{ grid_block_content_style | strip | strip_newlines }}"
+  >
+    {{- children -}}
+  </div>
+</div>

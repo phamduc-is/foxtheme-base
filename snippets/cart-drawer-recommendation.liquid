@@ -1,0 +1,173 @@
+{% doc %}
+  Renders the cart drawer product recommendations carousel. Recommendations can be
+  manual (from the block settings) or API-driven (related products to the first cart item).
+
+  @param {object} section - The cart drawer section (provides the id the Section Rendering API fetches)
+  @param {object} block_settings - Settings of the `_cart-recommendations` static block. NOT named
+
+  `settings`: that would shadow the global settings object this snippet also reads.
+
+  @param {string} [block_attributes] - Theme editor attributes ({{ block.shopify_attributes }})
+
+  @example
+  {% render 'cart-drawer-recommendation', section: section, block_settings: block.settings %}
+{% enddoc %}
+
+{% liquid
+  assign first_product_id = cart.items.first.product_id
+  assign limit = block_settings.cart_recommendations_limit
+
+  # If manual products are selected, mark as using manual products to skip API fetch
+  assign manual_products = block_settings.cart_product_recommendations
+  if manual_products != blank
+    assign use_manual_products = 'true'
+    assign performed_state = 'true'
+  else
+    assign use_manual_products = 'false'
+    assign performed_state = recommendations.performed
+  endif
+
+  # Card style: the block may override the theme setting, or follow it (blank). Box cards paint
+  # themselves with the global card scheme, so the scheme override is read under the RESOLVED
+  # style alone — only a box card has a panel to repaint.
+  assign pcard_style = block_settings.pcard_style | default: settings.pcard_style | default: 'default'
+  assign card_color_scheme = null
+  if pcard_style == 'box' and block_settings.pcard_box_custom_color_scheme
+    assign card_color_scheme = block_settings.color_scheme
+  endif
+%}
+<product-recommendations
+  class="cart-drawer__recommendation overflow-hidden block"
+  id="cart-recommendations-{{ section.id }}"
+  data-section-id="{{ section.id }}"
+  data-url="{{ routes.product_recommendations_url }}?limit={{ limit }}"
+  data-product-id="{{ first_product_id }}"
+  data-intent="related"
+  data-use-manual-products="{{ use_manual_products }}"
+  data-recommendations-performed="{{ performed_state }}"
+  style="--cart-thumbnail-border-radius: {{ settings.cart_thumbnail_border_radius | divided_by: 10 }}rem;"
+  {{ block_attributes }}
+>
+  {% liquid
+    assign has_recommendations = false
+    assign products = block_settings.cart_product_recommendations
+    assign is_manual_products = false
+
+    # If manual products are selected, use them directly
+    if products != blank
+      assign is_manual_products = true
+      assign product_count = products.count
+    elsif recommendations.performed and recommendations.products_count > 0
+      # Otherwise use API recommendations if available
+      assign products = recommendations.products
+      assign product_count = recommendations.products_count
+    elsif recommendations.performed
+      # The API had nothing for this product (a small catalogue, no purchase history). Fall back
+      # to the catalogue minus the product itself, as the recommendations section does — the
+      # shopper has just watched a skeleton for this row, so an empty answer would make it
+      # vanish under them. Only a near-empty store still hides the row.
+      assign products = collections.all.products | reject: 'id', first_product_id
+      assign product_count = products.size
+    endif
+
+    if product_count > 0
+      assign has_recommendations = true
+    endif
+
+    # Not fetched yet (no manual products either): the row is PENDING, not empty. The wrapper
+    # hides on `data-has-recommendations="false"`, so "false" here hid the skeleton the JS is
+    # about to replace — the list looked like it appeared from nothing. The fetched markup
+    # carries the real answer, and hides the row then if the API had nothing.
+    if is_manual_products == false and recommendations.performed == false
+      assign has_recommendations = true
+    endif
+  %}
+  {% if is_manual_products or recommendations.performed %}
+    {% capture list_items %}
+      {% for product in products, limit: limit %}
+        <div class="cart-drawer__recommendation-product swiper-slide">
+          {% render 'product-card-markup',
+            product: product,
+            view_event_context: 'recommendation',
+            mode: 'horizontal',
+            mode_mobile: 'horizontal',
+            style: pcard_style,
+            color_scheme: card_color_scheme,
+            show_badges: false,
+            show_quick_add: block_settings.show_quick_add,
+            show_quick_add_mobile: block_settings.show_quick_add,
+            show_type: block_settings.show_type,
+            show_vendor: block_settings.show_vendor,
+            show_swatch: block_settings.show_swatches,
+            product_title_line_limit: block_settings.product_title_line_limit,
+            quick_add_button_layout: 'icon-only',
+            media_width: '7rem'
+          %}
+        </div>
+      {% endfor %}
+    {% endcapture %}
+  {% else %}
+    {% capture list_items %}
+      {% for i in (1..limit) %}
+        {%- comment -%}
+          The shape of the horizontal card that lands here (thumbnail + title + price), so the
+          fetched list replaces it in place instead of growing out of a near-invisible box.
+        {%- endcomment -%}
+        <div class="cart-drawer__recommendation-product swiper-slide">
+          <div class="cart-drawer__recommendation-placeholder" aria-hidden="true">
+            <div class="cart-drawer__recommendation-placeholder-thumb"></div>
+            <div class="cart-drawer__recommendation-placeholder-text">
+              <div class="cart-drawer__recommendation-placeholder-line"></div>
+              <div class="cart-drawer__recommendation-placeholder-line cart-drawer__recommendation-placeholder-line--short"></div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    {% endcapture %}
+  {% endif %}
+
+  <carousel-slider
+    class="cart-drawer__recommendation-wrapper carousel carousel--visible{% if product_count == 1 %} cart-drawer__recommendation--single{% endif %}"
+    data-has-recommendations="{{ has_recommendations }}"
+  >
+    <script type="application/json" ref="config">
+      {
+        "slidesPerView": "auto",
+        "spaceBetween": 5,
+        "loop": false,
+        "autoplay": false,
+        "counter": false,
+        "mousewheel": {
+          "enabled": true,
+          "forceToAxis": true,
+          "thresholdTime": 300,
+          "thresholdDelta": 10
+        },
+        "breakpoints": {
+          "1200": {
+            "spaceBetween": 10
+          }
+        }
+      }
+    </script>
+    {%- if is_manual_products or recommendations.performed -%}
+      <div class="cart-drawer__recommendation-heading flex items-center justify-between">
+        <span class="h5">{{ block_settings.cart_recommendations_title }}</span>
+        {% render 'carousel-controls', ref: 'controls', navigation: 'group', pagination: 'none' %}
+      </div>
+    {%- else -%}
+      {%- comment -%}
+        Pending: a heading-shaped line stands in for the title, and no controls — a counter that
+        reads "1/4" over cards that do not exist yet would be a claim, not a placeholder.
+      {%- endcomment -%}
+      <div class="cart-drawer__recommendation-heading" aria-hidden="true">
+        <div class="cart-drawer__recommendation-placeholder-line cart-drawer__recommendation-placeholder-line--short"></div>
+      </div>
+    {%- endif -%}
+    <div class="cart-drawer__recommendation-products swiper" ref="container">
+      <div class="swiper-wrapper">
+        {{ list_items }}
+      </div>
+    </div>
+  </carousel-slider>
+</product-recommendations>

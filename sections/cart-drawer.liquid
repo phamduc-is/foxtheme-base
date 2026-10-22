@@ -1,0 +1,203 @@
+{% if settings.cart_type == 'drawer' and template.name != 'cart' %}
+  <link
+    rel="stylesheet"
+    href="{{ 'cart-drawer.css' | asset_url }}"
+    media="print"
+    onload="this.media='all'"
+  >
+  <link
+    rel="stylesheet"
+    href="{{ 'cart-modules.css' | asset_url }}"
+    media="print"
+    onload="this.media='all'"
+  >
+  <script
+    src="{{ 'cart-drawer.js' | asset_url }}"
+    type="module"
+    fetchpriority="low"
+  ></script>
+  <script
+    src="{{ 'cart-items.js' | asset_url }}"
+    type="module"
+    fetchpriority="low"
+  ></script>
+  {% if settings.show_caculate_shipping_rate %}
+    <script
+      src="{{ 'cart-shipping.js' | asset_url }}"
+      type="module"
+      fetchpriority="low"
+    ></script>
+  {% endif %}
+  {%- comment -%}
+    Captured here and output inside cart-drawer-summary: `content_for` belongs to a section or a
+    block, never to a snippet. Capturing also puts the block's own answer in reach of the script
+    tag below, which has to stay out here: the block renders in the non-empty branch, so a
+    <script> beside it would first enter the DOM through the empty -> non-empty morph, where an
+    inserted script never executes and the custom element would stay undefined.
+  {%- endcomment -%}
+  {%- capture cart_recommendations -%}
+    {% content_for 'block', type: '_cart-recommendations', id: 'cart-recommendations' %}
+  {%- endcapture -%}
+  {%- assign cart_recommendations = cart_recommendations | strip -%}
+  {%- comment -%}
+    Blank once the merchant sets the block invisible in the theme editor — nothing to drive, so
+    the module stays unfetched.
+  {%- endcomment -%}
+  {% if cart_recommendations != blank %}
+    <script
+      src="{{ 'product-recommendations.js' | asset_url }}"
+      type="module"
+      fetchpriority="low"
+    ></script>
+  {% endif %}
+  {%- liquid
+    unless settings.dialog_color_scheme_inherit
+      assign dialog_color_scheme = settings.dialog_color_scheme
+    else
+      assign dialog_color_scheme = settings.color_schemes | first
+    endunless
+  -%}
+  <cart-drawer-component
+    id="CartDrawer"
+    class="cart-drawer"
+    {% if settings.cart_type == 'drawer' %}
+      auto-open
+    {% endif %}
+    shopify-design-mode
+  >
+    <dialog
+      id="cart-drawer-dialog"
+      ref="dialog"
+      aria-label="{{ 'accessibility.cart' | t }}"
+      class="dialog dialog--drawer dialog--cart-drawer dialog--drawer-right overflow-hidden color-{{ dialog_color_scheme }}"
+      scroll-lock
+    >
+      <div class="cart-drawer__inner">
+        <s-view-event
+          hidden
+          view-event-trigger="dialog"
+          view-event-payload="{{ cart | standard_event_data: 'view', context: 'dialog' | escape }}"
+        ></s-view-event>
+        {% liquid
+          assign gift_wrap_variant_id = ''
+          if settings.gift_wrap_product != blank
+            assign gift_wrap_product = all_products[settings.gift_wrap_product]
+            if gift_wrap_product != blank and gift_wrap_product.selected_or_first_available_variant != blank
+              assign gift_wrap_variant_id = gift_wrap_product.selected_or_first_available_variant.id
+            endif
+          endif
+        %}
+        <cart-items-component
+          class="cart-items-component"
+          data-section-id="{{ section.id }}"
+          data-gift-variant-id="{{ gift_wrap_variant_id }}"
+          data-gift-wrap-per-product="{{ settings.enable_gift_wrap_per_product }}"
+          data-gift-sync-quantity="{{ settings.gift_wrap_sync_quantity }}"
+        >
+          {%- if cart.empty? -%}
+            <div
+              class="cart-drawer__header relative flex items-center justify-between gap-2"
+              id="cart-drawer-header"
+            >
+              <span class="cart-drawer__heading cart__heading relative h3">
+                {{ 'content.cart_title' | t }}
+                {% render 'cart-count', in_drawer: true %}
+              </span>
+              <button
+                class="cart-drawer__close dialog__close shrink-0"
+                on:click="cart-drawer-component/close"
+              >
+                {% render 'icon', icon: 'close', size: 'large' %}
+              </button>
+            </div>
+            <div class="cart-drawer__content" data-cart-drawer-scroll>
+              <div class="cart-drawer__empty flex flex-col justify-center items-center gap-6 xl:gap-8">
+                <div class="cart-drawer__empty-header flex items-center flex-col gap-3 xl:gap-4 justify-center text-center">
+                  <span class="cart-drawer__empty-heading h3">
+                    {{ 'content.your_cart_is_empty' | t }}
+                  </span>
+                  <div class="cart-drawer__empty-description color-subtext">
+                    {% if settings.cart_empty_recommendation_collection != blank %}
+                      {{ 'content.cart_empty_recommendation_description' | t }}
+                    {% else %}
+                      {%- if shop.customer_accounts_enabled and customer == null -%}
+                        {{ 'actions.log_in_html' | t: link: routes.account_login_url }}
+                      {%- endif -%}
+                    {% endif %}
+                  </div>
+                </div>
+                {% if settings.cart_empty_recommendation_collection != blank %}
+                  <div class="cart-drawer__empty-recommendation w-full">
+                    {% render 'cart-empty-recommendation', context: 'drawer', collections: settings.cart_empty_recommendation_collection %}
+                  </div>
+                {% endif %}
+                <a
+                  class="btn btn--primary cart-items__empty-button"
+                  href="{{ routes.all_products_collection_url }}"
+                >
+                  <span class="btn__text" data-label="{{ 'actions.continue_shopping' | t | escape }}">{{ 'actions.continue_shopping' | t }}</span>
+                </a>
+              </div>
+              <div class="cart-drawer__items">
+                {% render 'cart-products', context: 'drawer', section: section %}
+              </div>
+            </div>
+          {%- else -%}
+            <span
+              class="visually-hidden"
+              ref="cartItemCount"
+              aria-hidden="true"
+            >
+              {{- cart.item_count -}}
+            </span>
+            <div
+              class="cart-drawer__header relative flex items-center justify-between gap-2"
+              id="cart-drawer-header"
+            >
+              <span class="cart-drawer__heading cart__heading relative h3">
+                {{ 'content.cart_title' | t }}
+                {% render 'cart-count', in_drawer: true %}
+              </span>
+              <button
+                class="cart-drawer__close dialog__close flex shrink-0"
+                on:click="cart-drawer-component/close"
+              >
+                {% render 'icon', icon: 'close', size: 'large' %}
+              </button>
+            </div>
+            <div class="cart-drawer__content" data-cart-drawer-scroll>
+              {% if settings.show_free_shipping_goal and settings.free_shipping_goal_amount != blank %}
+                <div class="cart-drawer__free-shipping-goal">
+                  {% render 'free-shipping-goal', section: section %}
+                </div>
+              {% endif %}
+              <div class="cart-drawer__items v-scrollable" data-cart-drawer-scroll>
+                {% render 'cart-products', context: 'drawer', section: section %}
+              </div>
+              <div class="cart-drawer__summary">
+                {% render 'cart-drawer-summary', section: section, cart_recommendations: cart_recommendations %}
+              </div>
+            </div>
+          {%- endif -%}
+        </cart-items-component>
+      </div>
+    </dialog>
+  </cart-drawer-component>
+{% endif %}
+{% schema %}
+{
+  "name": "t:names.cart_drawer",
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.cart_summary"
+    },
+    {
+      "type": "color_scheme",
+      "id": "summary_color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-inverse"
+    }
+  ]
+}
+{% endschema %}

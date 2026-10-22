@@ -1,0 +1,93 @@
+@use "../mixins" as *;
+
+// ─── Footer ───────────────────────────────────────────────────────────────────
+
+.footer {
+  border: 0 var(--border-style) var(--border-color);
+  border-top-width: var(--border-width);
+  border-radius: var(--border-radius) var(--border-radius) 0 0;
+
+  &__top-blocks {
+    margin-inline: -1.5rem;
+  }
+
+  &__top-block {
+    padding-inline: 1.5rem;
+    flex: unset;
+  }
+
+  &__details {
+    .accordion {
+      &__summary {
+        padding-block: 1rem;
+        min-height: 5rem;
+      }
+
+      &__inner {
+        padding-block: 0 2rem;
+      }
+    }
+  }
+
+  &__bottom {
+    padding-top: 2rem;
+  }
+
+  &__bottom-row {
+    padding-block-end: 2.4rem;
+  }
+
+  @include media-breakpoint-up(md) {
+    &__copyright {
+      order: -1;
+    }
+  }
+
+  @include media-breakpoint-down(md) {
+    &__bottom-row > * {
+      width: 100%;
+    }
+  }
+
+  @include media-breakpoint-down(lg) {
+    &__top-block--with-border {
+      .footer__details {
+        border-bottom: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+      }
+    }
+
+    &__top-block {
+      order: var(--col-order, "unset");
+    }
+  }
+
+  @include media-breakpoint-up(lg) {
+    &__top-block {
+      width: var(--col-width, 100%);
+    }
+
+    &__bottom-row {
+      &:last-child {
+        padding-block: 3rem 4rem;
+        border-top: 1px solid rgb(var(--color-border) / var(--color-border-alpha));
+      }
+    }
+
+    &__details {
+      .accordion {
+        &__summary {
+          pointer-events: none;
+          padding-block: 0 1.2rem;
+        }
+
+        &__inner {
+          padding-block: 0;
+        }
+      }
+    }
+
+    &__bottom {
+      padding-top: 4rem;
+    }
+  }
+}

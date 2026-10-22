@@ -1,0 +1,55 @@
+{% doc %}
+  Markup for the image theme block (no schema).
+
+  @param {object} settings - Block settings (image, link, spacing, size, border).
+  @param {object} [section] - Host section; its `index` gates eager loading of the image.
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+  @param {string} block_id - Theme block id for stable BEM scope class.
+{% enddoc %}
+{%- liquid
+  assign wrap_tag = 'div'
+
+  if settings.link != blank
+    assign wrap_tag = 'a'
+  endif
+
+  # In an early section this image is above the fold: eager/high makes responsive-image
+  # render it in liquid mode, so the preload scanner fetches it instead of the deferred
+  # bundle. Same gate as _hero-banner-media (a block cannot resolve its own index).
+  capture priority
+    render 'image-priority', section: section, preload: settings.enable_preload_image
+  endcapture
+  assign priority = priority | split: ','
+  assign loading = priority[0]
+  assign fetchpriority = priority[1]
+-%}
+<!-- START block: image -->
+{%- capture block_class -%}
+  {%- unless settings.width == 'fit-content' %} image-block--img-full{%- endunless -%}
+  {%- unless settings.width_mobile == 'fit-content' %} image-block--img-mobile-full{%- endunless -%}
+{%- endcapture -%}
+<div
+  class="image-block image-block--{{ block_id }} spacing-style size-style{{ block_class }}"
+  style="{% render 'spacing-style', settings: settings %}{% render 'size-style', settings: settings %}"
+  {{ shopify_attributes }}
+>
+  <{{ wrap_tag }}
+    class="block image-block__image border-style media-mask-clip relative focus-visible--absolute{% if settings.link != blank %} media-hover--scale{% endif %}"
+    style="{% render 'border-style', settings: settings %}"
+    {% if settings.link != blank %}
+      href="{{ settings.link }}"
+    {% endif %}
+  >
+    {% render 'responsive-image',
+      mode: 'js',
+      image: settings.image,
+      image_mobile: settings.image_mobile,
+      default_alt: shop.name,
+      loading: loading,
+      fetchpriority: fetchpriority,
+      image_ratio: settings.image_ratio,
+      image_ratio_mobile: settings.image_ratio_mobile
+    %}
+  </{{ wrap_tag }}>
+</div>
+<!-- END block: image -->

@@ -1,0 +1,112 @@
+// @capability Themed data table — collapsed borders, row dividers, responsive cell padding, and a mobile-scrollable container with scroll-snap plus an optional sticky first column.
+// @when Any tabular content (size charts, spec/comparison tables); wrap wide tables in the scroll container instead of letting the page overflow. No pairing JS.
+// @contract .table (tr/th/td) inside .table-container--mobile-scrollable (add .fixed-side for a sticky first column).
+// @keywords table, data table, size chart, scrollable table, sticky column, mobile table, comparison table, overflow scroll
+
+@use "../mixins" as *;
+
+// ─── Table ────────────────────────────────────────────────────────────────────
+
+.table {
+  table-layout: auto;
+  border-collapse: collapse;
+  box-shadow: none;
+  width: 100%;
+
+  tr {
+    border-bottom: 1px solid rgb(var(--color-foreground) / 20%);
+  }
+
+  th,
+  td {
+    text-align: start;
+    padding: 1.7rem;
+
+    @include media-breakpoint-up(lg) {
+      padding: 2.2rem;
+    }
+
+    &:first-of-type {
+      padding-inline-start: 0;
+    }
+  }
+
+  th {
+    padding-block: 1rem;
+  }
+}
+
+// ─── Table container ──────────────────────────────────────────────────────────
+
+.table-container {
+  &--mobile-scrollable {
+    overflow: auto hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scroll-behavior: smooth;
+    padding-inline: var(--page-padding);
+    margin-inline: calc(var(--page-padding) * -1);
+    scroll-padding-inline: var(--page-padding);
+    scrollbar-width: none;
+
+    .table {
+      td,
+      th {
+        white-space: nowrap;
+      }
+    }
+
+    &.fixed-side {
+      .table {
+        td,
+        th {
+          &:first-of-type {
+            position: sticky;
+            inset-inline-start: 0;
+            background: rgb(var(--color-background));
+
+            &::before {
+              content: "";
+              width: var(--page-padding);
+              height: 100%;
+              background: rgb(var(--color-background));
+              position: absolute;
+              inset-inline-start: calc(var(--page-padding) * -1);
+              top: 0;
+            }
+          }
+        }
+      }
+    }
+
+    @include media-breakpoint-up(md) {
+      overflow: visible;
+      padding-inline: 0;
+      margin-inline: 0;
+      scroll-padding-inline: 0;
+
+      .table {
+        td,
+        th {
+          white-space: normal;
+        }
+      }
+
+      &.fixed-side {
+        .table {
+          td,
+          th {
+            &:first-of-type {
+              position: static;
+              background: transparent;
+
+              &::before {
+                display: none;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

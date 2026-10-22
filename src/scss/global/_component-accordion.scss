@@ -1,0 +1,270 @@
+// @capability Expand/collapse accordion rows built on native details/summary — rotating caret or plus icon, standard (open row's line moves under the heading), underline (line stays under the content, full-strength when open) and card (rounded box) style variants, JS-animated open height.
+// @when Any FAQ, collapsible content list, or details/summary group; pairs with the accordion-component custom element in src/js/global/modules.js (animates .accordion__content height via --accordion-duration/--accordion-easing). Reuse via snippets/accordion-markup.liquid.
+// @contract .accordion (--standard | --underline | --card | --arrow-caret | --arrow-plus | --icon-solid | --divider) root div [is=motion-group when animated] > accordion-component.accordion__rows > .accordion__row [data-motion-cell] / .accordion__details (.is-open) > .accordion__summary + .accordion__summary-text + .accordion__summary-arrow; content in .accordion__content > .accordion__inner. Card chrome (gap, radius, row + content padding) comes from --accordion-* vars the accordion block emits.
+// @keywords accordion, collapsible, expand collapse, FAQ, details summary, toggle panel, disclosure, caret rotate, plus icon
+
+@use "../mixins" as *;
+
+// ─── Accordion ────────────────────────────────────────────────────────────────
+
+.accordion {
+  --accordion-duration: 280;
+  --accordion-easing: var(--motion-ease-out);
+
+  // Content spacing belongs to every style, not just the card — it is the gap
+  // between a row's header and its content, which exists either way. The
+  // breakpoint switch lives here, once, so `__inner` reads a single name.
+  --accordion-content-top: var(--accordion-content-padding-top-mobile, 0rem);
+  --accordion-content-bottom: var(--accordion-content-padding-bottom-mobile, 0rem);
+
+  display: flex;
+  flex-direction: column;
+
+  // The custom element sits between the root and its rows (see
+  // accordion-markup.liquid for why the root is a div). `contents` hands the
+  // rows straight to the root's flex column, so the gap, the `:first-child`
+  // rule below and a motion-group on the root all see them as direct children.
+  &__rows {
+    display: contents;
+  }
+
+  @include media-breakpoint-up(md) {
+    --accordion-content-top: var(--accordion-content-padding-top, 0rem);
+    --accordion-content-bottom: var(--accordion-content-padding-bottom, 0rem);
+  }
+
+  &__summary-arrow {
+    svg,
+    path {
+      transition: transform var(--motion-ui-fast) var(--motion-ease);
+    }
+  }
+
+  &__details.is-open {
+    .accordion__summary-arrow {
+      &.icon--caret svg {
+        transform: rotateX(180deg);
+      }
+    }
+
+    .accordion__summary-arrow .icon--plus-line-2 {
+      transform: rotate(270deg);
+    }
+  }
+
+  &__summary {
+    list-style: none;
+    padding-block: var(--summary-padding-block, 2rem);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+  }
+
+  &__summary-text {
+    font-family: var(--summary-font-family);
+    font-style: var(--summary-font-style);
+    font-weight: var(--summary-font-weight);
+    font-size: var(--summary-font-size);
+    line-height: var(--summary-line-height);
+    letter-spacing: var(--summary-letter-spacing, 0);
+    text-transform: var(--summary-text-transform, none);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  &--arrow-caret {
+    .icon--plus {
+      display: none;
+    }
+  }
+
+  &--arrow-plus {
+    .icon--caret {
+      display: none;
+    }
+
+    .accordion__summary-arrow path {
+      transform: rotate(0);
+      transform-origin: center;
+    }
+  }
+
+  &__content {
+    // Height animated by JS; padding lives in __inner to avoid layout jumps.
+    padding: 0;
+  }
+
+  &__inner {
+    // Internal names, deliberately prefixed: `.accordion__inner` renders inside
+    // the cart drawer too, where an ancestor sets the generic `--padding-top` /
+    // `--padding-bottom` for its own layout — an inheritable name here would let
+    // that leak in.
+    // Both ends come from the Content padding settings alone. The bottom used to
+    // add the style's own frame on top (2rem for standard, the row padding for
+    // card), which meant the rendered gap never matched the number the merchant
+    // set — it was always that plus a hidden constant.
+    padding-block: var(--accordion-content-top) var(--accordion-content-bottom);
+  }
+
+  // Vertical only: these rows run the full width and their divider sits at the
+  // row's bottom edge, so insetting the text would leave the line behind.
+  // `--standard` and `--underline` are the same row frame; they differ only in
+  // where the line goes once a row is open (see the two `.is-open` rules below).
+  &--standard,
+  &--underline {
+    --summary-padding-block: var(--accordion-row-padding-block-mobile, 2rem);
+
+    // Falls back to 0, not to the card's spacing: these rows sat flush before
+    // the Row gap setting reached them, and `.accordion--standard` is rendered
+    // WITHOUT the block by the three filter snippets, which emit no
+    // `--accordion-row-gap`. A non-zero literal here would push those panels
+    // apart with no setting to undo it.
+    gap: var(--accordion-row-gap-mobile, 0);
+
+    .accordion__details {
+      // Longhands, not the `border-bottom` shorthand — same reason spelled out
+      // on `--divider` below: --color-border is a scheme role, and a scheme
+      // where the merchant cleared it resolves to the empty string. In a
+      // shorthand that invalid value takes `solid` down with it and the row
+      // loses its divider entirely; split, only the colour drops and the line
+      // falls back to currentcolor.
+      border-block-end-width: 0.1rem;
+      border-block-end-style: solid;
+      border-block-end-color: rgb(var(--color-border) / var(--color-border-alpha));
+    }
+
+    @include media-breakpoint-up(md) {
+      --summary-padding-block: var(--accordion-row-padding-block, 2rem);
+
+      gap: var(--accordion-row-gap, 0);
+    }
+  }
+
+  // Standard: while a row is open the line moves OFF the row and under the
+  // heading, so the content hangs below the line instead of being enclosed by
+  // it. The row's own border is only made transparent, never removed — dropping
+  // the width would shift every row below by a pixel as the accordion opens.
+  // The line itself is the shared `::after` further down, not a border here.
+  &--standard {
+    // The open row is stating itself, so its line goes to full strength; the
+    // card's Divider setting keeps the scheme's border alpha.
+    --accordion-summary-line-color: rgb(var(--color-border));
+
+    .accordion__details.is-open {
+      border-block-end-color: transparent;
+    }
+  }
+
+  // Underline: the line stays at the row's bottom edge, under the content, and
+  // an open row states itself by taking that same colour to full strength — so
+  // it reads as the active row's edge rather than one more separator. Only the
+  // alpha is dropped, so the line keeps whatever hue the scheme gives it.
+  &--underline {
+    .accordion__details.is-open {
+      border-block-end-color: rgb(var(--color-border));
+    }
+  }
+
+  // Every value below is a merchant setting on the `accordion` block, emitted
+  // inline by `accordion-markup.liquid`; the literals are the defaults that
+  // apply when the class is used without it. Setting vars carry the
+  // `--accordion-*` prefix and are read ONLY here, on the host — declaring them
+  // on a descendant would out-rank the inline style and make the setting dead.
+  // Separate block and inline padding for card style, so a card keeps
+  // the same frame whether it is open or closed.
+  &--card {
+    --summary-padding-block: var(--accordion-row-padding-block-mobile, 2rem);
+    --summary-padding-inline: var(--accordion-row-padding-inline-mobile, 2rem);
+
+    gap: var(--accordion-row-gap-mobile, 0.8rem);
+
+    .accordion {
+      &__row {
+        border-radius: var(--accordion-row-radius, 1rem);
+      }
+
+      &__summary {
+        padding-inline: var(--summary-padding-inline);
+      }
+
+      &__inner {
+        padding-inline: var(--summary-padding-inline);
+      }
+    }
+
+    @include media-breakpoint-up(md) {
+      --summary-padding-block: var(--accordion-row-padding-block, 2.4rem);
+      --summary-padding-inline: var(--accordion-row-padding-inline, 2.4rem);
+
+      gap: var(--accordion-row-gap, 1rem);
+    }
+  }
+
+  // A line between an open row's header and its content. Two styles want it: the
+  // standard style, where it is where the row's own line MOVES to on open, and
+  // the card style's Divider setting, which adds one and is off by default.
+  // Only the colour differs, so it comes from a variable each style sets.
+  &--standard,
+  &--divider {
+    .accordion__details.is-open .accordion__summary {
+      position: relative;
+
+      // Drawn as a pseudo-element, not a border-bottom, for two reasons. A
+      // border sits OUTSIDE the padding box, so it would run to the card's
+      // edge — the line has to start where the content does, which means
+      // insetting it by the row's own horizontal padding. And a border only
+      // present while open would add its width to the summary the moment the
+      // row opens, nudging the content and every row below it by a pixel;
+      // an absolutely-positioned pseudo-element costs no layout at all.
+      &::after {
+        content: "";
+        position: absolute;
+        inset-block-end: 0;
+        inset-inline: var(--summary-padding-inline, 0);
+
+        // Longhands, not the `border-block-end` shorthand. --color-border is a
+        // scheme role, and a scheme where the merchant cleared it resolves to
+        // the empty string — invalid at computed-value time, which discards the
+        // whole declaration. As a shorthand that takes `solid` down with it, so
+        // the divider does not lose its colour, it stops existing. Split, only
+        // the colour is dropped and the line falls back to currentcolor.
+        border-block-end-width: 0.1rem;
+        border-block-end-style: solid;
+        border-block-end-color: var(
+          --accordion-summary-line-color,
+          rgb(var(--color-border) / var(--color-border-alpha))
+        );
+      }
+    }
+  }
+
+  &--icon-solid {
+    .accordion__summary-arrow {
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 50%;
+      background: rgb(var(--color-background-secondary));
+
+      svg {
+        width: var(--icon-size, 1.2rem);
+        height: var(--icon-size, 1.2rem);
+      }
+    }
+  }
+}
+
+// ─── Block accordion ──────────────────────────────────────────────────────────
+
+.block-accordion:is(.accordion--standard, .accordion--underline)
+  .accordion__row:first-child
+  .accordion__summary {
+  padding-block-start: 0;
+}

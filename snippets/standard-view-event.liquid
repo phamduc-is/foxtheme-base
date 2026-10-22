@@ -1,0 +1,36 @@
+{% doc %}
+  Renders the element that dispatches a Shopify standard view event
+  (shopify:product:view, shopify:collection:view or shopify:cart:view) for a
+  product, collection or cart. The `s-view-event` element is defined in
+  snippets/scripts.liquid.
+
+  An 'intersect' element fills its nearest positioned ancestor, so it measures
+  what the buyer actually sees; every other trigger renders hidden.
+
+  @param {object} resource - The product, collection or cart.
+  @param {string} [context] - product: 'page' | 'search' | 'collection' | 'dialog' | 'recommendation'; cart: 'page' | 'dialog'; ignored for a collection.
+  @param {string} [trigger] - 'connect' (default: fires when added to the page) | 'intersect' (half of it scrolls into view) | 'dialog' (its <dialog> opens) | 'manual' (fires on dispatchViewEvent())
+
+  @example
+  {% render 'standard-view-event', resource: product, context: 'dialog', trigger: 'manual' %}
+{% enddoc %}
+
+{%- liquid
+  if context != blank
+    assign view_event_payload = resource | standard_event_data: 'view', context: context
+  else
+    assign view_event_payload = resource | standard_event_data: 'view'
+  endif
+-%}
+<s-view-event
+  view-event-payload="{{ view_event_payload | escape }}"
+  {% if trigger != blank and trigger != 'connect' %}
+    view-event-trigger="{{ trigger }}"
+  {% endif %}
+  {% if trigger == 'intersect' %}
+    class="absolute inset-0 pointer-events-none"
+  {% else %}
+    hidden
+  {% endif %}
+  aria-hidden="true"
+></s-view-event>

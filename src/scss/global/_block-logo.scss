@@ -1,0 +1,13 @@
+@use "../mixins" as *;
+
+// ─── Logo block ───────────────────────────────────────────────────────────────
+
+// The mobile/desktop images swap at `lg` (`lg:hidden` / `lg:block hidden` in
+// blocks/_logo.liquid) — the width must flip at the same breakpoint.
+.logo-block--image {
+  max-width: var(--logo-width-mobile);
+
+  @include media-breakpoint-up(lg) {
+    max-width: var(--logo-width);
+  }
+}

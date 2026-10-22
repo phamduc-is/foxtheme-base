@@ -1,0 +1,41 @@
+{% doc %}
+  Empty-state panel for predictive search (shown when a query returns no resources).
+  Renders the "no results" message plus the recommendation keywords (when configured).
+
+  @example
+  {% render 'predictive-search-no-results-markup' %}
+{% enddoc %}
+<div class="search__no-results search__no-results--empty-state flex flex-col gap-3 w-full">
+  {%- assign search_term = predictive_search.terms | split: 'AND' | last | strip | replace: '%20', ' ' -%}
+  <h4 class="search__no-results-heading h6">
+    {{ 'content.search_results_no_results' | t: terms: search_term }}
+  </h4>
+  <p class="search__no-results-text color-subtext text-wrap-auto">
+    {{ 'content.search_results_no_results_check_spelling' | t }}
+  </p>
+</div>
+{%- if settings.search_recommendation_keywords != blank -%}
+  {%- liquid
+    assign keywords = settings.search_recommendation_keywords | split: ','
+  -%}
+  <div class="search__no-results search__no-results--keywords flex flex-col gap-3 w-full">
+    <h4 class="search__no-results-heading h6">
+      {{ 'content.search_recommendations_keywords' | t }}
+    </h4>
+    <ul class="flex flex-wrap gap-2 list-unstyled search__list--btn">
+      {%- for keyword in keywords -%}
+        <li class="flex">
+          {%- comment -%}
+            url_encode: an `&` in the keyword ends `q` and starts a parameter of its own.
+          {%- endcomment -%}
+          <a
+            class="btn btn--secondary btn--small paragraph"
+            href="{{ routes.search_url }}?type=product&options%5Bprefix%5D=last&q={{- keyword | strip | url_encode -}}"
+          >
+            <span class="btn__text" data-label="{{ keyword | strip | escape }}">{{- keyword | strip }}</span>
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}

@@ -1,0 +1,185 @@
+{%- liquid
+  assign svg_placeholder = 'lifestyle-1'
+  assign heading_style = block.settings.heading_style | default: 'badge'
+  capture before_html
+    content_for 'block', type: '_image-compare-side', id: 'image-comparison-before', is_before: true, heading_style: heading_style, svg_placeholder: svg_placeholder, image_ratio: block.settings.image_ratio, image_ratio_mobile: block.settings.image_ratio_mobile
+  endcapture
+
+  capture after_html
+    content_for 'block', type: '_image-compare-side', id: 'image-comparison-after', is_before: false, heading_style: heading_style, svg_placeholder: svg_placeholder, image_ratio: block.settings.image_ratio, image_ratio_mobile: block.settings.image_ratio_mobile
+  endcapture
+-%}
+{% render 'image-compare-markup',
+  settings: block.settings,
+  shopify_attributes: block.shopify_attributes,
+  before_html: before_html,
+  after_html: after_html
+%}
+{% schema %}
+{
+  "name": "t:names.image_comparison",
+  "tag": null,
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "direction",
+      "label": "t:settings.direction",
+      "default": "horizontal",
+      "options": [
+        {
+          "value": "horizontal",
+          "label": "t:options.horizontal"
+        },
+        {
+          "value": "vertical",
+          "label": "t:options.vertical"
+        }
+      ]
+    },
+    {
+      "type": "select",
+      "id": "image_ratio",
+      "label": "t:settings.aspect_ratio",
+      "options": [
+        {
+          "value": "adapt",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "1/1",
+          "label": "t:options.square"
+        },
+        {
+          "value": "4/5",
+          "label": "t:options.portrait"
+        },
+        {
+          "value": "3/4",
+          "label": "t:options.portrait_3_4"
+        },
+        {
+          "value": "16/9",
+          "label": "t:options.landscape"
+        },
+        {
+          "value": "4/3",
+          "label": "t:options.landscape_4_3"
+        }
+      ],
+      "default": "adapt"
+    },
+    {
+      "type": "select",
+      "id": "image_ratio_mobile",
+      "label": "t:settings.aspect_ratio_mobile",
+      "options": [
+        {
+          "value": "adapt",
+          "label": "t:options.auto"
+        },
+        {
+          "value": "1/1",
+          "label": "t:options.square"
+        },
+        {
+          "value": "4/5",
+          "label": "t:options.portrait"
+        },
+        {
+          "value": "3/4",
+          "label": "t:options.portrait_3_4"
+        },
+        {
+          "value": "16/9",
+          "label": "t:options.landscape"
+        },
+        {
+          "value": "4/3",
+          "label": "t:options.landscape_4_3"
+        }
+      ],
+      "default": "adapt"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "select",
+      "id": "heading_style",
+      "label": "t:settings.heading_style",
+      "options": [
+        {
+          "value": "badge",
+          "label": "t:options.badge"
+        },
+        {
+          "value": "text",
+          "label": "t:options.text"
+        }
+      ],
+      "default": "badge"
+    },
+    {
+      "type": "select",
+      "id": "handle_style",
+      "label": "t:settings.handle_style",
+      "options": [
+        {
+          "value": "pill",
+          "label": "t:options.pill"
+        },
+        {
+          "value": "circle",
+          "label": "t:options.circle"
+        }
+      ],
+      "default": "pill"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 20
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.image_comparison",
+      "category": "t:categories.basic",
+      "blocks": [
+        {
+          "type": "_image-compare-side",
+          "id": "image-comparison-before",
+          "static": true,
+          "settings": {
+            "heading": "Before"
+          }
+        },
+        {
+          "type": "_image-compare-side",
+          "id": "image-comparison-after",
+          "static": true,
+          "settings": {
+            "heading": "After"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

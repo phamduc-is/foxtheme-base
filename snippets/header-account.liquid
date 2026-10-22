@@ -1,0 +1,66 @@
+{% doc %}
+  Renders the customer account control when customer accounts are enabled.
+  Wraps Shopify's `<shopify-account>` in the `<header-account>` custom element.
+  Outputs nothing when `shop.customer_accounts_enabled` is false.
+
+  @param {string} menu - Link list handle passed to `<shopify-account>` (e.g. section.settings.customer_account_menu)
+  @param {string} context - Placement identifier written to `data-context` on `<header-account>` (e.g. `header`, `menu-drawer`)
+  @param {string} [button_class] - Classes on the signed-out avatar slot (`slot="signed-out-avatar"`)
+  @param {string} [wrapper_class] - Extra classes on the outer `<header-account>` element
+  @param {boolean} [show_icon] - Show account icon when signed out (default: true)
+  @param {boolean} [show_text] - Show account label when signed out (default: false)
+  @param {boolean} [show_label] - Show an "Account" label beside the control from lg up, signed in
+    or out (the header's Show icon labels). It sits OUTSIDE `<shopify-account>` —
+    signed in, Shopify swaps the slotted content for the customer's avatar — so it forwards its
+    click to the control and stays `aria-hidden` (the control is the one named button).
+
+  @example
+  {% render 'header-account',
+    context: 'header',
+    menu: section.settings.customer_account_menu,
+    show_icon: true,
+    show_text: false,
+    wrapper_class: 'hidden lg:flex',
+    button_class: 'flex items-center justify-center'
+  %}
+{% enddoc %}
+{%- if shop.customer_accounts_enabled -%}
+  {%- liquid
+    assign show_icon = show_icon | default: true, allow_false: true
+    assign show_text = show_text | default: false, allow_false: true
+  -%}
+  <header-account class="header__account header__account--{{ context }} {{ wrapper_class }}" data-context="{{ context }}">
+    {% render 'header-account-css' %}
+    <shopify-account ref="account" menu="{{ menu }}" class="shopify-account {{ button_class }}">
+      {%- if customer -%}
+        <div class="account-button__fallback" aria-label="{{ 'accessibility.account' | t }}"></div>
+      {%- else -%}
+        <div
+          slot="signed-out-avatar"
+          aria-hidden="true"
+          aria-label="{{ 'accessibility.log_in' | t }}"
+          class="account-button flex items-center"
+        >
+          {%- if show_icon -%}
+            {%- render 'icon', icon: 'account', size: 'large' -%}
+          {%- endif -%}
+          {%- if show_text -%}
+            {%- capture account_label -%}
+              {%- if customer -%}
+                {{- 'content.account_title' | t -}}
+              {%- else -%}
+                {{- 'actions.account_action' | t -}}
+              {%- endif -%}
+            {%- endcapture -%}
+            <span class="btn__text" data-label="{{ account_label | escape }}">{{ account_label }}</span>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+    </shopify-account>
+    {%- if show_label -%}
+      <span class="header__icon-label" aria-hidden="true" on:click="/openAccount">
+        {{- 'content.account_title' | t -}}
+      </span>
+    {%- endif -%}
+  </header-account>
+{%- endif -%}

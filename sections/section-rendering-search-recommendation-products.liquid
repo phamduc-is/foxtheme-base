@@ -1,0 +1,42 @@
+{%- comment -%}
+  The products carousel of the predictive-search recommendations panel, fetched on demand by
+  search.js the first time a pointer or focus reaches the search form.
+
+  It is the only part of that panel worth deferring: measured on the demo store it is 85,638 of
+  the panel's 87,127 bytes and every one of its product images — `predictive-search.liquid`
+  renders the panel on every page twice (header search + search drawer) for something nobody has
+  opened, it made the browser fetch all 8 images at ~1.5s, and it rode along in every
+  per-keystroke section render only to be discarded. The keywords beside it are 1,489 bytes with
+  no media, so they stay inline.
+
+  The `data-recommendations-content` wrapper is the morph host: `revealSwap` swaps this element
+  for the placeholder of the same name, so the attributes on both sides must stay identical.
+
+  The column/gap constants mirror `predictive-search.liquid`. `media_sizes` uses the header
+  panel's width: a section cannot read query params, so one endpoint serves both contexts, and
+  the drawer's slightly narrower column (156px vs 164px) resolves to the same srcset candidate.
+{%- endcomment -%}
+{%- liquid
+  assign columns_xxl = 3
+  assign columns_xl = columns_xxl | at_most: 4
+  assign columns_lg = columns_xxl | at_most: 3
+  assign columns_md = columns_xxl | at_most: 3
+  assign columns_mobile = 2
+  assign column_gap = 10
+  assign column_gap_mobile = 8
+-%}
+{%- capture media_sizes -%}
+  (min-width: 768px) calc((min(100vw, 554px) - 60px) / {{ columns_xxl }}), calc(min(500px, 100vw) * 0.38)
+{%- endcapture -%}
+<div data-recommendations-content>
+  {% render 'predictive-search-recommendation-products-markup',
+    columns_xxl: columns_xxl,
+    columns_xl: columns_xl,
+    columns_lg: columns_lg,
+    columns_md: columns_md,
+    columns_mobile: columns_mobile,
+    column_gap: column_gap,
+    column_gap_mobile: column_gap_mobile,
+    media_sizes: media_sizes
+  %}
+</div>

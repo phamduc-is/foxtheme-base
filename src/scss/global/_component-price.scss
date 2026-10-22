@@ -1,0 +1,78 @@
+// @capability Product price display — regular/sale/compare-at/unit price typography, strikethrough compare price, CSS-only regular-to-sale visibility switching via .price--on-sale, inline sale-badge layout, and a no-compare mode that hides the compare price until variant-level data exists.
+// @when Anywhere a product price renders (cards, PDP, cart); use the price snippet plus these state classes — JS (variant-picker / product-price modules) only swaps classes and text, never layout.
+// @contract .price-container > .price (.price--sale / .price--on-sale / .price--sale-badge-inline / .price--no-compare) with .price__regular / .price__sale / .price__sale-badge, plus .compare-at-price and .unit-price.
+// @keywords price, sale price, compare at price, strikethrough, discount, unit price, money, price toggle, variant price
+
+// ─── Price container ──────────────────────────────────────────────────────────
+
+.price-container {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--price-gap-y, 0.4rem) var(--price-gap-x, 0.4rem);
+
+  .layout-panel-flex--row & {
+    flex-wrap: nowrap;
+  }
+}
+
+// ─── Price elements ───────────────────────────────────────────────────────────
+
+.price,
+.compare-at-price,
+.unit-price {
+  white-space: nowrap;
+}
+
+.price {
+  font-family: var(--font-price--family);
+  font-weight: var(--font-price--weight);
+  font-style: var(--font-price--style);
+
+  &--sale {
+    color: rgb(var(--color-sale-price));
+  }
+}
+
+.compare-at-price,
+.unit-price {
+  font-family: var(--font-compare-at-price--family);
+  font-weight: var(--font-compare-at-price--weight);
+  font-style: var(--font-compare-at-price--style);
+}
+
+.compare-at-price {
+  opacity: 0.6;
+  text-decoration-line: line-through;
+}
+
+// ─── Price visibility ─────────────────────────────────────────────────────────
+
+.price__regular {
+  display: block;
+}
+
+.price__sale,
+.price--on-sale .price__regular {
+  display: none;
+}
+
+.price--on-sale .price__sale {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-direction: column;
+}
+
+.price--sale-badge-inline .price__sale {
+  gap: 0.8rem;
+  flex-direction: row;
+}
+
+// Hide compare-at-price + sale badge for products where a meaningful product-level
+// compare can't be computed (price_varies == false && compare_at_price_varies).
+// price.liquid still renders the structure so JS can patch it for the selected
+// variant; CSS hides it until variant-level data is available.
+.price--no-compare .compare-at-price,
+.price--no-compare .price__sale-badge {
+  display: none;
+}

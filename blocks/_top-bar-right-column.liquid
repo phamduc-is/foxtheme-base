@@ -1,0 +1,29 @@
+<div
+  class="top-bar__zone top-bar__zone--right hidden lg:flex flex-wrap items-center justify-end gap-x-6 gap-y-2"
+  {{ block.shopify_attributes }}
+>
+  {%- content_for 'blocks' -%}
+</div>
+{% schema %}
+{
+  "name": "t:names.right_column",
+  "tag": null,
+  "settings": [
+    {
+      "type": "paragraph",
+      "content": "t:content.top_bar_column_desktop_only"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "_menu"
+    },
+    {
+      "type": "_localization"
+    },
+    {
+      "type": "_simple-text"
+    }
+  ]
+}
+{% endschema %}

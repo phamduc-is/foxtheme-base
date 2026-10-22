@@ -1,0 +1,60 @@
+// @capability Full-viewport fixed loading curtain (GPU-promoted; the fade is driven by JS through the Web Animations API, with a delayed CSS keyframe as the no-JS / late-JS backstop).
+// @when The page-transitions setting; pairs with src/js/modules/page-transition.js. Respect the body.page-transitions-enabled gate.
+// @contract <page-transition> element with class .page-transition; hidden entirely when body lacks .page-transitions-enabled, under prefers-reduced-motion, and inside <noscript> (layout/theme.liquid).
+// @keywords page transition, navigation fade, overlay, loading curtain, route change animation
+
+// ─── Page transition ──────────────────────────────────────────────────────────
+// Animation is driven by the Web Animations API in JS (animation.js), not CSS transitions.
+
+.page-transition {
+  // The one place the fade is set: the JS fade reads both from computed style,
+  // the CSS backstop below uses them directly. Half a second: the curtain is
+  // part of what Speed Index measures, and a 0.5s lift measured markedly
+  // better on a throttled load than a slow 1s one. `ease` rather than linear,
+  // so it still eases off instead of cutting out. Each is a token — a theme
+  // that wants a slower, softer reveal trades the score for it here.
+  --page-transition-duration: 0.5s;
+  --page-transition-ease: ease;
+
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background-color: rgb(var(--color-foreground));
+  pointer-events: none;
+
+  /* Safari: promote to GPU layer for smooth opacity animation */
+  will-change: opacity;
+  transform: translateZ(0);
+
+  // Backstop. page-transition.js lifts the curtain the moment it executes; if
+  // that module never arrives (blocked, 404, a hung request) nothing else
+  // would, and the visitor keeps a blank foreground-coloured screen for as
+  // long as the network takes to give up. The delay counts from the element's
+  // first style resolution, i.e. from first paint: a page that has painted but
+  // not run its modules 2s later is one the visitor should be looking at now.
+  // A script-driven Web Animation outranks a CSS animation in the cascade of
+  // effects, so on a normal load the JS fade simply plays over this one.
+  // Opacity only: a `visibility: hidden` end keyframe never took effect (the
+  // filled end state computes at a progress fractionally below 1), and
+  // pointer-events is already none. motion-coordinator listens for this
+  // animation's `animationstart` to release the entrances it is holding.
+  animation: page-transition-backstop var(--page-transition-duration) var(--page-transition-ease) 2s forwards;
+}
+
+@keyframes page-transition-backstop {
+  to {
+    opacity: 0;
+  }
+}
+
+// Reduced motion: the JS fade collapses to 0s, but the curtain would still be
+// painted until the module arrives. Never paint it.
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    display: none;
+  }
+}
+
+body:not(.page-transitions-enabled) page-transition {
+  display: none;
+}

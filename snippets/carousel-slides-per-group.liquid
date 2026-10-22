@@ -1,0 +1,38 @@
+{% doc %}
+  How far one arrow click (or wheel step) moves a multi-card carousel (products,
+  collections, media, testimonials…) — the one place that decides it for every
+  such carousel in the theme, so a store that wants the other behaviour is a
+  one-line edit here. Single-slide sliders and the centered slider do not render
+  it.
+
+  Emits a JSON value for the carousel config's `slidesPerGroup`:
+  - "view" → a full page: as many cards as are visible at the current breakpoint
+    (carousel.js resolves it per breakpoint from that breakpoint's slidesPerView).
+  - a number → that many cards per click (1 = Swiper's default), capped at the
+    visible count per breakpoint so a click never skips a card.
+  On a content-sized track (slidesPerView "auto") "view" moves by the cards fully
+  visible at click time, and a number falls back to 1.
+
+  One carousel can differ from the rest by passing `value` — a future section
+  setting goes in the same way. A select setting hands over a STRING ("2"), so
+  anything but "view" is cast to a number here: an unquoted non-number would
+  break the carousel's JSON.
+
+  A different value per breakpoint goes in that carousel's own config, next to
+  the breakpoint's slidesPerView (`"768": { "slidesPerView": 3, "slidesPerGroup": 1 }`);
+  it applies from that width up until a larger breakpoint sets another.
+
+  @param {string} [value] - "view" or a card count (a number works too); blank → the theme-wide default below.
+
+  @example
+  "slidesPerView": {{ columns_md }},
+  "slidesPerGroup": {% render 'carousel-slides-per-group' %},
+{% enddoc -%}
+{%- liquid
+  assign slides_per_group = value | default: 'view'
+  if slides_per_group == 'view'
+    echo '"view"'
+  else
+    echo slides_per_group | plus: 0 | at_least: 1
+  endif
+-%}

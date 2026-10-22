@@ -1,0 +1,386 @@
+{% doc %}
+  Internal heading block for `product-finder` (STATIC — rendered by the parent via
+  `{% content_for 'block', type: '_product-finder-heading', id: 'product-finder-heading' %}`).
+
+  Renders the finder's heading (richtext, via `text-markup` so the `type_preset` typography applies)
+  plus an optional vehicle icon whose per-device visibility is driven by `show_icon_desktop` /
+  `show_icon_mobile` (modifier classes on the root + SCSS breakpoints). The heading's own `text_align`
+  governs alignment in both vertical and horizontal parent layouts. Has its own preset so it's addable
+  from the parent only — never placed globally.
+
+  @example
+  {% content_for 'block', type: '_product-finder-heading', id: 'product-finder-heading' %}
+{% enddoc %}
+
+{%- liquid
+  assign settings = block.settings
+  assign text_align = settings.text_align | default: 'left'
+  assign show_icon_desktop = settings.show_icon_desktop | default: false, allow_false: true
+  assign show_icon_mobile = settings.show_icon_mobile | default: true, allow_false: true
+
+  assign has_icon = false
+  if settings.icon != 'none' or settings.image_upload != blank
+    assign has_icon = true
+  endif
+
+  assign type_preset = settings.type_preset | default: 'h3'
+  comment
+    Named presets (h3…) style the element via the global preset class. Custom emits typography
+    CSS vars (font-size/family/weight/line-height) from typography-style — consumed by the
+    `--custom` modifier in SCSS (the global preset classes don't read those vars).
+  endcomment
+  assign heading_preset_class = type_preset
+  if type_preset == 'custom'
+    assign heading_preset_class = 'product-finder__heading--custom'
+  elsif type_preset == 'rte'
+    comment
+      The element already carries the literal `rte` class; don't duplicate it.
+    endcomment
+    assign heading_preset_class = ''
+  endif
+  assign heading_color = settings.text_color | default: 'text'
+
+  assign root_class = 'product-finder__heading-block spacing-style text-' | append: text_align
+  if has_icon and show_icon_desktop
+    assign root_class = root_class | append: ' product-finder__heading-block--icon-desktop'
+  endif
+  if has_icon and show_icon_mobile
+    assign root_class = root_class | append: ' product-finder__heading-block--icon-mobile'
+  endif
+-%}
+
+{%- capture heading_style -%}
+  {% render 'spacing-style', settings: settings, use_padding_inline: false %}
+{%- endcapture -%}
+
+<div
+  class="{{ root_class }}"
+  style="{{ heading_style | strip | strip_newlines }}"
+  {{ block.shopify_attributes }}
+>
+  {%- if has_icon -%}
+    <span
+      class="product-finder__icon"
+      {% if settings.icon_color != blank %}style="--pf-icon-color: {{ settings.icon_color }};"{% endif %}
+    >
+      {% render 'icon-or-image',
+        icon: settings.icon,
+        image_upload: settings.image_upload,
+        icon_size: settings.icon_size,
+        width: settings.width,
+        width_mobile: settings.width_mobile,
+        class_name: 'product-finder__icon-media'
+      %}
+    </span>
+  {%- endif -%}
+  {% comment %}
+    Render the heading directly (NOT via text-markup): text-markup reads the ambient `block.settings`
+    (width = the icon width, padding = this block's padding) which collided — squishing the text and
+    double-applying padding. typography-style takes explicit params, so there is no block coupling.
+  {% endcomment %}
+  {%- if settings.heading != blank -%}
+    {%- capture heading_typography -%}
+      {% render 'typography-style',
+        preset: type_preset,
+        font_family: settings.font,
+        font_weight: settings.font_weight,
+        font_size: settings.font_size,
+        font_size_mobile: settings.font_size_mobile,
+        line_height: settings.line_height,
+        text_transform: settings.text_transform,
+        font_type: 'heading'
+      %}
+      {%- if heading_color == 'custom' -%}--color-text-custom: {{ settings.text_color_custom }};{%- endif -%}
+    {%- endcapture -%}
+    <div
+      class="product-finder__heading rte {{ heading_preset_class }} color-{{ heading_color }}"
+      style="{{ heading_typography | strip | strip_newlines }}"
+    >
+      {{ settings.heading }}
+    </div>
+  {%- endif -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.product_finder_heading",
+  "tag": null,
+  "settings": [
+    { "type": "header", "content": "t:content.content" },
+    {
+      "type": "richtext",
+      "id": "heading",
+      "label": "t:settings.heading",
+      "default": "<p>Find your product</p>"
+    },
+    {
+      "type": "select",
+      "id": "type_preset",
+      "label": "t:settings.preset",
+      "options": [
+        { "value": "rte", "label": "t:options.default" },
+        { "value": "paragraph", "label": "t:options.paragraph" },
+        { "value": "h1", "label": "t:options.h1" },
+        { "value": "h2", "label": "t:options.h2" },
+        { "value": "h3", "label": "t:options.h3" },
+        { "value": "h4", "label": "t:options.h4" },
+        { "value": "h5", "label": "t:options.h5" },
+        { "value": "h6", "label": "t:options.h6" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "h3"
+    },
+    {
+      "type": "select",
+      "id": "font",
+      "label": "t:settings.font",
+      "options": [
+        { "value": "var(--font-body--family)", "label": "t:options.body" },
+        { "value": "var(--font-heading--family)", "label": "t:options.heading" }
+      ],
+      "default": "var(--font-body--family)",
+      "visible_if": "{{ block.settings.type_preset == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "font_weight",
+      "label": "t:settings.font_weight",
+      "default": "",
+      "options": [
+        { "value": "", "label": "t:options.inherit" },
+        { "value": "300", "label": "t:options.light" },
+        { "value": "400", "label": "t:options.regular" },
+        { "value": "500", "label": "t:options.medium" },
+        { "value": "600", "label": "t:options.semi_bold" },
+        { "value": "700", "label": "t:options.bold" },
+        { "value": "800", "label": "t:options.extra_bold" },
+        { "value": "900", "label": "t:options.black" }
+      ],
+      "visible_if": "{{ block.settings.type_preset == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "font_size",
+      "label": "t:settings.font_size",
+      "default": 25,
+      "min": 10,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "visible_if": "{{ block.settings.type_preset == 'custom' }}"
+    },
+    {
+      "type": "range",
+      "id": "font_size_mobile",
+      "label": "t:settings.font_size_mobile",
+      "default": 20,
+      "min": 10,
+      "max": 60,
+      "step": 1,
+      "unit": "px",
+      "visible_if": "{{ block.settings.type_preset == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "line_height",
+      "label": "t:settings.line_height",
+      "options": [
+        { "value": "tight", "label": "t:options.tight" },
+        { "value": "normal", "label": "t:options.normal" },
+        { "value": "loose", "label": "t:options.loose" }
+      ],
+      "default": "normal",
+      "visible_if": "{{ block.settings.type_preset == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "text_transform",
+      "label": "t:settings.text_transform",
+      "options": [
+        {
+          "value": "",
+          "label": "t:options.inherit"
+        },
+        {
+          "value": "none",
+          "label": "t:options.as_typed"
+        },
+        {
+          "value": "capitalize",
+          "label": "t:options.capitalize"
+        },
+        {
+          "value": "uppercase",
+          "label": "t:options.uppercase"
+        },
+        {
+          "value": "lowercase",
+          "label": "t:options.lowercase"
+        }
+      ],
+      "default": "",
+      "visible_if": "{{ block.settings.type_preset == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "text_color",
+      "label": "t:settings.color",
+      "options": [
+        { "value": "text", "label": "t:options.text" },
+        { "value": "subtext", "label": "t:options.subtext" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "text",
+      "visible_if": "{{ block.settings.type_preset == 'custom' }}"
+    },
+    {
+      "type": "color",
+      "id": "text_color_custom",
+      "label": "t:options.custom",
+      "default": "#000000",
+      "visible_if": "{{ block.settings.type_preset == 'custom' and block.settings.text_color == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "text_align",
+      "label": "t:settings.text_align",
+      "options": [
+        { "value": "left", "label": "t:options.left" },
+        { "value": "center", "label": "t:options.center" }
+      ],
+      "default": "left"
+    },
+    { "type": "header", "content": "t:content.icon" },
+    {
+      "type": "checkbox",
+      "id": "show_icon_desktop",
+      "label": "t:settings.show_icon_desktop",
+      "default": false
+    },
+    {
+      "type": "checkbox",
+      "id": "show_icon_mobile",
+      "label": "t:settings.show_icon_mobile",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "icon",
+      "label": "t:settings.icon",
+      "options": [
+        { "value": "none", "label": "t:options.none" },
+        { "value": "car-simple", "label": "t:options.car_simple" },
+        { "value": "truck", "label": "t:options.truck" },
+        { "value": "tag", "label": "t:options.tag" },
+        { "value": "magic-wand", "label": "t:options.magic_wand" },
+        { "value": "funnel", "label": "t:options.funnel" },
+        { "value": "search", "label": "t:options.search" },
+        { "value": "map-pin", "label": "t:options.map_pin" },
+        { "value": "package", "label": "t:options.package" }
+      ],
+      "default": "funnel"
+    },
+    {
+      "type": "image_picker",
+      "id": "image_upload",
+      "label": "t:settings.image_icon"
+    },
+    {
+      "type": "color",
+      "id": "icon_color",
+      "label": "t:settings.color"
+    },
+    {
+      "type": "select",
+      "id": "icon_size",
+      "label": "t:settings.icon_size",
+      "options": [
+        { "value": "extra-small", "label": "t:options.extra_small" },
+        { "value": "small", "label": "t:options.small" },
+        { "value": "medium", "label": "t:options.medium" },
+        { "value": "large", "label": "t:options.large" },
+        { "value": "extra-large", "label": "t:options.extra_large" },
+        { "value": "custom-size", "label": "t:options.custom" }
+      ],
+      "default": "large"
+    },
+    {
+      "type": "range",
+      "id": "width",
+      "label": "t:settings.width",
+      "min": 12,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.icon_size == 'custom-size' }}"
+    },
+    {
+      "type": "range",
+      "id": "width_mobile",
+      "label": "t:settings.width_mobile",
+      "min": 12,
+      "max": 200,
+      "step": 2,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.icon_size == 'custom-size' }}"
+    },
+    { "type": "header", "content": "t:content.padding" },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        { "value": "desktop", "label": "t:options.desktop" },
+        { "value": "mobile", "label": "t:options.mobile" }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    }
+  ]
+}
+{% endschema %}

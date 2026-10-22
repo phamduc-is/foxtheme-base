@@ -1,0 +1,55 @@
+@use "../mixins" as *;
+
+// ─── Counter ──────────────────────────────────────────────────────────────────
+
+.counter {
+  &__number {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    line-height: 1;
+  }
+
+  &__number-text {
+    line-height: inherit;
+  }
+
+  &__number-prefix,
+  &__number-suffix {
+    line-height: inherit;
+  }
+
+  &__number-display {
+    min-width: 100%;
+    white-space: nowrap;
+  }
+
+  &__content {
+    .button-block {
+      padding-top: 2.4rem;
+    }
+  }
+
+  &--shadow {
+    border: 0;
+    box-shadow: inset 0 0 0 var(--border-width) var(--border-color);
+  }
+
+  &--card {
+    padding-block: 3rem;
+    padding-inline: 1.6rem;
+  }
+
+  @include media-breakpoint-up(md) {
+    &__content {
+      .button-block {
+        padding-top: 3.2rem;
+      }
+    }
+
+    &--card {
+      padding-block: 4rem;
+      padding-inline: 3.2rem;
+    }
+  }
+}

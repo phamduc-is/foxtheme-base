@@ -1,0 +1,43 @@
+// @capability Social icon rows — blank variant (bare icons with enlarged tap targets and scale-on-hover) and solid variant (button-shaped), plus share-link icons with hover scale.
+// @when Footer/header social links or article/product share buttons; reuse rather than writing new icon-list hover CSS. No pairing JS.
+// @contract .socials--blank a / .social__item svg, .socials--solid .btn, .social-sharing__item.
+// @keywords social icons, social links, share buttons, follow icons, icon hover scale, social media
+
+@use "../mixins" as *;
+
+// ─── Social icons ─────────────────────────────────────────────────────────────
+
+.socials--blank a::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3.6rem;
+  height: 3.6rem;
+}
+
+.social__item svg {
+  transition: transform var(--motion-ui) var(--motion-ease-out);
+}
+
+.socials--blank a:hover svg {
+  transform: scale(1.1);
+}
+
+.socials--solid .btn {
+  --button-height: 4.8rem;
+  --button-corner-radius: 1rem;
+}
+
+// ─── Social sharing ───────────────────────────────────────────────────────────
+
+.social-sharing__item {
+  color: inherit;
+  transition: transform var(--motion-ui-fast) var(--motion-ease);
+  will-change: transform;
+}
+
+.social-sharing__item:hover {
+  transform: scale(1.15);
+}

@@ -1,0 +1,526 @@
+@use "../mixins" as *;
+
+// ─── Touch / interaction ──────────────────────────────────────────────────────
+// Removes 300ms tap delay on touch devices
+
+a,
+button,
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+}
+
+// ─── Links ────────────────────────────────────────────────────────────────────
+
+a {
+  color: rgb(var(--link-color, var(--color-foreground)));
+  text-decoration-color: transparent;
+  text-decoration-thickness: 0.075em;
+  text-underline-offset: 0.125em;
+}
+
+.link {
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-decoration: none;
+  text-underline-offset: 0.2rem;
+  cursor: pointer;
+
+  &--underline {
+    text-decoration: underline;
+    text-decoration-color: inherit;
+    text-decoration-thickness: 0.1rem;
+  }
+}
+
+@media (hover: hover) {
+  .link--underline:hover {
+    text-decoration-thickness: 0.2rem;
+  }
+}
+
+// ─── Accessibility ────────────────────────────────────────────────────────────
+.skip-to-content-link {
+  position: absolute !important;
+  width: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  height: 1px !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  overflow-wrap: normal !important;
+
+  &:focus-visible {
+    z-index: var(--layer-temporary);
+    overflow: visible !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    clip-path: none !important;
+    inset-inline-start: 1rem !important;
+    top: 1rem;
+  }
+}
+
+// ─── RTE (Rich Text Editor) ───────────────────────────────────────────────────
+
+.rte {
+  :is(h1, h2, h3, h4, h5, h6) {
+    margin-block: 0 var(--font-heading--spacing);
+  }
+
+  p {
+    margin-block: 0 var(--font-paragraph--spacing);
+  }
+
+  :last-child:is(p, h1, h2, h3, h4, h5, h6),
+  :where(p, h1, h2, h3, h4, h5, h6):nth-child(2):has(+ :last-child:empty) {
+    margin-block-end: 0;
+  }
+
+  ul,
+  ol {
+    margin-block-start: 0;
+    padding-inline-start: 0.7em;
+    list-style-position: inside;
+  }
+
+  // Only apply margin-block-end to top-level lists, not nested
+  :is(ul, ol):not(:is(ul, ol) :is(ul, ol)) {
+    margin-block: 0 2.4rem;
+  }
+
+  :is(ul, ol) :is(h1, h2, h3, h4, h5, h6) {
+    display: inline-block;
+  }
+
+  hr {
+    margin-block: 0.8em;
+  }
+
+  blockquote {
+    margin-inline: 2.4rem 3.2rem;
+    margin-block: 3.2rem;
+    padding-inline-start: 1.6rem;
+    border-inline-start: 0.4rem solid rgb(var(--color-border) / var(--color-border-alpha));
+    font-style: italic;
+    font-weight: 500;
+  }
+
+  .rte-table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse;
+    margin-block: 0 2.4rem;
+  }
+
+  tr:not(:has(td)),
+  thead {
+    background-color: rgb(var(--color-foreground-rgb) / 5%);
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  tr:has(td) {
+    border-bottom: 1px solid rgb(var(--color-border) / var(--color-border-alpha));
+  }
+
+  th,
+  td {
+    text-align: start;
+    padding: 1.6rem 1.2rem;
+  }
+
+  iframe,
+  image {
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  a {
+    position: relative;
+    display: inline-block;
+    color: currentcolor;
+    text-decoration-color: currentcolor;
+  }
+}
+
+@media (hover: hover) {
+  .rte a:hover {
+    text-decoration-thickness: 0.2rem;
+  }
+}
+
+// ─── Text block ───────────────────────────────────────────────────────────────
+
+.text-block {
+  :is(h1, h2, h3, h4, h5, h6),
+  &:is(.h1, .h2, .h3, .h4, .h5, .h6) > * {
+    margin-block: 0 var(--font-heading--spacing);
+    display: inline;
+  }
+
+  p,
+  &.p > * {
+    margin-block: 0 var(--font-paragraph--spacing);
+
+    &:first-child {
+      margin-block-start: 0;
+    }
+
+    &:last-child {
+      margin-block-end: 0;
+    }
+  }
+
+  & > *:first-child {
+    margin-block-start: 0;
+  }
+
+  & > *:last-child {
+    margin-block-end: 0;
+  }
+
+  // Handle margin when custom styles inject a <style> tag as first child
+  & > style + * {
+    margin-block-start: 0;
+  }
+
+  :is(ul, ol) {
+    margin-block: 0 2.4rem;
+    padding-inline-start: 1.6em;
+  }
+
+  :is(h1, h2, h3, h4, h5, h6),
+  &:is(.h1, .h2, .h3, .h4, .h5, .h6) {
+    :is(ul, ol) :is(h1, h2, h3, h4, h5, h6) {
+      font-size: inherit;
+      line-height: inherit;
+    }
+  }
+
+  :where(ul, ol) {
+    list-style-position: inside;
+  }
+}
+
+// ─── Placeholder ──────────────────────────────────────────────────────────────
+
+svg.placeholder {
+  background-color: rgb(var(--color-foreground) / 10%);
+  fill: rgb(var(--color-foreground) / 25%);
+  color: rgb(var(--color-foreground) / 25%);
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+// ─── Cart count bubble ────────────────────────────────────────────────────────
+
+.cart-count {
+  --cart-count-size: 2rem;
+
+  &--bubble {
+    width: var(--cart-count-size, 2rem);
+    height: var(--cart-count-size, 2rem);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 1.4rem;
+    font-weight: var(--font-body--weight);
+    color: var(--color-cart-bubble-text);
+    background-color: var(--color-cart-bubble-background);
+    border-radius: 50%;
+  }
+
+  // Parens live in CSS so the text node stays a bare integer for cart-count.js to
+  // parse; inline-flex drops the source newlines that would otherwise print as spaces.
+  &--plain {
+    display: inline-flex;
+
+    &::before {
+      content: "(";
+    }
+
+    &::after {
+      content: ")";
+    }
+  }
+
+  &--small-medium {
+    --cart-count-size: 2.4rem;
+  }
+
+  &--absolute {
+    position: absolute;
+    top: 0.1rem;
+    inset-inline-end: var(--cart-count-offset-x, -0.5rem);
+
+    @include media-breakpoint-up(md) {
+      .cart-icon & {
+        --cart-count-size: 2.2rem;
+
+        top: -0.2rem;
+
+        &.cart-count--small-medium {
+          --cart-count-size: 2.4rem;
+        }
+      }
+    }
+  }
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// ─── Show more ────────────────────────────────────────────────────────────────
+
+.show-more {
+  svg,
+  path {
+    transform-origin: center;
+    transition: transform var(--motion-ui-fast) var(--motion-ease);
+  }
+}
+
+.show-more[data-expanded="true"] .show-more__label--more,
+.show-more[data-expanded="false"] .show-more__label--less {
+  display: none;
+}
+
+.show-more[data-expanded="true"] {
+  svg {
+    .icon--plus-line-2 {
+      transform: rotate(270deg);
+    }
+  }
+}
+
+// ─── Table ────────────────────────────────────────────────────────────────────
+
+table {
+  border-collapse: collapse;
+  border-color: inherit;
+  text-indent: 0;
+}
+
+table:not([class]) {
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 1.4rem;
+  border-style: hidden;
+  box-shadow: 0 0 0 0.1rem rgb(var(--color-foreground) / 20%);
+}
+
+table:not([class]) td,
+table:not([class]) th {
+  padding: 1em;
+  border: 0.1rem solid rgb(var(--color-foreground) / 20%);
+}
+
+.table-striped {
+  color: rgb(var(--color-foreground-secondary));
+
+  td,
+  th {
+    padding: 1.2rem 1.6rem;
+  }
+
+  th {
+    font-weight: inherit;
+    text-align: start;
+    color: rgb(var(--color-foreground));
+  }
+
+  tr:nth-child(odd) {
+    background-color: rgb(var(--color-background-secondary));
+  }
+}
+
+// ─── Divider / separator ──────────────────────────────────────────────────────
+
+.divider {
+  justify-content: var(--divider-justify-content);
+}
+
+.divider__line {
+  border-bottom: var(--divider-border-thickness) solid rgb(var(--color-border) / var(--color-border-alpha));
+  border-right: var(--divider-border-thickness) solid rgb(var(--color-border) / var(--color-border-alpha));
+  flex-basis: var(--divider-flex-basis);
+  min-height: var(--divider-flex-basis);
+}
+
+.separator__shape {
+  background: rgb(var(--color-foreground));
+}
+
+.separator--dot .separator__shape {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+}
+
+.separator--line .separator__shape {
+  width: 6.4rem;
+  height: 0.1rem;
+}
+
+// ─── Spacer ───────────────────────────────────────────────────────────────────
+
+.spacer {
+  height: var(--f-spacing-mobile, var(--f-spacing));
+}
+
+@include media-breakpoint-up(md) {
+  .spacer {
+    height: var(--f-spacing);
+  }
+}
+
+// ─── Overlay ──────────────────────────────────────────────────────────────────
+
+.overlay {
+  z-index: var(--overlay-layer);
+
+  // The INNER radius, not the inherited outer one. An `absolute; inset: 0` overlay is laid
+  // out against its parent's PADDING box, so the corner it actually has to match is the
+  // outer radius minus the border width. `border-radius: inherit` copied the outer value,
+  // which is only correct while the border is 0 — give a card a 10px border and a 32px
+  // radius and the overlay curved at 32 inside a box curved at 22, leaving all four corners
+  // visibly unpainted. Plain `0` is not the fix either: on a rounded parent that does not
+  // clip, a square overlay spills over the curve instead. Both custom properties come from
+  // the `border-style` snippet on the host and inherit down here; both carry a fallback, so
+  // an unbordered host still resolves (R - 0 = R) instead of dropping the declaration to
+  // its initial value. Hosts that ship no border at all (`_slide`, `_section-background`,
+  // `_hero-banner-media`, `collection-banner-image`) all clip their overlay, so the 0px
+  // fallback never shows there.
+  border-radius: calc(var(--border-radius, 0px) - var(--border-width, 0px));
+}
+
+// One declaration, two names: `background` takes a gradient wherever it takes a colour,
+// so `snippets/overlay.liquid` feeds either through --overlay-color. The modifier exists
+// so the DOM says which kind is painted, not because the CSS differs.
+.overlay--solid,
+.overlay--gradient {
+  background: var(--overlay-color);
+}
+
+// ─── Product badge ────────────────────────────────────────────────────────────
+
+.product-badges:has(.product-badges--empty) {
+  display: none;
+}
+
+// ─── Breadcrumbs ──────────────────────────────────────────────────────────────
+
+.breadcrumbs a {
+  color: rgb(var(--color-foreground));
+  white-space: nowrap;
+}
+
+.breadcrumbs__sep {
+  // Purely decorative: snippets/breadcrumbs.liquid:64 renders it aria-hidden with no text content.
+  // check-contrast-disable-next-line
+  color: rgb(var(--color-foreground) / 20%);
+}
+
+// Divider variants — picked by the `breadcrumbs_divider` theme setting, which the
+// `breadcrumbs` snippet turns into a modifier on every separator.
+// `slash` and `dot` are typed; `line` and `caret` are drawn. A `|` or `›` glyph takes its
+// size from whichever font the merchant picked, so neither can hold the 14px the design
+// asks for — those two are boxes sized in rem and tinted with `currentcolor`, which is
+// already the 20% foreground set above.
+
+.breadcrumbs__sep--slash::before {
+  content: "/";
+}
+
+.breadcrumbs__sep--dot::before {
+  content: "•";
+}
+
+.breadcrumbs__sep--line::before {
+  content: "";
+  display: block;
+  width: 1px;
+  height: 1.4rem;
+  background-color: currentcolor;
+}
+
+.breadcrumbs__sep--caret::before {
+  content: "";
+  display: block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-top: 1px solid currentcolor;
+  border-right: 1px solid currentcolor;
+
+  // Rotation is paint-only: the flex row still lays this out as a 0.6rem box, so the
+  // 1.2rem column gap reads a touch tighter here than beside a typed divider.
+  transform: rotate(45deg);
+}
+
+// ─── Add to cart button ───────────────────────────────────────────────────────
+
+.add-to-cart-button .add-to-cart-text {
+  transition:
+    opacity var(--motion-ui),
+    visibility var(--motion-ui);
+}
+
+.add-to-cart-button.loading .add-to-cart-text {
+  opacity: 0;
+  visibility: hidden;
+}
+
+// ─── Localization dropdown ────────────────────────────────────────────────────
+.localization-flag {
+  position: relative;
+
+  &::before {
+    content: "";
+    display: block;
+    flex-shrink: 0;
+    width: var(--localization-flag-width);
+    aspect-ratio: var(--localization-flag-ratio);
+    border-radius: var(--localization-flag-radius);
+    background: var(--flag) center / cover no-repeat;
+  }
+}
+
+.dropdown-localization {
+  --dropdown-border-color: rgb(var(--color-border) / calc(var(--color-border-alpha) + 0.1));
+
+  &__button.btn {
+    padding-inline: 1.1rem;
+    border-color: var(--dropdown-border-color);
+  }
+
+  &__button-arrow svg {
+    transition: transform var(--motion-ui);
+  }
+
+  &__button[aria-expanded="true"] .dropdown-localization__button-arrow svg {
+    transform: rotate(180deg);
+  }
+
+  &__button--plain .btn__text {
+    gap: 0.6rem;
+  }
+}
+
+// ─── Misc ─────────────────────────────────────────────────────────────────────
+
+.shopify-section:has(.sticky-add-to-cart) {
+  z-index: 2;
+}

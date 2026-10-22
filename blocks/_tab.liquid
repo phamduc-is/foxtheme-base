@@ -1,0 +1,90 @@
+{%- liquid
+  assign block_index = section.blocks | find_index: 'id', block.id
+
+  assign tab_title = block.settings.text | default: 'Tab title'
+
+  # The selected state is rendered, not left to the runtime. tabs-component
+  # syncs it in connectedCallback, which is AFTER first paint, so shipping the
+  # tabs unselected made the runtime's first sync a state change — visible as
+  # the active tab's fill sliding in on every page load. It is also what the
+  # header shows before (or without) JS: the panel for index 0 is already the
+  # one not `hidden`, and nothing said so in the tab row.
+  assign is_active = false
+  if block_index == 0
+    assign is_active = true
+  endif
+-%}
+{%- capture panel_id -%}{{ section.id }}-panel-{{ block_index }}{%- endcapture -%}
+<!-- @tabs/split -->
+<a
+  href="#{{ panel_id }}"
+  aria-controls="{{ panel_id }}"
+  ref="tab[]"
+  on:click="/onTabClick"
+  on:keydown="/onKeydown"
+  role="tab"
+  aria-selected="{{ is_active }}"
+  tabindex="{% if is_active %}0{% else %}-1{% endif %}"
+  class="tabs__button inline-flex items-center justify-center relative rounded"
+  data-index="{{ block_index }}"
+>
+  <span class="tabs__button-text relative text-ellipsis" data-label="{{ tab_title | escape }}">{{ tab_title }}</span>
+</a>
+<!-- @tabs/split -->
+<div
+  id="{{ panel_id }}"
+  ref="panel[]"
+  class="tabs__panel"
+  {% if block_index != 0 %}
+    hidden
+  {% endif %}
+  data-index="{{ block_index }}"
+  {{ block.shopify_attributes }}
+>
+  {% content_for 'blocks' %}
+</div>
+{% schema %}
+{
+  "name": "t:names.tab",
+  "tag": null,
+  "blocks": [
+    {
+      "type": "@app"
+    },
+    {
+      "type": "group"
+    },
+    {
+      "type": "accordion"
+    },
+    {
+      "type": "icon"
+    },
+    {
+      "type": "image"
+    },
+    {
+      "type": "video"
+    },
+    {
+      "type": "text"
+    },
+    {
+      "type": "button"
+    }
+  ],
+  "settings": [
+    {
+      "type": "text",
+      "id": "text",
+      "label": "t:settings.text",
+      "default": "Tab title"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.tab"
+    }
+  ]
+}
+{% endschema %}

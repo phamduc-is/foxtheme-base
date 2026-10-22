@@ -1,0 +1,111 @@
+{% doc %}
+  Label (badge) as a public theme block, so it can sit anywhere a host accepts `@theme` — inside a
+  Group above a heading, for instance (a slideshow slide's left column). Same markup and settings
+  as the private `_content-label` (in-content placement, never overlaid on media); hosts that list
+  `_content-label` explicitly keep using that one.
+
+  @example
+  {% content_for 'block', type: 'label', id: 'label' %}
+{% enddoc %}
+
+{% liquid
+  assign animation_type = block.settings.animation_type | default: 'none'
+  assign animation_delay = block.settings.animation_delay
+  assign tag = 'div'
+  if animation_type != 'none' and settings.animations_enabled
+    assign tag = 'motion-component'
+  endif
+%}
+
+<{{ tag }}
+  class="block"
+  {{ block.shopify_attributes }}
+  {% render 'motion-attributes', type: animation_type, delay: animation_delay %}
+>
+  {% render 'label', text: block.settings.text, placement: 'content', settings: block.settings %}
+</{{ tag }}>
+
+{% schema %}
+{
+  "name": "t:names.label",
+  "tag": null,
+  "settings": [
+    {
+      "type": "text",
+      "id": "text",
+      "label": "t:settings.text",
+      "default": "t:text_defaults.label"
+    },
+    {
+      "type": "header",
+      "content": "t:content.margin"
+    },
+    {
+      "type": "range",
+      "id": "margin-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "margin-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "mobile-margin-scale",
+      "label": "t:settings.mobile_scale",
+      "min": 20,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 80
+    },
+    {
+      "type": "header",
+      "content": "t:content.animation",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "select",
+      "id": "animation_type",
+      "label": "t:settings.type",
+      "options": [
+        { "value": "none", "label": "t:options.none" },
+        { "value": "fade-in", "label": "t:options.fade_in" },
+        { "value": "fade-up", "label": "t:options.fade_up" },
+        { "value": "fade-down", "label": "t:options.fade_down" },
+        { "value": "slide-in-start", "label": "t:options.slide_in_start" },
+        { "value": "slide-in-end", "label": "t:options.slide_in_end" }
+      ],
+      "default": "none",
+      "visible_if": "{{ settings.animations_enabled == true }}"
+    },
+    {
+      "type": "range",
+      "id": "animation_delay",
+      "label": "t:settings.delay",
+      "min": 0,
+      "max": 2000,
+      "step": 50,
+      "default": 250,
+      "visible_if": "{{ block.settings.animation_type != 'none' and settings.animations_enabled == true }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.label",
+      "category": "t:categories.basic"
+    }
+  ]
+}
+{% endschema %}

@@ -1,0 +1,213 @@
+{%- liquid
+  assign container = section.settings.container
+
+  assign use_padding_inline = false
+  if container == 'full'
+    assign use_padding_inline = true
+  endif
+-%}
+{%- capture wrapper_class -%}
+  top-bar color-{{ section.settings.color_scheme }} spacing-style
+  {%- if section.settings.show_separator_line %} top-bar--show-separator-line{%- endif -%}
+{%- endcapture -%}
+{%- capture section_style -%}
+  {% render 'spacing-style', settings: section.settings, use_padding_inline: use_padding_inline %}
+{%- endcapture -%}
+<div
+  class="{{ wrapper_class | strip | strip_newlines }}"
+  style="{{ section_style | strip | strip_newlines }}"
+>
+  <div class="section__container section-grid section-grid--{{ container }}">
+    <div class="top-bar__inner">
+      {%- content_for 'block', type: '_top-bar-left-column', id: 'top-bar-left-column' -%}
+      {%- content_for 'block', type: '_top-bar-center-column', id: 'top-bar-center-column' -%}
+      {%- content_for 'block', type: '_top-bar-right-column', id: 'top-bar-right-column' -%}
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.top_bar",
+  "blocks": [],
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        { "value": "fixed", "label": "t:options.fixed" },
+        { "value": "full", "label": "t:options.full" }
+      ],
+      "default": "fixed"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance"
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_separator_line",
+      "label": "t:settings.show_separator_line",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        { "value": "desktop", "label": "t:options.desktop" },
+        { "value": "mobile", "label": "t:options.mobile" }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 10,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 10,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'full' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.device == 'desktop' and section.settings.container == 'full' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 10,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 10,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start-mobile",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'full' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end-mobile",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 16,
+      "visible_if": "{{ section.settings.device == 'mobile' and section.settings.container == 'full' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.top_bar",
+      "category": "t:categories.basic",
+      "blocks": {
+        "top-bar-left-column": {
+          "type": "_top-bar-left-column",
+          "static": true,
+          "blocks": {
+            "menu": {
+              "type": "_menu"
+            }
+          },
+          "block_order": ["menu"]
+        },
+        "top-bar-center-column": {
+          "type": "_top-bar-center-column",
+          "static": true,
+          "blocks": {
+            "text": {
+              "type": "_simple-text",
+              "settings": {
+                "text": "<p>Free Express Shipping on orders $120</p>",
+                "type_preset": "paragraph"
+              }
+            }
+          },
+          "block_order": ["text"]
+        },
+        "top-bar-right-column": {
+          "type": "_top-bar-right-column",
+          "static": true,
+          "blocks": {
+            "localization": {
+              "type": "_localization"
+            }
+          },
+          "block_order": ["localization"]
+        }
+      }
+    }
+  ],
+  "enabled_on": {
+    "groups": ["header"]
+  }
+}
+{% endschema %}

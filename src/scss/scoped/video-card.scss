@@ -1,0 +1,157 @@
+@use "../mixins" as *;
+
+// ─── Video card ───────────────────────────────────────────────────────────────
+
+.video-card {
+  --avatar-width: 6rem;
+  --avatar-border-size: 0.3rem;
+
+  container-type: inline-size;
+  container-name: video-card;
+
+  &__content {
+    transition-property: opacity, visibility, transform;
+    transition-duration: var(--motion-ui);
+    transition-timing-function: var(--motion-ease-fade), var(--motion-ease), var(--motion-ease);
+    padding: 2rem;
+    background: linear-gradient(
+      111.49deg,
+      rgb(var(--color-foreground) / 40%) -8.95%,
+      rgb(var(--color-foreground) / 1%) 114%
+    );
+    -webkit-backdrop-filter: blur(50px);
+    backdrop-filter: blur(50px);
+
+    &::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      inset-inline: 0;
+      z-index: -1;
+      padding: 0.05rem;
+      border-radius: inherit;
+      background: linear-gradient(
+        -45deg,
+        rgb(var(--color-foreground) / 50%),
+        rgb(var(--color-foreground) / 10%),
+        rgb(var(--color-foreground) / 50%)
+      );
+      mask:
+        linear-gradient(#000 0 0) exclude,
+        linear-gradient(#000 0 0) content-box;
+    }
+
+    &-wrapper {
+      padding-top: 12rem;
+    }
+
+    @include media-breakpoint-down(md) {
+      padding: 1.6rem;
+    }
+  }
+
+  .deferred-media__poster-button {
+    opacity: 1;
+  }
+
+  .video-placeholder-wrapper__poster-icon,
+  .deferred-media__poster-icon {
+    top: 2rem;
+    inset-inline: auto 2rem;
+    transform: none;
+    z-index: 2;
+
+    --button-width: 3.6rem;
+    --button-height: 3.6rem;
+
+    @include media-breakpoint-down(md) {
+      top: 1.4rem;
+      inset-inline-end: 1.4rem;
+
+      --button-width: 3rem;
+      --button-height: 3rem;
+    }
+  }
+
+  .video-interaction__controls-inner {
+    bottom: unset;
+    top: 0;
+    padding: 2rem;
+
+    @include media-breakpoint-down(md) {
+      padding: 1.4rem;
+
+      .video-interaction__control {
+        width: 3rem;
+        height: 3rem;
+      }
+    }
+  }
+
+  .author-info__avatar {
+    inset-inline-end: var(--avatar-offset-x, 2rem);
+    transform: translateY(-50%);
+    box-shadow:
+      0 0 0 var(--avatar-border-size) rgb(var(--color-white)),
+      0 1rem 3rem rgb(var(--color-black) / 25%);
+    width: var(--avatar-width);
+  }
+
+  @container video-card (min-width: 250px) {
+    &.is-hovering,
+    &:has(deferred-media[data-playing]) {
+      .video-card__content {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(100%);
+      }
+
+      .deferred-media__poster-button .deferred-media__poster-icon {
+        display: none;
+      }
+    }
+  }
+
+  &.is-hovering,
+  &:has(deferred-media[data-playing]) {
+    .deferred-media__poster-button .deferred-media__poster-icon {
+      display: none;
+    }
+  }
+
+  &:hover {
+    .video-placeholder-wrapper__poster-icon {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: all var(--motion-ui) var(--motion-ease);
+    }
+  }
+
+  &:has(.author-info__avatar) {
+    .author-info__name {
+      padding-inline-end: var(--avatar-width);
+    }
+  }
+
+  @include media-breakpoint-down(md) {
+    --avatar-offset-x: 1rem;
+    --avatar-width: 4rem;
+    --avatar-border-size: 0.2rem;
+
+    deferred-media[data-media-loaded="true"] .deferred-media__poster-icon {
+      display: none;
+    }
+
+    .video-interaction-hint {
+      opacity: 1;
+    }
+
+    &:has(.author-info__avatar.hidden) {
+      .author-info__name {
+        padding-inline-end: 0;
+      }
+    }
+  }
+}

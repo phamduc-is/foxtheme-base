@@ -1,0 +1,46 @@
+// @capability Full-bleed media mixins for auto-grow heroes — full-bleed-media-cover (media fills the layout-driven box, absolutely covering) and full-bleed-media-adapt (image ratio sets the height floor but stretches with taller siblings).
+// @when Any section with a min-height FLOOR carrying a full-bleed background image/video (hero banners, slideshows) — hand-rolled object-fit/absolute CSS misses the .media aspect-ratio inflation trap this solves.
+// @contract @include inside the media WRAPPER element (holding the inner .media + img); pair with min-height: var(--height-mobile/--height) on the section wrapper — full usage example in the comment below.
+// @keywords full bleed, background image, hero media, cover, object-fit, aspect ratio, auto-grow, min-height, banner video
+
+// ─── Full-bleed media (auto-grow heroes) ──────────────────────────────────────
+// For a section whose height is a min-height FLOOR (auto-grows with content) carrying a
+// full-bleed background image/video. The global `.media { aspect-ratio: var(--ratio) }`
+// (in _component-media) would otherwise inflate a full-width image to a huge height once the
+// box height is indefinite. Two modes:
+//   COVER (a fixed/custom floor): the media fills the layout-driven box and the image
+//   absolutely covers it — it can never inflate the box.
+//   ADAPT (size to the image): the image's ratio is the height floor, but it still stretches
+//   to fill when sibling content is taller.
+// Include INSIDE the media wrapper element (the one holding the inner `.media` + <img>), e.g.:
+//   .hero-banner__media { @include full-bleed-media-cover; }
+//   @include media-breakpoint-up(md) { .media--adapt .hero-banner__media { @include full-bleed-media-adapt; } }
+//   @include media-breakpoint-down(md) { .media-mobile--adapt .hero-banner__media { @include full-bleed-media-adapt(var(--ratio-mobile, var(--ratio))); } }
+// Pair with `min-height: var(--height-mobile, 0)` (mobile) / `var(--height, 0)` (desktop) on the
+// section wrapper. See create-liquid-section / create-scss-module skills.
+
+@mixin full-bleed-media-cover {
+  .media {
+    aspect-ratio: unset;
+    height: 100%;
+  }
+
+  img,
+  video,
+  .placeholder {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--focal-position, center);
+  }
+}
+
+@mixin full-bleed-media-adapt($ratio: var(--ratio)) {
+  .media {
+    aspect-ratio: #{$ratio};
+    height: auto;
+    min-height: 100%;
+  }
+}

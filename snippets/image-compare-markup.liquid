@@ -1,0 +1,41 @@
+{% doc %}
+  Markup for the image-comparison theme block (no schema). Before/after panels must be captured in the block file (`content_for` static child blocks).
+
+  @param {object} settings - Block settings (direction, ratios, heading/handle style, color scheme, border).
+  @param {string} [shopify_attributes] - Theme editor attributes from the parent block.
+  @param {string} before_html - Captured before image block output.
+  @param {string} after_html - Captured after image block output.
+{% enddoc %}
+{{ 'scoped-image-comparison.css' | asset_url | stylesheet_tag }}
+{%- liquid
+  assign image_heading_style = settings.heading_style | default: 'badge'
+  assign handle_style = settings.handle_style | default: 'pill'
+  assign direction = settings.direction
+-%}
+<image-comparison
+  class="block w-full relative z-0 overflow-hidden image-comparison image-comparison-block image-comparison--heading-style-{{ image_heading_style }} image-comparison--handle-{{ handle_style }} border-style color-{{ settings.color_scheme }}"
+  style="{% render 'border-style', settings: settings %}"
+  data-direction="{{ direction }}"
+  {{ shopify_attributes }}
+>
+  <span
+    ref="trigger"
+    class="image-comparison__animation-trigger"
+  ></span>
+  {{ before_html }}
+  {{ after_html }}
+  <button
+    ref="rangeButton"
+    class="image-comparison__button absolute"
+    aria-label="Image comparison"
+  >
+    <span ref="rangeButtonIcon" class="image-comparison__button-range">
+      {%- if handle_style == 'circle' -%}
+        {% render 'icon', icon: 'grip-vertical' %}
+      {%- else -%}
+        {% render 'icon', icon: 'caret-left' %}
+        {% render 'icon', icon: 'caret-right' %}
+      {%- endif -%}
+    </span>
+  </button>
+</image-comparison>

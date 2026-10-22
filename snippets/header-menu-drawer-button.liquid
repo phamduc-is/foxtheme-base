@@ -1,0 +1,21 @@
+{% doc %}
+  Renders the mobile menu drawer toggle button shown in the header.
+  Opens the `#menu-drawer` dialog on click. Visible on mobile only (hidden at lg).
+  Renders nothing when no mobile menu is set.
+
+  @param {object} [menu_mobile] - The mobile menu link list; the button only renders when present.
+
+  @example
+  {% render 'header-menu-drawer-button', menu_mobile: menu_mobile %}
+{% enddoc %}
+{%- if menu_mobile != blank -%}
+  <button
+    on:click="#menu-drawer/showDialog"
+    class="header__button menu-drawer-button flex lg:hidden items-center justify-center button-unstyled cursor-pointer"
+    aria-label="{{ 'actions.open_menu_drawer' | t }}"
+    aria-haspopup="dialog"
+    aria-controls="menu-drawer-dialog"
+  >
+    {%- render 'icon', icon: 'list', size: 'large' -%}
+  </button>
+{%- endif -%}

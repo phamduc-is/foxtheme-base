@@ -1,0 +1,13 @@
+@use "../mixins" as *;
+
+// ─── Product — frequently bought together ────────────────────────────────────
+
+.product-bought-together {
+  &__list {
+    gap: 1rem;
+  }
+
+  &__list-wrap {
+    max-height: min(52.6rem, calc(100svh - 3.2rem));
+  }
+}

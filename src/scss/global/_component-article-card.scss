@@ -1,0 +1,116 @@
+// @capability Blog article card — ratio-controlled media (padding-top hack driven by --ratio/--ratio-mobile), tag pill over the image, meta row with dot separators, row and column layout variants.
+// @when Any blog-post/article preview card in grids or blog sections — reuse instead of styling a new article card. No pairing JS.
+// @contract .article-card__media (with a [style*="--ratio"] child), .article-card__tag (--media positions it over the image), .article-card__title, .article-card__metas + .article-card__separator, .article-card__content, .article-card__button; modifiers .article-card--row / --column / --content-outside.
+// @keywords article card, blog card, post preview, blog grid, image ratio, tag badge, meta separator
+
+@use "sass:math";
+@use "../mixins" as *;
+
+// ─── Article card ─────────────────────────────────────────────────────────────
+
+.article-card__media {
+  max-height: 100%;
+
+  .media {
+    aspect-ratio: unset;
+    height: 100%;
+  }
+
+  [style*="--ratio"] {
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      display: block;
+      width: 100%;
+      content: "";
+      height: 0;
+      padding-block-start: calc(100% / (0.0001 + var(--ratio, #{math.div(16, 9)})));
+    }
+
+    > *:first-child:is(img),
+    .media__image {
+      inset-block-start: 0;
+      inset-inline: 0;
+      position: absolute !important;
+      object-fit: cover;
+      width: 100%;
+      height: 100%;
+    }
+  }
+}
+
+// ─── Article card tag ─────────────────────────────────────────────────────────
+
+.article-card__tag {
+  background-color: rgb(var(--color-background-secondary));
+  color: rgb(var(--color-foreground));
+
+  &--media {
+    position: absolute;
+    inset-block-start: var(--edge-padding-block, 1rem);
+    inset-inline-start: var(--edge-padding-inline, 1rem);
+    z-index: var(--layer-flat, 1);
+    background-color: #fff;
+    color: #000;
+  }
+}
+
+.article-card__title {
+  margin-block-end: 0;
+}
+
+.article-card__separator {
+  width: 0.4rem;
+  height: 0.4rem;
+  background: var(--color-foreground-secondary);
+  align-self: center;
+}
+
+.article-card__button {
+  --icon-size: 1.4rem;
+
+  margin-top: 1.2rem;
+}
+
+.article-card__content {
+  pointer-events: none;
+
+  :is(a, button) {
+    pointer-events: auto;
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .article-card--row {
+    .article-card__media {
+      max-width: 36%;
+      width: 100%;
+    }
+
+    .article-card__content {
+      padding-inline-start: 0;
+      padding-block-start: var(--edge-padding-block);
+    }
+  }
+
+  .article-card--column {
+    .article-card__content {
+      padding-block-start: 0;
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .article-card--content-outside {
+    .article-card__content {
+      padding-block-start: 0;
+    }
+  }
+
+  .article-card__media {
+    [style*="--ratio"]::before {
+      padding-block-start: calc(100% / (0.0001 + var(--ratio-mobile, var(--ratio, #{math.div(16, 9)}))));
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{% doc %}
+  Private container block that groups the header mega-menu blocks.
+
+  Renders its nested blocks via `content_for 'blocks'`. Each nested block
+  resolves the nav link it belongs to by matching its `menu_title` handle
+  against the links of `section.settings.menu`.
+
+  @example
+  {% content_for 'block', type: '_mega-menu', id: 'mega-menu' %}
+{% enddoc %}
+{%- content_for 'blocks' -%}
+{% schema %}
+{
+  "name": "t:names.mega_menu",
+  "tag": null,
+  "settings": [],
+  "blocks": [
+    {
+      "type": "_mega-menu-banner"
+    },
+    {
+      "type": "_mega-menu-sidebar"
+    },
+    {
+      "type": "_mega-menu-text-with-banners"
+    }
+  ]
+}
+{% endschema %}

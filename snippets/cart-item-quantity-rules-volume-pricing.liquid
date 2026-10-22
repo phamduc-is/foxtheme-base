@@ -1,0 +1,58 @@
+{%- doc -%}
+  Cart line: info button and tooltip for quantity rules and volume pricing.
+
+  @param {object} item - Cart line item
+  @param {object} section - Parent section
+  @param {string} dialog_color_scheme - Color scheme id for tooltip
+
+  @example
+  {% render 'cart-item-quantity-rules-volume-pricing',
+    item: item,
+    section: section,
+    dialog_color_scheme: dialog_color_scheme
+  %}
+{%- enddoc -%}
+{%- liquid
+  assign has_qty_rules_or_vol_pricing = false
+  if item.variant.quantity_rule.increment > 1 or item.variant.quantity_rule.min > 1 or item.variant.quantity_rule.max != null or item.variant.quantity_price_breaks.size > 0
+    assign has_qty_rules_or_vol_pricing = true
+  endif
+-%}
+{%- if has_qty_rules_or_vol_pricing -%}
+  {%- capture tooltip_id -%}cart-item-volume-{{ section.id }}-{{ item.index }}{%- endcapture -%}
+  <button
+    type="button"
+    class="cart-items__vol-pricing-toggle shrink-0 button-unstyled flex items-center justify-center text-center cursor-help color-subtext gap-1"
+    data-tooltip-html="#{{ tooltip_id }}"
+    data-tooltip-class="tooltip--color-scheme color-{{ dialog_color_scheme }}"
+    data-tooltip-mobile-sheet="true"
+    data-tooltip-interactive="true"
+    aria-label="{{ 'content.quantity_rules_and_volume_pricing' | t }}"
+  >
+    {%- render 'icon', icon: 'info', size: 'large' -%}
+  </button>
+  <template id="{{ tooltip_id }}">
+    <div class="cart-items__vol-pricing-tooltip v-scrollable flex flex-col gap-4">
+      <div class="tooltip__header flex flex-row items-start justify-between md:hidden">
+        <div class="tooltip__titles flex min-w-0 flex-1 flex-col gap-1">
+          <p class="h5 m-0">{{- item.product.title -}}</p>
+          {%- unless item.product.has_only_default_variant -%}
+            <p class="color-subtext m-0 text-body-sm">{{- item.variant.title -}}</p>
+          {%- endunless -%}
+        </div>
+        <button
+          type="button"
+          class="tooltip__close button-unstyled dialog__close shrink-0"
+          data-tooltip-close
+          aria-label="{{ 'accessibility.close_dialog' | t }}"
+        >
+          {% render 'icon', icon: 'close', size: 'large' %}
+        </button>
+      </div>
+      <div class="cart-items__vol-pricing-tooltip-body flex flex-col gap-3 text-body-sm">
+        {% render 'product-quantity-rules', product: item.product, variant: item.variant, section: section %}
+        {% render 'product-volume-pricing', product: item.product, variant: item.variant, section: section %}
+      </div>
+    </div>
+  </template>
+{%- endif -%}

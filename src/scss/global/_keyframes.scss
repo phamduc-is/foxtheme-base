@@ -1,0 +1,214 @@
+// ─── Slide animations ─────────────────────────────────────────────────────────
+
+// @capability Shared @keyframes library — slide in/out (left/right/bottom), dialog scale + backdrop fade, loading spin/rotator/dash, marquee scrolling (LTR + RTL), float up/down.
+// @when Reuse an existing keyframe before declaring a new one — drawers/dialogs/marquee/spinners already animate with these; a duplicate keyframe with a new name is dead weight.
+// @contract Global @keyframes names referenced from any partial (slideInLeft, dialogScaleIn, spinLoading, scrolling-left, float-up, …).
+// @keywords keyframes, animation, slide in, slide out, fade, dialog animation, spinner, loading, marquee scroll, float
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(calc(var(--slide-in-left-from, 100%) * var(--flip-x-factor)));
+  }
+
+  to {
+    transform: translateX(calc(var(--slide-in-left-to, 0) * var(--flip-x-factor)));
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(var(--slide-out-left-to, 100%) * var(--flip-x-factor)));
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(calc(var(--slide-in-right-from, -100%) * var(--flip-x-factor)));
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(var(--slide-out-right-to, -100%) * var(--flip-x-factor)));
+  }
+}
+
+@keyframes slideInBottom {
+  from {
+    transform: translateY(var(--slide-in-bottom-from, 100%));
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutBottom {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(var(--slide-out-bottom-to, 100%));
+  }
+}
+
+// ─── Dialog animations ────────────────────────────────────────────────────────
+
+@keyframes dialogScaleIn {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes dialogScaleOut {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+}
+
+@keyframes dialogBackdropIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes dialogBackdropOut {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+// ─── Loading / spinner animations ─────────────────────────────────────────────
+
+@keyframes spinLoading {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rotator {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(270deg);
+  }
+}
+
+@keyframes dash {
+  0% {
+    stroke-dashoffset: 280;
+  }
+
+  50% {
+    stroke-dashoffset: 75;
+    transform: rotate(135deg);
+  }
+
+  100% {
+    stroke-dashoffset: 280;
+    transform: rotate(450deg);
+  }
+}
+
+// ─── Marquee / scroll animations ─────────────────────────────────────────────
+
+@keyframes scrolling-left {
+  0% {
+    transform: translate3d(0, 0, 0);
+    visibility: visible;
+  }
+
+  100% {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+@keyframes scrolling-right {
+  0% {
+    transform: translate3d(-100%, 0, 0);
+    visibility: visible;
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes scrolling-left-rtl {
+  0% {
+    transform: translate3d(0, 0, 0);
+    visibility: visible;
+  }
+
+  100% {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+@keyframes scrolling-right-rtl {
+  0% {
+    transform: translate3d(100%, 0, 0);
+    visibility: visible;
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+// ─── Float animations ─────────────────────────────────────────────────────────
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0.8rem);
+  }
+
+  100% {
+    transform: translateY(-0.8rem);
+  }
+}
+
+@keyframes float-down {
+  0% {
+    transform: translateY(-0.8rem);
+  }
+
+  100% {
+    transform: translateY(0.8rem);
+  }
+}

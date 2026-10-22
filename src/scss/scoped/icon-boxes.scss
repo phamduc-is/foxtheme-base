@@ -1,0 +1,80 @@
+@use "../mixins" as *;
+
+// ─── Icon boxes ───────────────────────────────────────────────────────────────
+
+.section--icon-boxes {
+  .icon-boxes__wrapper {
+    .icon-box {
+      height: 100%;
+    }
+  }
+
+  .dialog {
+    --dialog-max-width: 55rem;
+
+    &__content {
+      padding: 4rem 3rem;
+    }
+
+    .icon-box {
+      --icon-box-padding-top: 2rem;
+      --icon-box-margin-top: 2rem;
+
+      + .icon-box {
+        padding-block-start: var(--icon-box-padding-top);
+        margin-block-start: var(--icon-box-margin-top);
+        border-top: 0.1rem solid rgb(var(--color-border) / var(--color-border-alpha));
+      }
+
+      .icon--custom-size {
+        --icon-size: calc(var(--icon-custom-size) * 0.96);
+      }
+    }
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-up(md) {
+  .section--icon-boxes {
+    .carousel {
+      .swiper-slide {
+        height: auto;
+      }
+    }
+  }
+}
+
+@include media-breakpoint-up(xl) {
+  .section--icon-boxes {
+    .swiper-initialized .swiper-slide:not(.swiper-slide-fully-visible) {
+      opacity: 0.4;
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .section--icon-boxes {
+    .dialog {
+      &__content {
+        padding: 2.4rem 1.6rem;
+      }
+
+      .icon-box {
+        --icon-box-padding-top: 1.6rem;
+        --icon-box-margin-top: 1.6rem;
+
+        // Gap now comes from `gap-style`, not `--icon-spacing`. This block is
+        // inside a `down(md)` query, where `.gap-style` reads the `-mobile`
+        // variants first — overriding the desktop ones would do nothing.
+        --f-column-gap-mobile: 1.2rem !important;
+        --f-row-gap-mobile: 1.2rem !important;
+        --content-gap: 0.8rem !important;
+
+        .icon--custom-size {
+          --icon-size: calc(var(--icon-custom-size-mobile) * 0.75);
+        }
+      }
+    }
+  }
+}

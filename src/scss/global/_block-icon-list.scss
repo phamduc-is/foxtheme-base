@@ -1,0 +1,28 @@
+@use "../mixins" as *;
+
+// ─── Icon list ────────────────────────────────────────────────────────────────
+
+.icon-list {
+  &--circle {
+    .list-item__icon {
+      .icon {
+        box-sizing: content-box;
+        padding: 0.6rem;
+        border-radius: 50%;
+        background: rgb(var(--color-background-secondary));
+      }
+    }
+  }
+}
+
+.list-item {
+  align-items: var(--item-ver-align, center);
+
+  &__icon {
+    .text-block {
+      width: 0;
+      visibility: hidden;
+      text-wrap: nowrap;
+    }
+  }
+}

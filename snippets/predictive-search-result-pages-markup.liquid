@@ -1,0 +1,32 @@
+{% doc %}
+  Pages list for predictive search results.
+  Reads `predictive_search.resources.pages`; renders nothing when empty.
+
+  @example
+  {% render 'predictive-search-result-pages-markup' %}
+{% enddoc %}
+{%- if predictive_search.resources.pages.size > 0 -%}
+  <div class="search__result search__result--pages w-full flex flex-col gap-3">
+    <h4 class="search__result-heading h6">
+      {{- 'content.search_results_resource_pages' | t -}}
+    </h4>
+    <ul
+      role="group"
+      class="search__result-list search__result-list--vertical flex flex-col list-unstyled"
+    >
+      {%- for page in predictive_search.resources.pages -%}
+        <li
+          class="search__result-list-item flex"
+          role="option"
+          aria-selected="false"
+        >
+          <a href="{{ page.url }}" class="reversed-link color-subtext">
+            <span class="reversed-link__text">
+              {{- page.title | escape -}}
+            </span>
+          </a>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+{%- endif -%}

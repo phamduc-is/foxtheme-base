@@ -1,0 +1,22 @@
+{% doc %}
+  Renders the search drawer toggle button shown in the header.
+  Opens the `#search-drawer` dialog on click. Visible below xl only
+  (the inline `header-search` takes over on larger screens).
+
+  @param {boolean} [show_label] - Add a "Search" label from lg up (the header's Show icon labels).
+
+  @example
+  {% render 'header-search-drawer-button' %}
+{% enddoc %}
+<button
+  on:click="#search-drawer/showDialog"
+  class="header__button search-drawer-button flex xl:hidden items-center justify-center button-unstyled cursor-pointer"
+  aria-label="{{ 'actions.open_search_drawer' | t }}"
+  aria-haspopup="dialog"
+  aria-controls="search-drawer-dialog"
+>
+  {%- render 'icon', icon: 'search', size: 'large' -%}
+  {%- if show_label -%}
+    <span class="header__icon-label" aria-hidden="true">{{- 'content.search' | t -}}</span>
+  {%- endif -%}
+</button>

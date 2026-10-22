@@ -1,0 +1,23 @@
+extends: theme-check:recommended
+
+# `features/` holds WIP/library code that isn't a standard Shopify theme
+# directory and isn't deployed (not rendered from any section/block/snippet/
+# template). Exclude it so the gate only checks code that actually ships.
+ignore:
+  - features/**
+
+# This theme passes data into snippets via `render` params without LiquidDoc
+# (`{% doc %}`) headers, so theme-check's object/argument inference produces false
+# positives (Unknown object/argument, type mismatch). Disable that family until
+# (or unless) `{% doc %}` annotations are adopted theme-wide.
+# See .claude/TOOLKIT-DESIGN.md §5.1.
+UndefinedObject:
+  enabled: false
+UnrecognizedRenderSnippetArguments:
+  enabled: false
+ValidRenderSnippetArgumentTypes:
+  enabled: false
+MissingRenderSnippetArguments:
+  enabled: false
+UnusedDocParam:
+  enabled: false

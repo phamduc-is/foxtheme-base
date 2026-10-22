@@ -1,0 +1,95 @@
+// @capability Product status badge pills (new / hot / popular / sale / sold-out / current) with per-type color variables, plus a .product-badges wrapper whose data-available / data-on-sale attributes drive CSS-only badge visibility on variant change.
+// @when Any product badge or status pill on cards/PDP; pairs with src/js/modules/product-badge.js which flips data-available/data-on-sale for optimistic variant switching — never toggle badge DOM in JS by hand.
+// @contract .badge with modifiers .badge--new / --hot / --popular / --sale / --sold-out / --current, inside .product-badges (--vertical) carrying [data-available] and [data-on-sale].
+// @keywords badge, sale badge, sold out, product label, status pill, tag, promo flag, variant availability, discount badge
+
+// ─── Badge ────────────────────────────────────────────────────────────────────
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  line-height: 1;
+  padding: var(--badge-padding-block, 0.4rem) var(--badge-padding-inline, 0.6rem);
+  font-size: 1.2rem;
+  font-family: var(--font-badge--family);
+  font-weight: var(--font-badge--weight);
+  font-style: var(--font-badge--style);
+  text-transform: var(--font-badge--transform);
+  letter-spacing: var(--font-badge--letter-spacing);
+  border-radius: var(--badge-corner-radius, 0);
+  color: var(--color-badge-text, #000);
+  background: var(--color-badge-background, #fff);
+  border: 0.1rem solid;
+
+  &--new {
+    background: rgb(var(--color-new-badge-background));
+    color: rgb(var(--color-new-badge-text));
+    border-color: rgb(var(--color-new-badge-background));
+  }
+
+  &--hot {
+    background: rgb(var(--color-hot-badge-background));
+    color: rgb(var(--color-hot-badge-text));
+    border-color: rgb(var(--color-hot-badge-background));
+  }
+
+  &--popular {
+    background: rgb(var(--color-popular-badge-background));
+    color: rgb(var(--color-popular-badge-text));
+    border-color: rgb(var(--color-popular-badge-background));
+  }
+
+  &--sale {
+    background: rgb(var(--color-sale-badge-background) / var(--color-sale-badge-background-alpha));
+    color: rgb(var(--color-sale-badge-text));
+    border-color: rgb(var(--color-sale-badge-border-color));
+    border-radius: var(--sale-badge-radius, 0);
+  }
+
+  &--sold-out {
+    background: rgb(var(--color-sold-out-badge-background));
+    color: rgb(var(--color-sold-out-badge-text));
+    border-color: rgb(var(--color-sold-out-badge-background));
+  }
+
+  &--current {
+    background: rgb(var(--color-foreground) / 40%);
+    color: rgb(var(--color-background));
+    border-color: rgb(var(--color-foreground) / 40%);
+  }
+}
+
+// ─── Product badges ───────────────────────────────────────────────────────────
+
+.product-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--product-card-badges-gap, 0.6rem);
+  align-items: flex-start;
+
+  &--vertical {
+    flex-direction: column;
+  }
+
+  // CSS-driven visibility for optimistic variant switching
+  // JS only needs to flip data-available / data-on-sale, no DOM manipulation needed
+  &[data-available="false"] {
+    .badge:not(.badge--sold-out) {
+      display: none;
+    }
+  }
+
+  &[data-available="true"] {
+    .badge--sold-out {
+      display: none;
+    }
+
+    &[data-on-sale="false"] {
+      .badge--sale {
+        display: none;
+      }
+    }
+  }
+}

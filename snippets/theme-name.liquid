@@ -1,0 +1,13 @@
+{% doc %}
+  Per-fork theme identity — output ONLY.
+
+  Echoes the fork's display name (FoxTheme Base, Motrix, …). Consumed by
+  scripts.liquid for the JS console banner and any other Liquid that
+  needs the theme's display name.
+
+  This file is `merge=ours` in `.gitattributes`: child forks set their
+  name once after forking and `yarn core:sync` never overwrites it.
+{% enddoc -%}
+{%- liquid
+  echo 'FoxTheme Base'
+-%}

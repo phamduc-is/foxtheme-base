@@ -1,0 +1,242 @@
+{% doc %}
+  Shared shell of the product quiz sections (`sections/finder-quiz.liquid`,
+  `sections/recommendation-quiz.liquid`): section wrapper, `<product-quiz>` root, progress UI and
+  the question panels, around the static intro / email / results screens.
+
+  `content_for` cannot run inside a snippet, so each section captures its blocks and passes the
+  strings. The question blocks each emit TWO halves separated by `<!-- @product-quiz/split -->`
+  (mirror: sections/tabs.liquid + blocks/_tab.liquid):
+    [progress step] <!-- split --> [question panel]
+  and this shell buckets them by `forloop.index0 | modulo: 2`, so the progress UI renders once,
+  above the question panels, while every question still owns its own markup.
+
+  A parent cannot read nested block settings, so the question marks its dynamic slots with tokens
+  resolved here: `__PQ_INDEX__` (1-based position), `__PQ_TOTAL__` (question count),
+  `__PQ_STATE__` (initial progress state) and `data-pq-slot hidden` (the first question drops its
+  `hidden` when there is no intro; in the Finder quiz its filtered cards then start in a loading
+  state, `data-quiz-prefetch`, until the load pre-fetch resolves). The runtime (`<product-quiz>`)
+  recomputes all of them as the shopper answers; skipped questions leave the count.
+
+  The intro, email and results are STATIC blocks the merchant hides with the editor's eye toggle,
+  and a hidden static block renders nothing. So an EMPTY capture is how the shell tells them apart:
+  no intro → the quiz starts on the first question; no email → the last question goes straight to
+  results (the runtime simply finds no `email` ref); no results → the shell renders the bare
+  results screen of `product-quiz-results-markup`, so the quiz never dead-ends.
+
+  @param {object} section - The quiz section (its id and settings).
+  @param {string} results_source - `filter` (Finder quiz) or `products` (Recommendation quiz).
+  @param {string} questions_html - The captured `content_for 'blocks'` (question blocks).
+  @param {string} [intro_html] - The captured static intro block (empty when hidden).
+  @param {string} [email_html] - The captured static email block (empty when hidden).
+  @param {string} [results_html] - The captured static results block (empty when hidden).
+  @param {string} [collection_url] - Finder quiz only: the collection the store filters narrow.
+  @param {boolean} [large_collection] - Finder quiz only: the collection is over 5,000 products
+    (Shopify shows no filters for it). Theme editor only: flagged on the root
+    (`data-editor-large-collection`), so each filter question's editor notice names that reason.
+
+  @example
+  {% render 'product-quiz-shell',
+    section: section,
+    results_source: 'filter',
+    questions_html: questions_html,
+    intro_html: intro_html,
+    email_html: email_html,
+    results_html: results_html,
+    collection_url: collection_url,
+    large_collection: large_collection
+  %}
+{% enddoc %}
+{{ 'scoped-product-quiz.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'product-quiz.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{%- liquid
+  assign large_collection = large_collection | default: false, allow_false: true
+  assign container = section.settings.container
+  # "Use color scheme in container" (core convention, sections/custom-section.liquid): the scheme,
+  # border and padding move from the full-bleed root onto the fixed-width box. Gated on the real
+  # container too: the checkbox is only visible for Fixed, but a hidden setting keeps its value.
+  assign use_color_scheme_in_container = false
+  if section.settings.use_color_scheme_in_container and container == 'fixed'
+    assign use_color_scheme_in_container = true
+  endif
+  assign use_padding_inline = true
+  if container == 'fixed' and use_color_scheme_in_container == false
+    assign use_padding_inline = false
+  endif
+
+  assign progress_style = section.settings.progress_style
+  # A hidden static block renders nothing (see the doc above).
+  assign intro_html = intro_html | strip
+  assign email_html = email_html | strip
+  assign results_html = results_html | strip
+  assign has_intro = false
+  if intro_html != blank
+    assign has_intro = true
+  endif
+
+  # Split-marker fan-out: odd parts are progress steps, even parts (after the leading empty one)
+  # are question panels. Liquid's split drops only TRAILING empty fields, so the leading '' keeps
+  # the odd/even parity intact.
+  assign parts = questions_html | strip | split: '<!-- @product-quiz/split -->'
+  assign progress_items = ''
+  assign question_panels = ''
+  assign question_count = 0
+
+  for part in parts
+    assign mod = forloop.index0 | modulo: 2
+    if mod == 1
+      assign question_count = question_count | plus: 1
+      assign step_state = 'upcoming'
+      if question_count == 1
+        assign step_state = 'current'
+      endif
+      assign item = part | replace: '__PQ_INDEX__', question_count | replace: '__PQ_STATE__', step_state
+      assign progress_items = progress_items | append: item
+    elsif forloop.index0 > 0
+      assign panel = part | replace: '__PQ_INDEX__', question_count
+      if question_count == 1 and has_intro == false
+        assign panel = panel | replace_first: 'data-pq-slot hidden', 'data-pq-slot'
+        # Finder quiz, filtered first question: its cards stay invisible under a spinner until the
+        # load pre-fetch resolves, so a card the store filter is about to hide never flashes. They
+        # keep their place in the layout (`data-quiz-loading` = visibility: hidden, out of the
+        # accessibility tree and the tab order), so revealing them moves nothing.
+        if results_source == 'filter' and panel contains 'data-quiz-prefetch hidden'
+          assign panel = panel | replace_first: 'data-quiz-fieldset', 'data-quiz-fieldset aria-busy="true"'
+          assign panel = panel | replace_first: 'data-quiz-options', 'data-quiz-options data-quiz-loading aria-hidden="true" inert'
+          assign panel = panel | replace_first: 'data-quiz-prefetch hidden', 'data-quiz-prefetch'
+        endif
+      endif
+      assign question_panels = question_panels | append: panel
+    endif
+  endfor
+
+  assign progress_items = progress_items | replace: '__PQ_TOTAL__', question_count
+  assign question_panels = question_panels | replace: '__PQ_TOTAL__', question_count
+
+  assign progress_template = 'blocks.product_quiz.progress' | t: current: '[current]', total: '[total]'
+  assign progress_label = 'blocks.product_quiz.progress' | t: current: 1, total: question_count
+  assign next_label = 'blocks.product_quiz.next' | t
+  assign results_label = 'blocks.product_quiz.show_results' | t
+
+  # Progress colour (blank: the accent, the scheme's primary button colour). When set, the number on a
+  # filled stepper circle is black or white, whichever has the higher WCAG contrast ratio on it.
+  assign progress_color_style = ''
+  if section.settings.progress_color != blank
+    assign progress_color = section.settings.progress_color
+    assign contrast_black = progress_color | color_contrast: '#000000'
+    assign contrast_white = progress_color | color_contrast: '#ffffff'
+    assign progress_text = '#ffffff'
+    if contrast_black > contrast_white
+      assign progress_text = '#000000'
+    endif
+    assign progress_color_style = '--product-quiz-progress-color: ' | append: progress_color | append: '; --product-quiz-progress-text: ' | append: progress_text | append: ';'
+  endif
+-%}
+
+{%- capture box_style -%}
+  {% render 'border-style', settings: section.settings %}
+  {% render 'spacing-style', settings: section.settings, use_padding_inline: use_padding_inline %}
+{%- endcapture -%}
+{%- liquid
+  assign box_style = box_style | strip_newlines | strip
+  assign root_class = 'section product-quiz'
+  assign box_class = 'product-quiz__box'
+  if use_color_scheme_in_container
+    assign root_class = root_class | append: ' inherit-color-scheme'
+    assign box_class = box_class | append: ' border-style spacing-style color-' | append: section.settings.color_scheme
+  else
+    assign root_class = root_class | append: ' border-style spacing-style color-' | append: section.settings.color_scheme
+  endif
+-%}
+
+{%- if question_count > 0 or request.design_mode -%}
+  <div
+    id="section-{{ section.id }}"
+    class="{{ root_class }}"
+    {% unless use_color_scheme_in_container %}
+      style="{{ box_style }}"
+    {% endunless %}
+  >
+    <div class="section__container section-grid section-grid--{{ container }}">
+      <div
+        class="{{ box_class }}"
+        {% if use_color_scheme_in_container %}
+          style="{{ box_style }}"
+        {% endif %}
+      >
+        {%- if question_count > 0 -%}
+          <product-quiz
+            class="product-quiz__app"
+            data-section-id="{{ section.id }}"
+            data-results-source="{{ results_source }}"
+            data-advance-mode="{{ section.settings.advance_mode }}"
+            data-results-limit="{{ section.settings.results_limit }}"
+            {% if results_source == 'filter' %}
+              data-collection-url="{{ collection_url | default: '/collections/all' }}"
+            {% endif %}
+            data-search-url="{{ routes.search_url }}"
+            data-next-label="{{ next_label | escape }}"
+            data-results-label="{{ results_label | escape }}"
+            data-progress-template="{{ progress_template | escape }}"
+            data-animations="{{ settings.animations_enabled }}"
+            {% if large_collection and request.design_mode %}
+              data-editor-large-collection
+            {% endif %}
+            style="--product-quiz-steps: {{ question_count }};"
+          >
+            <p class="visually-hidden" aria-live="polite" ref="live"></p>
+
+            {{ intro_html }}
+
+            <div
+              class="product-quiz__progress product-quiz__progress--{{ progress_style }}"
+              ref="progress"
+              {% if progress_color_style != blank %}
+                style="{{ progress_color_style }}"
+              {% endif %}
+              {% if has_intro %}
+                hidden
+              {% endif %}
+            >
+              {%- if progress_style == 'bar' -%}
+                <p class="product-quiz__progress-label paragraph" ref="progressLabel">{{ progress_label }}</p>
+              {%- endif -%}
+              <ol
+                class="product-quiz__steps list-unstyled"
+                {% if progress_style == 'bar' %}
+                  aria-hidden="true"
+                {% endif %}
+              >
+                {{ progress_items }}
+              </ol>
+            </div>
+
+            {{ question_panels }}
+
+            {{ email_html }}
+
+            {%- if results_html != blank -%}
+              {{ results_html }}
+            {%- else -%}
+              {% render 'product-quiz-results-markup', section: section %}
+            {%- endif -%}
+          </product-quiz>
+        {%- else -%}
+          {%- comment -%}
+            Theme editor only (the outer gate renders a question-less quiz only in design mode):
+            the question notice's info variant, server-rendered, no runtime.
+          {%- endcomment -%}
+          <div class="product-quiz__notice" role="status" data-variant="info">
+            {% render 'icon',
+              icon: 'info',
+              class: 'product-quiz__notice-icon',
+              attributes: 'data-quiz-notice-icon="info"'
+            %}
+            <div class="product-quiz__notice-text">
+              <p>{{ 'blocks.product_quiz.editor_add_question' | t }}</p>
+            </div>
+          </div>
+        {%- endif -%}
+      </div>
+    </div>
+  </div>
+{%- endif -%}

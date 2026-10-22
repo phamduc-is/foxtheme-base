@@ -1,0 +1,41 @@
+@use "../mixins" as *;
+
+// ─── Announcement bar ─────────────────────────────────────────────────────────
+
+.announcement-bar .carousel__button {
+  opacity: 1 !important;
+  width: 3.2rem;
+  height: 3.2rem;
+  box-shadow: none;
+  cursor: pointer;
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+}
+
+.announcement-bar .carousel__button--prev {
+  inset-inline-start: 0;
+}
+
+.announcement-bar .carousel__button--next {
+  inset-inline-end: 0;
+}
+
+.announcement__content {
+  padding-inline: 2rem;
+  overflow-wrap: break-word;
+}
+
+@include media-breakpoint-up(xl) {
+  .announcement-bar__wrapper {
+    max-width: var(--content-width, 30%);
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .announcement-bar {
+    padding-top: 0.8rem;
+    padding-bottom: 0.8rem;
+  }
+}

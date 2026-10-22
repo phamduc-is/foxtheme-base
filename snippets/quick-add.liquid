@@ -1,0 +1,135 @@
+{% doc %}
+  Renders the quick add to cart component for mode='combine'.
+  - Single-option or single-variant products: ATC button via <quick-add-component>
+  - Multi-variant products: "Choose options" button via <quick-view-component> (opens drawer)
+
+  @param {object} product - The product object
+  @param {string} section_id - The section ID
+  @param {object} [block] - The block object
+  @param {string} [button_layout] - The layout of the button: 'text-only' | 'icon-only' | 'with-icon' (default: 'text-only')
+  @param {string} [button_size] - The size of the button
+  @param {string} [color_scheme] - The color scheme
+  @param {string} [class] - Extra CSS classes
+  @param {string} [button_icon_size] - The size of the button icon
+  @param {string} [form_id_suffix] - Optional suffix when the same product/block is rendered more than once
+{% enddoc %}
+
+{% liquid
+  assign product_form_id = 'QuickAdd-ProductForm-' | append: product.id | append: '-' | append: block.id
+  if form_id_suffix != blank
+    assign product_form_id = product_form_id | append: '-' | append: form_id_suffix
+  endif
+  assign choose_options_text = 'actions.choose_options' | t
+  assign button_layout = button_layout | default: 'text-only'
+
+  assign variant = product.selected_or_first_available_variant
+
+  if variant.available
+    assign can_add_to_cart = true
+    assign add_to_cart_text = 'actions.add_to_cart' | t
+  else
+    assign can_add_to_cart = false
+    assign add_to_cart_text = 'products.product.sold_out' | t
+  endif
+
+  assign quick_add_button = 'choose'
+  if product.variants_count == 1 or product.options.size == 1 and product.selected_variant
+    assign quick_add_button = 'add'
+  endif
+%}
+
+{% comment %} Single-variant or single-option products: direct ATC form {% endcomment %}
+{%- if product.variants.size == 1 or product.options.size == 1 -%}
+  <quick-add-component
+    class="quick-add quick-add--combine{% if color_scheme %} !bg-none color-{{ color_scheme }}{% endif %}{% if class %} {{ class }}{% endif %}"
+    ref="quickAdd"
+    data-product-title="{{ product.title }}"
+    data-quick-add-button="{{ quick_add_button }}"
+    data-product-options-count="{{ product.options.size }}"
+    data-quick-add-mode="combine"
+  >
+    <product-form-component
+      data-section-id="{{ section_id }}"
+      data-product-id="{{ product.id }}"
+      {% comment %}
+        A card has no room for an inline error, so add-to-cart failures (e.g. the
+        available stock is already in the cart) are shown in the cart instead.
+      {% endcomment %}
+      data-error-display="cart"
+      on:submit="/handleSubmit"
+      class="quick-add__product-form-component flex w-full"
+    >
+      <div
+        class="visually-hidden"
+        aria-live="assertive"
+        role="status"
+        aria-atomic="true"
+        ref="liveRegion"
+      ></div>
+      {%- form 'product', product, id: product_form_id, novalidate: 'novalidate', class: 'w-full', data-type: 'add-to-cart-form' -%}
+        <input
+          type="hidden"
+          name="id"
+          ref="variantId"
+          value="{{ variant.id }}"
+          {% if variant.available == false %}
+            disabled
+          {% endif %}
+        >
+        <input
+          type="hidden"
+          name="quantity"
+          value="{% if variant.quantity_rule.min %}{{ variant.quantity_rule.min }}{% else %}1{% endif %}"
+        >
+        {% render 'add-to-cart-button',
+          add_to_cart_text: add_to_cart_text,
+          button_layout: button_layout,
+          button_size: button_size,
+          can_add_to_cart: can_add_to_cart,
+          mode: 'quick-add'
+        %}
+      {%- endform -%}
+    </product-form-component>
+  </quick-add-component>
+{%- endif -%}
+
+{% comment %} Multi-variant products: "Choose options" opens the quick-view drawer {% endcomment %}
+{%- if product.variants.size > 1 -%}
+  {%- liquid
+    assign button_class = 'btn btn--primary quick-add__button quick-add__button--choose button-choose-options'
+    assign btn_text_class = 'btn__text text-ellipsis'
+    assign icon_extra_class = ''
+
+    if button_layout == 'icon-only'
+      assign button_class = button_class | append: ' btn--icon-only'
+      assign btn_text_class = btn_text_class | append: ' hidden'
+    elsif button_layout == 'text-only'
+      assign button_class = button_class | append: ' w-full'
+      assign icon_extra_class = icon_extra_class | append: ' hidden'
+    elsif button_layout == 'with-icon'
+      assign button_class = button_class | append: ' w-full'
+    endif
+
+    if button_size
+      assign button_class = button_class | append: ' btn--' | append: button_size
+    endif
+  -%}
+  <quick-view-component
+    class="quick-add quick-add--combine{% if color_scheme %} !bg-none color-{{ color_scheme }}{% endif %}{% if class %} {{ class }}{% endif %}"
+    data-product-url="{{ product.url }}"
+    data-product-title="{{ product.title }}"
+    data-quick-view-style="modal"
+  >
+    <button
+      class="{{ button_class }}"
+      data-quick-view-trigger
+      type="button"
+      on:click="quick-view-component/handleClick"
+      aria-label="{{ choose_options_text }}"
+    >
+      <span class="{{ btn_text_class }}" data-label="{{ choose_options_text | escape }}">{{ choose_options_text }}</span>
+      {% render 'icon', icon: 'cart', class: icon_extra_class, size: button_icon_size %}
+      {% render 'loading-spinner', class: 'quick-view__button-spinner hidden', attributes: 'data-quick-view-spinner' %}
+    </button>
+  </quick-view-component>
+{%- endif -%}

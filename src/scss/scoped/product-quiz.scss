@@ -1,0 +1,1186 @@
+@use "../mixins" as *;
+
+// ─── Product quiz ─────────────────────────────────────────────────────────────
+// Scoped stylesheet: compiled to assets/scoped-product-quiz.css and loaded by
+// snippets/product-quiz-shell.liquid (the shell of sections/finder-quiz.liquid and
+// sections/recommendation-quiz.liquid), so only pages with a quiz download it.
+// Widths (900 / 450 / 1100) and the structural gaps are literals from the design
+// (Motrix + Stavo Figma) — there is deliberately no width setting. Every colour is
+// a scheme role: the accent is the primary button colour of the scheme in scope,
+// cards paint their question's `card_color_scheme` (radius: the question's
+// `card_radius`, --product-quiz-card-radius on the panel), and "selected background:
+// page" repaints a card with the SECTION background, captured on __box as
+// --product-quiz-page-background (a custom property resolves where it is
+// declared, so the card's own scheme class cannot redefine it).
+
+.product-quiz {
+  // The grid item inside .section__container. It carries the section scheme, border
+  // and padding when "Use color scheme in container" is on (a boxed card in the page
+  // width); otherwise the root does and the box inherits that scheme. Either way the
+  // section background resolves here.
+  &__box {
+    --product-quiz-page-background: rgb(var(--color-background));
+  }
+
+  &__app {
+    display: block;
+
+    // `hidden` must win over every display value below (screens, steps, cards,
+    // buttons all toggle it from JS).
+    [hidden] {
+      display: none !important;
+    }
+  }
+}
+
+// ─── Screens + swap motion ────────────────────────────────────────────────────
+// Only a shopper-driven change animates (`data-entering` is set by the runtime,
+// never on first paint). The swap is an opacity-only fade on the linear fade
+// curve — no rise, so the incoming screen never shifts; prefers-reduced-motion
+// is handled by the global floor.
+
+.product-quiz__screen[data-entering] {
+  animation: product-quiz-fade var(--motion-swap) var(--motion-ease-fade);
+}
+
+@keyframes product-quiz-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+// The gap a screen change leaves above its anchor (the progress on a question,
+// else the screen), under the sticky header: read by the runtime's scroll.
+.product-quiz__progress,
+.product-quiz__screen {
+  scroll-margin-top: 1.6rem;
+}
+
+// ─── Progress ─────────────────────────────────────────────────────────────────
+// Filled segments, done/current circles, the solid connector and the circle
+// stroke take the section's `progress_color` (--product-quiz-progress-color on
+// this element), else the accent. The number on a filled circle takes
+// --product-quiz-progress-text (black or white, picked in Liquid by WCAG
+// contrast), else the accent's text role.
+
+.product-quiz__progress {
+  --product-quiz-progress: var(--product-quiz-progress-color, rgb(var(--color-primary-button-background)));
+
+  width: 100%;
+  max-width: 90rem;
+  margin: 0 auto 3.2rem;
+
+  @include media-breakpoint-up(md) {
+    margin-bottom: 6rem;
+  }
+}
+
+.product-quiz__progress-label {
+  margin: 0 0 1.2rem;
+  text-align: end;
+  color: rgb(var(--color-foreground) / 70%);
+}
+
+.product-quiz__steps {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+}
+
+.product-quiz__step {
+  position: relative;
+  min-width: 0;
+}
+
+// Bar: N equal segments; done + current take the accent.
+.product-quiz__progress--bar {
+  .product-quiz__steps {
+    gap: 0.5rem;
+  }
+
+  .product-quiz__step {
+    height: 0.5rem;
+    background-color: rgb(var(--color-foreground) / 10%);
+    transition: background-color var(--motion-ui) var(--motion-ease);
+
+    &[data-state="done"],
+    &[data-state="current"] {
+      background-color: var(--product-quiz-progress);
+    }
+
+    // Skipped: an earlier answer left this question without an option.
+    &[data-state="skipped"] {
+      background-color: var(--product-quiz-progress);
+      opacity: 0.4;
+    }
+  }
+
+  .product-quiz__step-circle,
+  .product-quiz__step-label {
+    display: none;
+  }
+}
+
+// Stepper: equal cells, a 30px circle + label; a dashed connector runs through
+// the circle centres, from the first cell's centre to the last one's. Figma:
+// 1.5px stroke, dash 5 / gap 5, foreground at 30%, the same grey whatever the
+// progress. Drawn as a gradient (a dashed border can't fix the 5/5 rhythm).
+.product-quiz__progress--stepper {
+  .product-quiz__steps::before {
+    content: "";
+    position: absolute;
+    top: calc(1.5rem - 0.075rem);
+    inset-inline: calc(50% / var(--product-quiz-steps, 1));
+    height: 0.15rem;
+    background-image: repeating-linear-gradient(
+      to right,
+      rgb(var(--color-foreground) / 30%) 0 0.5rem,
+      transparent 0.5rem 1rem
+    );
+  }
+
+  // Progress overlay (Revision 10, a deliberate deviation from Figma): a solid
+  // accent line over the dashed track, from the first circle's centre to the
+  // current one. Track = 100% - 100%/N (the inset above, both sides); the fill is
+  // track × index / (N - 1). JS sets --product-quiz-progress-index to the current
+  // step's index among the visible steps; SSR leaves it unset, so Q1 draws 0.
+  .product-quiz__steps::after {
+    content: "";
+    position: absolute;
+    top: calc(1.5rem - 0.075rem);
+    inset-inline-start: calc(50% / var(--product-quiz-steps, 1));
+    inline-size: calc(
+      (100% - 100% / var(--product-quiz-steps, 1)) * var(--product-quiz-progress-index, 0) /
+        max(var(--product-quiz-steps, 1) - 1, 1)
+    );
+    height: 0.15rem;
+    background-color: var(--product-quiz-progress);
+    transition: inline-size var(--motion-ui) var(--motion-ease-out);
+  }
+
+  .product-quiz__step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6rem;
+    container-type: inline-size;
+  }
+
+  .product-quiz__step-circle {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.2rem;
+    border-style: solid;
+    border-color: var(--product-quiz-progress);
+    border-radius: 50%;
+    background-color: var(--product-quiz-progress);
+    z-index: 1; // above the connector
+    color: var(--product-quiz-progress-text, rgb(var(--color-primary-button-text)));
+    font-family: var(--font-body--family);
+    font-weight: var(--font-body--weight);
+    font-size: calc(var(--font-size--paragraph) * 0.933334); // = .text-body-sm (Figma Body_S)
+    line-height: 1;
+    transition:
+      background-color var(--motion-ui) var(--motion-ease),
+      color var(--motion-ui) var(--motion-ease);
+  }
+
+  .product-quiz__step-label {
+    display: none;
+    max-width: 100%;
+    text-align: center;
+    overflow-wrap: anywhere;
+
+    @include media-breakpoint-up(md) {
+      display: block;
+    }
+  }
+
+  // Current has no ring (Figma): done and current circles are identical; the
+  // current step is exposed via aria-current="step" in the markup.
+  .product-quiz__step[data-state="upcoming"] {
+    .product-quiz__step-circle {
+      background-color: var(--product-quiz-page-background);
+      color: rgb(var(--color-foreground));
+    }
+
+    .product-quiz__step-label {
+      color: rgb(var(--color-foreground) / 40%);
+    }
+  }
+
+  // Skipped (an earlier answer left this question without an option): a done
+  // circle faded into the page background — mixed, not `opacity`, so the
+  // connector under the circle stays hidden; the number takes the foreground.
+  // The label fades like an upcoming one.
+  .product-quiz__step[data-state="skipped"] {
+    .product-quiz__step-circle {
+      border-color: color-mix(in srgb, var(--product-quiz-progress) 40%, var(--product-quiz-page-background));
+      background-color: color-mix(in srgb, var(--product-quiz-progress) 40%, var(--product-quiz-page-background));
+      color: rgb(var(--color-foreground));
+    }
+
+    .product-quiz__step-label {
+      color: rgb(var(--color-foreground) / 40%);
+    }
+  }
+}
+
+// At high step counts a label never squeezes below ~100px: it hides, the circle stays.
+@container (max-width: 99px) {
+  .product-quiz__step-label {
+    display: none !important;
+  }
+}
+
+// ─── Question ─────────────────────────────────────────────────────────────────
+
+.product-quiz__question {
+  width: 100%;
+  max-width: 90rem;
+  margin-inline: auto;
+}
+
+.product-quiz__fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.product-quiz__header {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  width: 100%;
+  margin: 0 0 var(--product-quiz-header-gap-mobile, 2.4rem);
+  padding: 0;
+  text-align: var(--product-quiz-header-align-mobile, start);
+
+  @include media-breakpoint-up(md) {
+    gap: 1.6rem;
+    margin-bottom: var(--product-quiz-header-gap, 2.4rem);
+    text-align: var(--product-quiz-header-align, start);
+  }
+}
+
+.product-quiz__eyebrow,
+.product-quiz__subtext {
+  display: block;
+}
+
+// Subheading type on a tight 1.2 line (every demo design). The global
+// `.text-subheading` line-height (1 + 0.6 / scale) adds ~7px per line here,
+// which pushed the cards ~12px below the design. Same 0-1-0; this stylesheet
+// loads after the global one.
+.product-quiz__eyebrow,
+.product-quiz__step-label {
+  line-height: 1.2;
+}
+
+// The subtext is inline richtext: `.paragraph > *` resets the weight and style
+// of a direct <strong>/<em>, so they are restored. Its links stay clickable
+// (it is not inside a card label).
+.product-quiz__subtext {
+  > :is(strong, b) {
+    font-weight: bolder;
+  }
+
+  > :is(em, i) {
+    font-style: italic;
+  }
+}
+
+.product-quiz__heading {
+  margin: 0;
+  overflow-wrap: anywhere;
+
+  // A focus target on a screen change, not a control: no ring, not even after a
+  // keyboard-driven change or a page load (the email return), same as the intro.
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+// Theme editor only: the question's notice (between the header and the cards), and the
+// empty-quiz "Add a Question block" note (always the `info` variant). Variant
+// `warning` lists its editor warnings: a subtle tint of the scheme's warning role. Variant
+// `info` (generated options, no warning): a neutral foreground tint, same layout. Text in
+// foreground either way.
+.product-quiz__notice {
+  --icon-size: 1.6rem;
+
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  margin: 0 0 1.6rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 0.4rem;
+  background-color: rgb(var(--color-notification-warning) / 12%);
+  color: rgb(var(--color-foreground));
+  font-size: 1.3rem;
+  line-height: 1.5;
+
+  &[data-variant="info"] {
+    background-color: rgb(var(--color-foreground) / 6%);
+  }
+}
+
+.product-quiz__notice-icon {
+  flex-shrink: 0;
+  margin-block-start: 0.2rem;
+  color: rgb(var(--color-notification-warning));
+
+  &[data-quiz-notice-icon="info"] {
+    color: rgb(var(--color-foreground));
+  }
+}
+
+.product-quiz__notice-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  > p {
+    margin: 0;
+  }
+}
+
+.product-quiz__options {
+  display: grid;
+  grid-template-columns: repeat(var(--product-quiz-columns-mobile, 2), minmax(0, 1fr));
+  gap: 1rem;
+
+  @include media-breakpoint-up(md) {
+    grid-template-columns: repeat(var(--product-quiz-columns, 4), minmax(0, 1fr));
+  }
+}
+
+// One desktop column: a 40rem grid from md up, placed like the header
+// (--product-quiz-options-margin-inline: `0 auto` | `auto` | `auto 0`, from
+// `text_alignment`). Mobile stays full width.
+.product-quiz__options--single {
+  @include media-breakpoint-up(md) {
+    max-width: 40rem;
+    margin-inline: var(--product-quiz-options-margin-inline, 0 auto);
+  }
+}
+
+// Generated cards live in a wrapper the runtime refills; it must not become a grid cell.
+.product-quiz__auto-list {
+  display: contents;
+}
+
+// Finder quiz, intro off: the first question's cards stay in layout but invisible (out of the
+// accessibility tree: `aria-hidden` + `inert`) until the load pre-fetch resolves, with the spinner
+// laid over them, so revealing them moves nothing.
+.product-quiz__stage {
+  position: relative;
+}
+
+.product-quiz__options[data-quiz-loading] {
+  visibility: hidden;
+}
+
+.product-quiz__prefetch {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Generated cards do not exist before the pre-fetch: the empty grid gets a floor while it runs.
+.product-quiz__stage--auto:has(> [data-quiz-prefetch]:not([hidden])) {
+  min-height: 12rem;
+}
+
+.product-quiz__help {
+  margin: 2.4rem 0 0;
+  text-align: center;
+
+  @include media-breakpoint-up(md) {
+    text-align: start;
+  }
+
+  a {
+    color: rgb(var(--color-primary-button-background));
+    text-decoration: underline;
+  }
+}
+
+.product-quiz__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  margin-top: 2.4rem;
+  text-align: center;
+}
+
+.product-quiz__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-top: 2.4rem;
+
+  @include media-breakpoint-up(md) {
+    margin-top: 4rem;
+  }
+}
+
+// Back / skip: a plain text button in the button typography, 70% foreground.
+.product-quiz__link {
+  --icon-size: 1.4rem;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 4.4rem;
+  color: rgb(var(--color-foreground) / 70%);
+  font-family: var(--font-button--family);
+  font-style: var(--font-button--style);
+  font-weight: var(--font-button--weight);
+  font-size: var(--font-size--paragraph);
+  letter-spacing: var(--font-button--letter-spacing);
+  text-transform: var(--font-button--transform);
+  cursor: pointer;
+  transition: color var(--motion-ui) var(--motion-ease);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: rgb(var(--color-foreground));
+    }
+  }
+}
+
+.product-quiz__link-icon:dir(rtl) {
+  transform: scaleX(-1);
+}
+
+// ─── Option card ──────────────────────────────────────────────────────────────
+// The whole card is a <label>; the radio is stretched over it at opacity 0
+// (the swatch technique), so a click anywhere lands on the input and arrow keys
+// move through the native radio group. ONE markup for both styles: the media
+// (Fill image) and the body (icons → title → subtitle, each only when filled).
+// The option image renders once: in the media slot (vertical Fill, every
+// horizontal card) or first in the icon slot (vertical Custom), chosen in Liquid. Text only cuts media / icons / subtitle out in
+// Liquid; the grid's modifiers (`--media` + `--vertical|--horizontal`,
+// `--circle`, `--icon-bg`, and the selected look `--border-background` |
+// `--fill`) and vars set the rest, so generated cards cloned into the grid
+// inherit the look. The title's size is the question's preset class
+// (.paragraph, .h6-.h3) on the title itself.
+
+.product-quiz-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--product-quiz-card-radius, 0);
+  cursor: pointer;
+
+  // `background-color` only. The text colour of every fill surface is animated
+  // by ONE element, `__body` (see there): when the whole card fills, the card's
+  // `color` steps and the body animates the inherited change once. A second
+  // `color` transition here would make the body restart its own transition
+  // from the card's in-flight value on every frame, so the text trailed the fill.
+  transition: background-color var(--motion-ui) var(--motion-ease);
+
+  // Border + selected ring, ONE overlay (so it also traces a full-bleed image: an
+  // inset shadow on the card itself paints under the <img>). At rest it paints the
+  // question's `card_border`: the card scheme's border role at
+  // --product-quiz-card-border-opacity (0 = no border), --product-quiz-card-border-width
+  // wide (both on the grid). Selected, the same box turns into the accent ring, at
+  // least 1px, the border width when wider, so a bordered card never shows two
+  // lines. It is the selection mark in EVERY selected look, without relying on a
+  // fill colour. No overflow/mask clip (unlike `border-style`): the card's focus
+  // outline must stay visible.
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 var(--product-quiz-card-border-width, 0.1rem)
+      rgb(var(--color-border) / var(--product-quiz-card-border-opacity, 0));
+    pointer-events: none;
+    transition: box-shadow var(--motion-ui) var(--motion-ease);
+  }
+
+  &:has(:checked)::after {
+    box-shadow: inset 0 0 0 max(0.1rem, var(--product-quiz-card-border-width, 0.1rem))
+      rgb(var(--color-primary-button-background));
+  }
+
+  // Hover previews the selected look (every `selected_style`): each `:has(:checked)`
+  // selector here and in "Selected look" below has a `:hover` twin of the same
+  // specificity. Touch has no hover, so it only ever shows the real selection.
+  @media (hover: hover) and (pointer: fine) {
+    &:hover::after {
+      box-shadow: inset 0 0 0 max(0.1rem, var(--product-quiz-card-border-width, 0.1rem))
+        rgb(var(--color-primary-button-background));
+    }
+  }
+
+  &:has(:focus-visible) {
+    outline-width: 0.2rem;
+    outline-style: solid;
+    outline-color: rgb(var(--color-foreground));
+    outline-offset: 0.2rem;
+  }
+
+  // `[type="radio"]` lifts this to 0-2-0: the global `input:is([type="checkbox"],
+  // [type="radio"])` rule (_component-form.scss, 0-1-1) otherwise keeps the radio
+  // in flow (position: relative, 2rem box) and adds a blank band above the media.
+  &__input[type="radio"] {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    appearance: none;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  // Vertical: full-bleed on top (the card's radius + overflow clip its top
+  // corners); the box follows the question's image ratio, the image's own
+  // (`--product-quiz-image-natural-ratio`, on the card) under `adapt`, so it
+  // keeps its height before the image loads.
+  &__media {
+    position: relative;
+    display: block;
+    flex-shrink: 0;
+    overflow: hidden;
+    aspect-ratio: var(--product-quiz-image-ratio, var(--product-quiz-image-natural-ratio, auto));
+  }
+
+  // The <img> (in either box, `__media` or `__custom-image`): it fills the box,
+  // always `cover`, anchored on the merchant's focal point (`.media__image`,
+  // centre by default). Under `adapt` the box takes the image's own ratio, so
+  // nothing is cropped. The box is a `.media`: its backdrop shows until load.
+  // Onboarding placeholder (no image, no icon) in the image's slot: the same
+  // ratio, but 1:1 under `adapt`, since an SVG has no natural aspect to keep.
+  // The scheme-aware look is the global `svg.placeholder`. Circle stays 1:1.
+  &__media--placeholder {
+    aspect-ratio: var(--product-quiz-image-ratio, 1);
+  }
+
+  &__image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    object-fit: cover;
+    background-color: transparent;
+  }
+
+  // icon → title → subtitle, 12 apart (every demo design). The question's card alignment
+  // (--product-quiz-card-align*, on the panel so generated cards inherit it)
+  // aligns the text and the icon; a full-bleed / side image is not affected.
+  &__body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.2rem;
+    min-width: 0;
+    padding: 1.2rem;
+    text-align: var(--product-quiz-card-align-mobile, start);
+
+    // The one `color` owner for both fill surfaces (the body, or the whole card
+    // whose colour the body inherits). Text runs at 0.8x the fill's duration: the
+    // same easing tail reads slower on text than on a filled area.
+    transition:
+      background-color var(--motion-ui) var(--motion-ease),
+      color calc(var(--motion-ui) * 0.8) var(--motion-ease);
+
+    @include media-breakpoint-up(md) {
+      padding: 1.6rem;
+      text-align: var(--product-quiz-card-align, start);
+    }
+  }
+
+  // Icon slot: a Custom image (first) and the SVG icon, side by side (a wide
+  // image wraps the icon to its own row), aligned with the card content.
+  &__icons {
+    display: flex;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.8rem;
+    align-self: var(--product-quiz-card-align-mobile, start);
+
+    @include media-breakpoint-up(md) {
+      align-self: var(--product-quiz-card-align, start);
+    }
+  }
+
+  // The question's `icon_size` (on the grid) sizes the SVG icon, tinted with its
+  // `icon_color` (blank: the card's text colour). SVG icons only.
+  &__icon {
+    --icon-size: var(--product-quiz-icon-size, 2.4rem);
+
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    color: var(--product-quiz-icon-color, currentcolor);
+
+    // Its `color` (blank: currentcolor) follows the body's in-flight value with
+    // no transition of its own; only the icon circle animates, with the fill.
+    transition: background-color var(--motion-ui) var(--motion-ease);
+  }
+
+  // Custom image box (a `.media`; the <img> in it is `__image`): the question's
+  // `image_width` wide (`image_width_mobile` below md; capped at the card), its
+  // height from `image_ratio` (natural aspect under `adapt`). Never in the icon circle.
+  &__custom-image {
+    display: block;
+    width: var(--product-quiz-image-size-mobile, var(--product-quiz-image-size, 8rem));
+    max-width: 100%;
+    aspect-ratio: var(--product-quiz-image-ratio, var(--product-quiz-image-natural-ratio, auto));
+
+    @include media-breakpoint-up(md) {
+      width: var(--product-quiz-image-size, 8rem);
+    }
+  }
+
+  // Its onboarding placeholder: a box (the SVG fills it), 1:1 under `adapt`.
+  &__custom-image--placeholder {
+    overflow: hidden;
+    aspect-ratio: var(--product-quiz-image-ratio, 1);
+  }
+
+  // Font comes from the question's `title_size` preset class on this span
+  // (generated cards included).
+  // The title is inline richtext: `.paragraph > *` resets the weight and style
+  // of a direct <strong>/<em>, so they are restored relative to the preset. The
+  // subtitle is inline richtext too and gets the same restore. The whole card
+  // is the radio's label, so a link in either is inert (it is also out of the
+  // tab order: `tabindex="-1"`, set in the option markup).
+  &__title {
+    overflow-wrap: anywhere;
+  }
+
+  &__title,
+  &__subtitle {
+    > :is(strong, b) {
+      font-weight: bolder;
+    }
+
+    > :is(em, i) {
+      font-style: italic;
+    }
+
+    a {
+      pointer-events: none;
+    }
+  }
+
+  // The subtitle sets its own colour in both states (`.color-*` helper at rest,
+  // the fill's text role at 70% selected), so nothing it inherits is in flight:
+  // it animates in parallel with the body, same 0.8x duration, not after it.
+  // Paragraph size and line-height (Body_M in every demo design).
+  &__subtitle {
+    font-size: var(--font-size--paragraph);
+    line-height: var(--font-paragraph--line-height);
+    overflow-wrap: anywhere;
+    transition: color calc(var(--motion-ui) * 0.8) var(--motion-ease);
+  }
+
+  // Nothing else inside the card animates `color` (no global rule does today;
+  // this keeps it that way): an inherited colour with its own transition would
+  // restart from the parent's in-flight value every frame and trail the fill.
+  &__title,
+  &__title *,
+  &__subtitle *,
+  &__icon * {
+    transition: none;
+  }
+
+  // Theme editor only: "Hidden" pill in the top inline-end corner. Above the stretched
+  // radio so its `title` (the full reason) shows on hover; a click on it still lands on
+  // the <label>, so the card stays selectable.
+  &__badge {
+    position: absolute;
+    inset-block-start: 0.8rem;
+    inset-inline-end: 0.8rem;
+    z-index: 2;
+    padding: 0.2rem 0.8rem;
+    border-radius: 10rem;
+    background-color: rgb(var(--color-foreground));
+    color: rgb(var(--color-background));
+    font-family: var(--font-body--family);
+    font-weight: var(--font-body--weight);
+    font-size: 1.2rem;
+    line-height: 1.6rem;
+    white-space: nowrap;
+  }
+}
+
+// Theme editor only: a manual card the storefront hides (no product matches its Filter
+// value) keeps its layout, dimmed, inside a dashed frame; the badge stays opaque. The
+// frame is a pass-through overlay so the radio under it still takes every click.
+.product-quiz-card[data-quiz-editor-hidden] {
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-width: 0.1rem;
+    border-style: dashed;
+    border-color: rgb(var(--color-foreground) / 30%);
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .product-quiz-card__media,
+  .product-quiz-card__body {
+    opacity: 0.5;
+  }
+}
+
+// Card padding (`card_padding`) on a vertical or text card pads the body:
+// compact 12 below md, 16 from md (the base `&__body` rule); comfortable
+// (`--comfortable`) 16 at every width. Before the horizontal rules, so their
+// `padding: 0` on the body still wins at the same specificity.
+.product-quiz__options--comfortable .product-quiz-card__body {
+  padding: 1.6rem;
+}
+
+// Horizontal: the image is always at the inline start, fixed at `image_width`
+// wide (`image_width_mobile` below md); a square follows the image ratio
+// (height = size / ratio), a circle is 1:1. The text column beside it is
+// vertically centred. Card padding (`card_padding`) pads the card here:
+// compact 8 top / bottom / start, 12 end; comfortable (`--comfortable`) 16 all round.
+.product-quiz__options--horizontal {
+  .product-quiz-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 1.2rem;
+    padding-block: 0.8rem;
+    padding-inline: 0.8rem 1.2rem;
+  }
+
+  .product-quiz-card__media {
+    width: var(--product-quiz-image-size-mobile, var(--product-quiz-image-size, 6rem));
+    border-radius: min(var(--product-quiz-card-radius, 0), 0.4rem);
+
+    @include media-breakpoint-up(md) {
+      width: var(--product-quiz-image-size, 6rem);
+    }
+  }
+
+  .product-quiz-card__body {
+    padding: 0;
+  }
+}
+
+.product-quiz__options--comfortable.product-quiz__options--horizontal .product-quiz-card {
+  padding: 1.6rem;
+}
+
+.product-quiz__options--circle .product-quiz-card__media {
+  aspect-ratio: 1;
+  border-radius: 50%;
+}
+
+// Icon background (the question's `icon_background`): a circle `icon_size` + 16
+// across behind each SVG icon, in its `icon_background_color` (blank:
+// foreground at 6%). A Custom image is never wrapped by it.
+.product-quiz__options--icon-bg .product-quiz-card__icon {
+  width: calc(var(--icon-size) + 1.6rem);
+  height: calc(var(--icon-size) + 1.6rem);
+  border-radius: 50%;
+  background-color: var(--product-quiz-icon-bg, rgb(var(--color-foreground) / 6%));
+}
+
+// Selected look (`selected_style`), either style, generated cards included.
+// Every selected card has the 1px accent ring (::after); the modifiers add:
+// - `--border-background`: the card takes the SECTION background
+//   (--product-quiz-page-background, captured on .product-quiz__box).
+// - `--fill`: the card's content surface takes the accent and its text role.
+//   The surface is the whole card, except on a vertical card WITH an image,
+//   where it is the body below the image (the ring still outlines the image).
+//   Text-only and generated cards never carry media (cut out in Liquid), so
+//   they always fill whole; a horizontal card fills whole around its thumbnail.
+.product-quiz__options--border-background .product-quiz-card:has(:checked) {
+  background-color: var(--product-quiz-page-background);
+}
+
+.product-quiz__options--fill .product-quiz-card:not(:has(> .product-quiz-card__media)):has(:checked),
+.product-quiz__options--fill.product-quiz__options--horizontal .product-quiz-card:has(:checked),
+.product-quiz__options--fill.product-quiz__options--vertical
+  .product-quiz-card:has(> .product-quiz-card__media):has(:checked)
+  .product-quiz-card__body {
+  background-color: rgb(var(--color-primary-button-background));
+  color: rgb(var(--color-primary-button-text));
+}
+
+.product-quiz__options--fill .product-quiz-card:has(:checked) .product-quiz-card__subtitle {
+  color: rgb(var(--color-primary-button-text) / 70%);
+}
+
+// A custom icon background / colour is the merchant's choice and stays on
+// selection; only the default background follows the fill's text role.
+.product-quiz__options--fill.product-quiz__options--icon-bg .product-quiz-card:has(:checked) .product-quiz-card__icon {
+  background-color: var(--product-quiz-icon-bg, rgb(var(--color-primary-button-text) / 6%));
+}
+
+// The same looks on hover (REVISION 28): `:hover` twins of the selectors above,
+// same specificity (`:hover` and `:has(:checked)` both count 0-1-0), same order.
+@media (hover: hover) and (pointer: fine) {
+  .product-quiz__options--border-background .product-quiz-card:hover {
+    background-color: var(--product-quiz-page-background);
+  }
+
+  .product-quiz__options--fill .product-quiz-card:not(:has(> .product-quiz-card__media)):hover,
+  .product-quiz__options--fill.product-quiz__options--horizontal .product-quiz-card:hover,
+  .product-quiz__options--fill.product-quiz__options--vertical
+    .product-quiz-card:has(> .product-quiz-card__media):hover
+    .product-quiz-card__body {
+    background-color: rgb(var(--color-primary-button-background));
+    color: rgb(var(--color-primary-button-text));
+  }
+
+  .product-quiz__options--fill .product-quiz-card:hover .product-quiz-card__subtitle {
+    color: rgb(var(--color-primary-button-text) / 70%);
+  }
+
+  .product-quiz__options--fill.product-quiz__options--icon-bg .product-quiz-card:hover .product-quiz-card__icon {
+    background-color: var(--product-quiz-icon-bg, rgb(var(--color-primary-button-text) / 6%));
+  }
+}
+
+// ─── Intro ────────────────────────────────────────────────────────────────────
+
+.product-quiz-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 3.2rem;
+  width: 100%;
+  margin-inline: auto;
+
+  @include media-breakpoint-up(md) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: var(--product-quiz-intro-align, center);
+    gap: 0;
+  }
+
+  // The screen itself takes focus on a screen change (its heading is a merchant
+  // `text` child). It is not a control, so it never draws a ring, not even after a
+  // keyboard-driven change (:focus covers :focus-visible).
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
+
+  @include media-breakpoint-up(xl) {
+    max-width: 90rem;
+  }
+
+  @include media-breakpoint-up(xxl) {
+    max-width: 110rem;
+  }
+
+  &--no-image {
+    max-width: 90rem;
+
+    @include media-breakpoint-up(md) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  &__image {
+    border-radius: var(--product-quiz-image-radius, 0);
+  }
+
+  // No gaps of its own: the spacing between the `text` children and down to the
+  // Start button is each child's own `padding-block-start` / `padding-block-end`.
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    min-width: 0;
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  &__actions {
+    width: 100%;
+  }
+}
+
+// Image on the right (default): text first, padded toward the image. Mobile is
+// always image first (DOM order).
+@include media-breakpoint-up(md) {
+  .product-quiz-intro--image-right {
+    .product-quiz-intro__media {
+      order: 2;
+    }
+
+    .product-quiz-intro__content {
+      padding-inline-end: 3.2rem;
+    }
+  }
+
+  .product-quiz-intro--image-left .product-quiz-intro__content {
+    padding-inline-start: 3.2rem;
+  }
+}
+
+@include media-breakpoint-up(xl) {
+  .product-quiz-intro--image-right .product-quiz-intro__content {
+    padding-inline-end: 5rem;
+  }
+
+  .product-quiz-intro--image-left .product-quiz-intro__content {
+    padding-inline-start: 5rem;
+  }
+}
+
+@include media-breakpoint-up(xxl) {
+  .product-quiz-intro--image-right .product-quiz-intro__content {
+    padding-inline-end: 8rem;
+  }
+
+  .product-quiz-intro--image-left .product-quiz-intro__content {
+    padding-inline-start: 8rem;
+  }
+}
+
+// ─── Email ────────────────────────────────────────────────────────────────────
+
+.product-quiz-email {
+  display: flex;
+  flex-direction: column;
+  gap: 2.4rem;
+  width: 100%;
+  max-width: 45rem;
+  margin-inline: auto;
+
+  // The screen itself takes focus on a screen change; no ring (see the intro).
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
+
+  // The `text` children (heading + description); a fit-width child centres.
+  &__text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6rem;
+    padding-inline: 2.4rem;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+
+  // Input, error, buttons and consent: the block's `form_gap`.
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--product-quiz-email-form-gap-mobile, 2rem);
+
+    @include media-breakpoint-up(md) {
+      gap: var(--product-quiz-email-form-gap, 2rem);
+    }
+  }
+
+  &__input {
+    width: 100%;
+    min-height: 4.4rem;
+  }
+
+  // Pulled 8 closer to the input, never past it on a gap under 8.
+  &__error {
+    margin: calc(min(var(--product-quiz-email-form-gap-mobile, 2rem), 0.8rem) * -1) 0 0;
+
+    @include media-breakpoint-up(md) {
+      margin-block-start: calc(min(var(--product-quiz-email-form-gap, 2rem), 0.8rem) * -1);
+    }
+  }
+
+  &__buttons {
+    display: flex;
+    gap: 1.2rem;
+  }
+
+  &__button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  // Fine print: 0.8 × the paragraph size (12px at 15), line-height 1.4. Set
+  // here, not by a utility class: core has no type preset this small.
+  &__consent {
+    font-size: calc(var(--font-size--paragraph) * 0.8);
+    line-height: 1.4;
+    text-align: center;
+
+    > * {
+      margin: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+    }
+  }
+}
+
+// ─── Results ──────────────────────────────────────────────────────────────────
+
+.product-quiz-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.4rem;
+  width: 100%;
+  max-width: 90rem;
+  margin-inline: auto;
+
+  @include media-breakpoint-up(md) {
+    gap: 4rem;
+  }
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    width: 100%;
+    padding-inline: 2.4rem;
+    text-align: center;
+
+    @include media-breakpoint-up(md) {
+      padding-inline: 0;
+    }
+  }
+
+  // Balanced lines: a narrow screen never leaves one word alone on the last line.
+  &__heading {
+    margin: 0;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+
+    // Not a control: no ring (see `.product-quiz__heading`).
+    &:focus,
+    &:focus-visible {
+      outline: none;
+    }
+  }
+
+  // The bare screen (Results block hidden) is its own focus target; no ring (see the intro).
+  &:focus,
+  &:focus-visible {
+    outline: none;
+  }
+
+  &__description > * {
+    margin: 0;
+  }
+
+  &__summary,
+  &__discount {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__summary {
+    color: rgb(var(--color-foreground) / 70%);
+  }
+
+  &__code {
+    font-weight: 700;
+    user-select: all;
+  }
+
+  &__body {
+    width: 100%;
+    max-width: 45rem;
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  // Vendor is rendered by the shared endpoint; the results block's setting hides it here.
+  &__list--no-vendor .product-card__metas {
+    display: none;
+  }
+
+  // Rows are box product cards (scheme from the list's `data-row-scheme`). Fixed design
+  // padding + the results block's radius. 0-2-0 so it outranks the core
+  // `.product-card--box` padding / radius (0-1-0, both breakpoints) without touching it.
+  // The background sits on this same element, so `border-radius` alone rounds it — no
+  // `overflow` clip that would also cut the card's focus ring.
+  &__list .product-card--box {
+    padding-block: 1.2rem;
+    padding-inline: 1.2rem 1.6rem;
+    border-radius: var(--product-quiz-row-radius, 0);
+
+    // The thumbnail: the results block's `image_width` / `image_width_mobile` and
+    // `image_radius`, instead of the card's own media width and the global product
+    // card media radius. 0-3-0 to outrank the core box / horizontal-layout media rules
+    // (0-2-0) at both breakpoints. The endpoint cannot read block settings, so these
+    // ride on the list as vars.
+    .product-card__media {
+      width: var(--product-quiz-row-image-mobile, 7rem);
+      border-radius: var(--product-quiz-row-image-radius, 0);
+
+      @include media-breakpoint-up(md) {
+        width: var(--product-quiz-row-image, 9rem);
+      }
+    }
+  }
+
+  &__row {
+    min-width: 0;
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: 2.4rem;
+  }
+
+  &__empty {
+    margin: 0;
+    text-align: center;
+  }
+
+  &__error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    text-align: center;
+  }
+}

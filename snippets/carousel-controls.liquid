@@ -1,0 +1,335 @@
+{% doc %}
+  Renders carousel navigation controls.
+
+  Two ways in. Pass `settings:` and the merchant-facing `carousel_controls` /
+  `carousel_controls_alignment` selects drive everything — that is what the sections use.
+  Or pass the individual params below, which is what theme chrome (cart drawer, mega menu,
+  predictive search) does since none of it is merchant-configurable. An explicit param
+  always wins over the setting it corresponds to, so the two can be mixed.
+
+  @param {object} [settings] - Section/block settings holding `carousel_controls`,
+
+  `carousel_controls_alignment` and the optional `carousel_controls_mobile` (same values as `carousel_controls`, plus `inherit` — the default — which
+  keeps mobile on the desktop layout). See the mapping table in the liquid block below.
+
+  @param {string} [nav_offset_x] - Where floating arrows sit horizontally: 'inside'
+
+  (default — inset from the content edge) | 'edge' (straddling it, half in half out). Deliberately a caller param and not a setting: 'edge' needs room
+  outside the content box, which a page-width container does not always have.
+
+  @param {string} [controls_alignment] - 'start' | 'center' | 'end'. Overrides
+
+  `settings.carousel_controls_alignment`. Blank emits no modifier, leaving each layout on its own justification (group: flex-start, float: center).
+
+  @param {string} [navigation] - 'group' | 'absolute' | 'absolute-inside' | 'none' (default: 'none')
+  @param {string} [navigation_mobile] - Mobile navigation, defaults to navigation value
+  @param {string} [navigation_size] - 'small' | 'medium' (default: 'medium')
+  @param {string} [navigation_style] - Button style: 'unstyled' | 'outline' (default: auto — outline for absolute, unstyled for group)
+  @param {string} [combined] - Middle slot: 'counter' | 'counter-progress' | 'none' (default: 'none')
+  @param {string} [combined_mobile] - Mobile middle slot, defaults to combined value
+  @param {string} [pagination] - 'dots' | 'none' (default: 'dots')
+  @param {string} [pagination_mobile] - Mobile pagination, defaults to pagination value
+  @param {string} [pagination_style] - Dot style: 'pill' | 'pill-autoplay' | 'scale' | 'progress' | 'progress-autoplay' (default: 'pill')
+
+  pill-autoplay: fills left→right while autoplay runs; falls back to solid pill when autoplay is off progress: horizontal bar filling left→right per
+  slide position (requires "pagination": {"type":"progressbar"} in Swiper config) progress-autoplay: horizontal bar filling left→right during autoplay
+  delay; falls back to empty when autoplay is off
+
+  @param {string} [pagination_style_mobile] - Mobile pagination style, defaults to pagination_style value
+  @param {string} [controls_layout] - 'default' | 'nav-end' (default: 'default')
+
+  nav-end: pagination/counter stretches left, both buttons stack at the right end
+
+  @param {string} [controls_layout_mobile] - Mobile layout: 'default' | 'nav-end' (default: same as controls_layout)
+  @param {string} [ref] - Ref attribute value
+  @param {string} [class] - Extra CSS classes
+{% enddoc %}
+
+{% liquid
+  # One merchant select → the navigation/pagination pair. Six named layouts rather than a
+  # layout select plus two checkboxes, because that spelling produces twelve combinations
+  # of which only these six differ: "float + dots only" renders the same row as
+  # "group + dots only", and both "nothing on" states are the same state.
+  #
+  #   none         → -                 -
+  #   dots         → -                 dots
+  #   group        → group             dots     (the arrows–dots–arrows row)
+  #   float        → absolute-inside   -
+  #   float_dots   → absolute-inside   dots
+  #
+  # There is deliberately no arrows-without-dots layout: `group` is defined as the
+  # arrows–dots–arrows row, so dropping the dots out of it leaves a shape the design does
+  # not use. A caller that needs it can still pass `navigation: 'group', pagination: 'none'`.
+  #
+  # `carousel_controls_mobile` runs the SAME table a second time and assigns the _mobile
+  # params, which the slots below already honour. It is opt-in per section — a section that
+  # does not expose it (most of them) reads blank here and keeps the one-value behaviour,
+  # where `nav_mobile` / `pag_mobile` simply fall back to the desktop value.
+  #
+  # `settings` is the house param name (spacing-style, border-style, gap-style all use it),
+  # but here it is OPTIONAL, and an unpassed `settings` falls through to the global theme
+  # settings object rather than being nil. Harmless while no theme-level setting is named
+  # `carousel_controls` — if one is ever added, every caller that passes no settings starts
+  # reading it, so give a global that name only on purpose.
+  if settings.carousel_controls != blank
+    case settings.carousel_controls
+      when 'dots'
+        assign ctl_nav = 'none'
+        assign ctl_pag = 'dots'
+      when 'group'
+        assign ctl_nav = 'group'
+        assign ctl_pag = 'dots'
+      when 'float'
+        assign ctl_nav = 'absolute-inside'
+        assign ctl_pag = 'none'
+      when 'float_dots'
+        assign ctl_nav = 'absolute-inside'
+        assign ctl_pag = 'dots'
+      else
+        assign ctl_nav = 'none'
+        assign ctl_pag = 'none'
+    endcase
+
+    # Same CSS block either way — 'edge' only flips the sign of --nav-edge.
+    if nav_offset_x == 'edge' and ctl_nav == 'absolute-inside'
+      assign ctl_nav = 'absolute'
+    endif
+
+    assign navigation = navigation | default: ctl_nav
+    assign pagination = pagination | default: ctl_pag
+    assign controls_alignment = controls_alignment | default: settings.carousel_controls_alignment
+
+    # Mobile override, same table. `inherit` (and blank, for every section that never added
+    # the setting) assigns nothing, so the fallbacks below keep mobile on the desktop value.
+    assign ctl_mobile = settings.carousel_controls_mobile
+    if ctl_mobile != blank and ctl_mobile != 'inherit'
+      case ctl_mobile
+        when 'dots'
+          assign ctl_nav_mobile = 'none'
+          assign ctl_pag_mobile = 'dots'
+        when 'group'
+          assign ctl_nav_mobile = 'group'
+          assign ctl_pag_mobile = 'dots'
+        when 'float'
+          assign ctl_nav_mobile = 'absolute-inside'
+          assign ctl_pag_mobile = 'none'
+        when 'float_dots'
+          assign ctl_nav_mobile = 'absolute-inside'
+          assign ctl_pag_mobile = 'dots'
+        else
+          assign ctl_nav_mobile = 'none'
+          assign ctl_pag_mobile = 'none'
+      endcase
+
+      if nav_offset_x == 'edge' and ctl_nav_mobile == 'absolute-inside'
+        assign ctl_nav_mobile = 'absolute'
+      endif
+
+      assign navigation_mobile = navigation_mobile | default: ctl_nav_mobile
+      assign pagination_mobile = pagination_mobile | default: ctl_pag_mobile
+    endif
+  endif
+
+  assign nav = navigation | default: 'none'
+  assign nav_mobile = navigation_mobile | default: nav
+  assign nav_size = navigation_size | default: 'medium'
+  assign cmb = combined | default: 'none'
+  assign cmb_mobile = combined_mobile | default: cmb
+  assign pag = pagination | default: 'dots'
+  assign pag_mobile = pagination_mobile | default: pag
+  assign pag_style_explicit = pagination_style
+
+  assign show_nav = true
+  if nav == 'none'
+    assign show_nav = false
+  endif
+  assign show_nav_mobile = true
+  if nav_mobile == 'none'
+    assign show_nav_mobile = false
+  endif
+
+  assign show_combined = true
+  if cmb == 'none'
+    assign show_combined = false
+  endif
+  assign show_combined_mobile = true
+  if cmb_mobile == 'none'
+    assign show_combined_mobile = false
+  endif
+
+  assign show_pag = true
+  if pag == 'none'
+    assign show_pag = false
+  endif
+  assign show_pag_mobile = true
+  if pag_mobile == 'none'
+    assign show_pag_mobile = false
+  endif
+
+  # Visibility classes per slot
+  if show_nav == true and show_nav_mobile == true
+    assign nav_vis = ''
+  elsif show_nav == true and show_nav_mobile == false
+    assign nav_vis = 'hidden md:flex'
+  elsif show_nav == false and show_nav_mobile == true
+    assign nav_vis = 'flex md:hidden'
+  else
+    assign nav_vis = 'hidden'
+  endif
+
+  if show_combined == true and show_combined_mobile == true
+    assign combined_vis = ''
+  elsif show_combined == true and show_combined_mobile == false
+    assign combined_vis = 'hidden md:block'
+  elsif show_combined == false and show_combined_mobile == true
+    assign combined_vis = 'block md:hidden'
+  else
+    assign combined_vis = 'hidden'
+  endif
+
+  if pag == 'dots' and pag_mobile == 'dots'
+    assign dots_vis = ''
+  elsif pag == 'dots' and pag_mobile != 'dots'
+    assign dots_vis = 'hidden md:inline-flex'
+  elsif pag != 'dots' and pag_mobile == 'dots'
+    assign dots_vis = 'inline-flex md:hidden'
+  else
+    assign dots_vis = 'hidden'
+  endif
+
+  assign resolved_pag_style = pag_style_explicit | default: 'pill'
+  assign resolved_pag_style_mobile = pagination_style_mobile | default: resolved_pag_style
+
+  # Button style: auto-default by nav type, caller can override.
+  # Both breakpoints share ONE pair of buttons, so there is one style class for the two of
+  # them. Use outline only when BOTH are absolute-type; when either is 'group', use unstyled —
+  # the absolute-inside wrapper CSS (0-2-0) still provides background/shadow on the floating
+  # side via higher specificity.
+  #
+  # A breakpoint set to 'none' is excluded from that vote: it renders no arrows, so it has no
+  # opinion on how they look. Without this, `carousel_controls_mobile: 'dots'` (arrows on
+  # desktop only) dropped the desktop arrows from outline to unstyled — losing their border
+  # and their btn sizing — because mobile, which shows nothing, counted as "not absolute".
+  assign nav_style = navigation_style
+  if nav_style == blank
+    assign nav_is_absolute = false
+    if nav == 'absolute' or nav == 'absolute-inside'
+      assign nav_is_absolute = true
+    endif
+    assign nav_mobile_is_absolute = false
+    if nav_mobile == 'absolute' or nav_mobile == 'absolute-inside'
+      assign nav_mobile_is_absolute = true
+    endif
+    if nav == 'none'
+      assign nav_is_absolute = nav_mobile_is_absolute
+    endif
+    if nav_mobile == 'none'
+      assign nav_mobile_is_absolute = nav_is_absolute
+    endif
+    if nav_is_absolute and nav_mobile_is_absolute
+      assign nav_style = 'outline'
+    else
+      assign nav_style = 'unstyled'
+    endif
+  endif
+
+  assign button_base = 'button-unstyled'
+  if nav_style == 'outline'
+    assign button_base = 'btn btn--outline btn--icon-only'
+    if nav_size == 'small'
+      assign button_base = button_base | append: ' btn--small'
+    elsif nav_size == 'medium'
+      assign button_base = button_base | append: ' btn--medium'
+    endif
+  endif
+
+  # Wrapper nav class (none → group for CSS, buttons just won't render)
+  assign nav_css = nav
+  if nav_css == 'none'
+    assign nav_css = 'group'
+  endif
+
+  assign wrapper_class = 'carousel__controls carousel__controls--' | append: nav_css
+  if nav_mobile != nav
+    assign nav_mobile_css = nav_mobile
+    if nav_mobile_css == 'none'
+      assign nav_mobile_css = 'group'
+    endif
+    assign wrapper_class = wrapper_class | append: ' carousel__controls-mobile--' | append: nav_mobile_css
+  endif
+  if controls_layout == 'nav-end'
+    assign wrapper_class = wrapper_class | append: ' carousel__controls--nav-end'
+  endif
+  if controls_layout_mobile == 'nav-end'
+    assign wrapper_class = wrapper_class | append: ' carousel__controls--mobile-nav-end'
+  endif
+  # Blank means no modifier, which leaves each layout on its own justification — flex-start
+  # for the inline group, center for the floating one. There is deliberately no merchant
+  # value for "whichever the layout does": it duplicated `left` under the group layout and
+  # `center` under the float one, so it was a fourth option that never produced a fifth
+  # result. Callers can still leave it unset.
+  if controls_alignment != blank
+    assign wrapper_class = wrapper_class | append: ' carousel__controls--align-' | append: controls_alignment
+  endif
+  if class != blank
+    assign wrapper_class = wrapper_class | append: ' ' | append: class
+  endif
+
+  # Every slot off means there is nothing to lay out, and the wrapper is not free: the
+  # group layout carries a 3.2rem margin-top, so rendering it empty leaves a visible gap
+  # under the carousel. Reachable from `carousel_controls: 'none'`; no explicit-param
+  # caller currently switches off nav and pagination together.
+  assign has_slot = true
+  if show_nav == false and show_nav_mobile == false and show_combined == false and show_combined_mobile == false and show_pag == false and show_pag_mobile == false
+    assign has_slot = false
+  endif
+%}
+
+{%- if has_slot -%}
+  <div
+    class="{{ wrapper_class }}"
+    data-carousel-controls
+    {% if ref != blank %}
+      ref="{{ ref }}"
+    {% endif %}
+  >
+    {%- unless nav_vis == 'hidden' -%}
+      <button
+        ref="prev"
+        class="swiper-button-prev carousel__button carousel__button--prev {{ button_base }}{% if nav_vis != blank %} {{ nav_vis }}{% endif %}"
+        aria-label="{{ 'accessibility.slideshow_previous' | t }}"
+      >
+        {%- render 'icon', icon: 'caret-left', class: 'carousel__button-icon' -%}
+      </button>
+    {%- endunless -%}
+
+    {%- unless combined_vis == 'hidden' -%}
+      <div
+        class="carousel__counter shrink-0{% if combined_vis != blank %} {{ combined_vis }}{% endif %}"
+        ref="counter"
+        aria-live="polite"
+      >
+        {%- if cmb == 'counter-progress' or cmb_mobile == 'counter-progress' -%}
+          <div class="carousel__progress" ref="progress"></div>
+        {%- endif -%}
+      </div>
+    {%- endunless -%}
+
+    {%- unless dots_vis == 'hidden' -%}
+      <div
+        ref="pagination"
+        class="swiper-pagination carousel__pagination carousel__pagination--style-{{ resolved_pag_style }}{% if resolved_pag_style_mobile != resolved_pag_style %} carousel__pagination--style-mobile-{{ resolved_pag_style_mobile }}{% endif %}{% if dots_vis != blank %} {{ dots_vis }}{% endif %}"
+      ></div>
+    {%- endunless -%}
+
+    {%- unless nav_vis == 'hidden' -%}
+      <button
+        ref="next"
+        class="swiper-button-next carousel__button carousel__button--next {{ button_base }}{% if nav_vis != blank %} {{ nav_vis }}{% endif %}"
+        aria-label="{{ 'accessibility.slideshow_next' | t }}"
+      >
+        {%- render 'icon', icon: 'caret-right', class: 'carousel__button-icon' -%}
+      </button>
+    {%- endunless -%}
+  </div>
+{%- endif -%}

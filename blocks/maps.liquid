@@ -1,0 +1,679 @@
+{% doc %}
+  Maps — public parent block (Composite / orchestrator).
+
+  A Google map with an overlaid card: a `<select>` of branches plus the selected branch's own panel.
+  Branch data lives in this block's OWN nested `_maps-location` children, and each branch's panel
+  content is composed from ITS nested blocks in turn (three levels: maps → _maps-location → text).
+  A parent block cannot read a nested block's settings, so each child renders TWO fragments
+  around a "maps/split" HTML marker comment; this block captures `content_for 'blocks'`, splits
+  on the marker and routes each half (the `<option>`s into the dropdown, the panels into the card) —
+  the same pattern as `blocks/_tab.liquid` + `sections/tabs.liquid`.
+
+  The map URL is composed in JS, never in Liquid: the child owns `map_query` while the parent owns the
+  API key / zoom / map type, and neither can read the other. The map is always deferred to viewport
+  entry, so there is never a server-rendered iframe (no-JS = card + dropdown, no map).
+
+  @example
+  {% content_for 'block', type: 'maps', id: 'maps' %}
+{% enddoc %}
+
+{%- liquid
+  assign settings = block.settings
+
+  assign color_scheme = settings.color_scheme
+  if settings.inherit_color_scheme
+    assign color_scheme = ''
+  endif
+
+  comment
+    Fold border_opacity into a custom border_color so BOTH settings apply together
+    (border-style only applies opacity to the scheme border color, not a custom one).
+  endcomment
+  assign border_alpha = settings.border_opacity | default: 100 | divided_by: 100.0
+-%}
+
+{%- capture children -%}
+  {% content_for 'blocks' %}
+{%- endcapture -%}
+
+{%- liquid
+  comment
+    Split-marker routing. Every `_maps-location` emits
+      <!-- @maps/split -->OPTION<!-- @maps/split -->PANEL
+    so the concatenated capture starts with a marker and then alternates option / panel:
+    index0 0 = "" (the empty head), 1 = option, 2 = panel, 3 = option, …
+  endcomment
+  assign parts = children | strip | split: '<!-- @maps/split -->'
+  assign options_html = ''
+  assign panels_html = ''
+  assign item_count = 0
+
+  for part in parts
+    assign is_option = forloop.index0 | modulo: 2
+    if is_option == 1
+      assign options_html = options_html | append: part
+      assign item_count = item_count | plus: 1
+    else
+      comment
+        A nested block cannot resolve its own index, so every child ships `hidden="hidden"` and the
+        FIRST panel routed here has that exact token stripped — one panel is visible before JS runs.
+        The token is a string contract with `blocks/_maps-location.liquid`; keep it unbroken.
+
+        `panel` is a MUST, not a style choice: `assign` writes to the outermost scope while `for`
+        binds `part` in the loop's own inner scope, so `assign part = …` here would never be seen by
+        the `append` below (lookup is innermost-first) and the strip would silently do nothing.
+        `panels_html == blank` is also deliberate: parts[0] is the empty head, and appending it
+        leaves `panels_html` blank, so the guard still fires on the first REAL panel.
+      endcomment
+      assign panel = part
+      if panels_html == blank
+        assign panel = panel | replace_first: 'hidden="hidden"', ''
+      endif
+      assign panels_html = panels_html | append: panel
+    endif
+  endfor
+
+  comment
+    ONE rule covers both ways the card can go: it renders only if the merchant left `show_card` on
+    AND there is at least one Location to put in it. With zero locations the card would be empty
+    anyway (no dropdown, no panel), so it is dropped and the block renders as a clean standalone map.
+  endcomment
+  assign render_card = false
+  if settings.show_card and item_count > 0
+    assign render_card = true
+  endif
+
+  comment
+    The map query must NEVER resolve to blank. When the card renders, JS reads the active branch from
+    the `<select>`; when it does not, there is no select to read, so the parent resolves the query
+    itself and hands it over as `data-fallback-query`. Three tiers, in order:
+
+      1. the FIRST location's own query — this is the `show_card: false` + locations case, where the
+         dropdown is gone but the locations are not, so the map stays on location one. A parent
+         cannot read a nested block's settings, so the value is parsed back out of the captured
+         `<option>` markup; that markup is this file's own contract with `_maps-location`.
+      2. the shop's own address, composed BY HAND. Deliberately NOT `shop.address.summary`: that is
+         documented as including the first and last NAME and omitting the zip — a person's name in a
+         geographic query is worse than no query at all.
+      3. `maps_demo_query` below — the SAME literal the preset ships, so this block has one demo
+         address, not two. On a store with no address configured this shows Los Angeles, which is not
+         the merchant's shop; an obviously-placeholder map still beats an empty hole, and the Theme
+         Editor hint keeps nudging them to add a real location.
+
+    `fallback_query` / `fallback_title` come out HTML-ESCAPED, ready to print straight into an
+    attribute. Tier 1 arrives already escaped (the child escaped it on the way in), so only the
+    tier-2/3 values are piped through `escape` — do NOT add a second `escape` at the output site.
+  endcomment
+  assign maps_demo_query = '6100 Wilshire Blvd, Los Angeles'
+  assign fallback_query = ''
+  assign fallback_title = ''
+
+  unless render_card
+    if options_html != blank
+      assign query_parts = options_html | split: 'data-map-query="'
+      if query_parts.size > 1
+        assign fallback_query = query_parts[1] | split: '"' | first
+      endif
+      assign title_parts = options_html | split: 'data-map-title="'
+      if title_parts.size > 1
+        assign fallback_title = title_parts[1] | split: '"' | first
+      endif
+    endif
+
+    if fallback_query == blank
+      assign shop_query = ''
+      if shop.address.street != blank
+        assign shop_query = shop_query | append: shop.address.street | append: ', '
+      endif
+      if shop.address.city != blank
+        assign shop_query = shop_query | append: shop.address.city | append: ', '
+      endif
+      if shop.address.province != blank
+        assign shop_query = shop_query | append: shop.address.province | append: ', '
+      endif
+      if shop.address.zip != blank
+        assign shop_query = shop_query | append: shop.address.zip | append: ', '
+      endif
+      if shop.address.country != blank
+        assign shop_query = shop_query | append: shop.address.country | append: ', '
+      endif
+      assign shop_query = shop_query | remove_last: ', ' | strip
+      if shop_query == blank
+        assign shop_query = maps_demo_query
+      endif
+      assign fallback_query = shop_query | escape
+    endif
+
+    if fallback_title == blank
+      if shop.name != blank
+        assign fallback_title = 'blocks.maps.map_title' | t: name: shop.name
+      else
+        assign fallback_title = 'blocks.maps.map_title_fallback' | t
+      endif
+      assign fallback_title = fallback_title | escape
+    endif
+  endunless
+-%}
+
+{%- capture block_style -%}
+  {% render 'spacing-style', settings: settings %}
+  {% render 'size-style', settings: settings %}
+  {% render 'border-style', settings: settings, use_mask_clip: false %}
+  {%- comment -%}
+    Card-only vars, emitted only when the card is actually rendered — `--f-row-gap*` is read by
+    `.maps__panel`, `--maps-card-offset` / `--maps-card-width` by `.maps__card`, and all three live
+    inside the card. With `show_card` off there is nothing left to read them.
+  {%- endcomment -%}
+  {%- if render_card -%}
+    {% render 'gap-style',
+      row_gap: settings.card_gap,
+      row_gap_mobile: settings.card_gap_mobile,
+      column_gap: 0,
+      column_gap_mobile: 0
+    %}
+    --maps-card-offset: {{ settings.card_offset }}px;
+    --maps-card-width: {{ settings.card_width }}px;
+  {%- endif -%}
+  {% render 'clamp-calculate-style',
+    property_name: 'maps-map-height',
+    min_value: settings.height_mobile,
+    max_value: settings.height
+  %}
+  {%- if settings.border == 'solid' and settings.border_color != blank -%}
+    --border-color: {{ settings.border_color | color_modify: 'alpha', border_alpha }};
+  {%- endif -%}
+  {%- comment -%}
+    The block picker renders the block inside a zero-width container; without a floor it measures 0×0.
+  {%- endcomment -%}
+  {%- if request.visual_preview_mode -%}
+    min-width: 600px;
+  {%- endif -%}
+{%- endcapture -%}
+
+{%- comment -%}
+  Rendered unconditionally: since the query always resolves (three tiers above), a block with no
+  Location child is still a working map rather than nothing at all.
+{%- endcomment -%}
+<script src="{{ 'maps.js' | asset_url }}" type="module" fetchpriority="low"></script>
+{%- render 'maps-markup',
+  settings: settings,
+  options_html: options_html,
+  panels_html: panels_html,
+  item_count: item_count,
+  render_card: render_card,
+  fallback_query: fallback_query,
+  fallback_title: fallback_title,
+  block_id: block.id,
+  color_scheme: color_scheme,
+  block_style: block_style,
+  shopify_attributes: block.shopify_attributes
+-%}
+
+{% schema %}
+{
+  "name": "t:names.maps",
+  "tag": null,
+  "blocks": [{ "type": "_maps-location" }],
+  "settings": [
+    { "type": "paragraph", "content": "t:info.maps_intro" },
+    { "type": "header", "content": "t:content.layout" },
+    {
+      "type": "range",
+      "id": "height",
+      "label": "t:settings.height",
+      "min": 200,
+      "max": 800,
+      "step": 10,
+      "unit": "px",
+      "default": 530
+    },
+    {
+      "type": "range",
+      "id": "height_mobile",
+      "label": "t:settings.height_mobile",
+      "min": 150,
+      "max": 600,
+      "step": 10,
+      "unit": "px",
+      "default": 250
+    },
+    { "type": "header", "content": "t:content.card" },
+    {
+      "type": "checkbox",
+      "id": "show_card",
+      "label": "t:settings.show_card",
+      "info": "t:info.maps_show_card",
+      "default": true
+    },
+    {
+      "type": "select",
+      "id": "layout_mobile",
+      "label": "t:settings.layout_mobile",
+      "options": [
+        { "value": "stacked", "label": "t:options.stacked" },
+        { "value": "overlay", "label": "t:options.overlay" }
+      ],
+      "default": "stacked",
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "select",
+      "id": "card_position",
+      "label": "t:settings.position",
+      "options": [
+        { "value": "top-left", "label": "t:options.top_left" },
+        { "value": "top-center", "label": "t:options.top_center" },
+        { "value": "top-right", "label": "t:options.top_right" },
+        { "value": "middle-left", "label": "t:options.middle_left" },
+        { "value": "middle-center", "label": "t:options.middle_center" },
+        { "value": "middle-right", "label": "t:options.middle_right" },
+        { "value": "bottom-left", "label": "t:options.bottom_left" },
+        { "value": "bottom-center", "label": "t:options.bottom_center" },
+        { "value": "bottom-right", "label": "t:options.bottom_right" }
+      ],
+      "default": "top-right",
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "range",
+      "id": "card_offset",
+      "label": "t:settings.offset",
+      "min": 0,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 30,
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "range",
+      "id": "card_width",
+      "label": "t:settings.width",
+      "min": 260,
+      "max": 520,
+      "step": 10,
+      "unit": "px",
+      "default": 350,
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "label": "t:settings.row_gap",
+      "info": "t:info.maps_card_gap",
+      "min": 0,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "range",
+      "id": "card_gap_mobile",
+      "label": "t:settings.row_gap_mobile",
+      "min": 0,
+      "max": 48,
+      "step": 2,
+      "unit": "px",
+      "default": 8,
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.card_padding",
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "select",
+      "id": "card_device",
+      "label": "t:settings.devices",
+      "options": [
+        { "value": "desktop", "label": "t:options.desktop" },
+        { "value": "mobile", "label": "t:options.mobile" }
+      ],
+      "default": "desktop",
+      "visible_if": "{{ block.settings.show_card }}"
+    },
+    {
+      "type": "range",
+      "id": "card-padding-block",
+      "label": "t:settings.vertical_padding",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.show_card and block.settings.card_device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "card-padding-inline",
+      "label": "t:settings.horizontal_padding",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 24,
+      "visible_if": "{{ block.settings.show_card and block.settings.card_device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "card-padding-block-mobile",
+      "label": "t:settings.vertical_padding",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.show_card and block.settings.card_device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "card-padding-inline-mobile",
+      "label": "t:settings.horizontal_padding",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.show_card and block.settings.card_device == 'mobile' }}"
+    },
+    { "type": "header", "content": "t:content.map" },
+    {
+      "type": "text",
+      "id": "api_key",
+      "label": "t:settings.api_key",
+      "info": "t:info.maps_api_key"
+    },
+    {
+      "type": "range",
+      "id": "zoom",
+      "label": "t:settings.zoom",
+      "min": 1,
+      "max": 20,
+      "step": 1,
+      "default": 14
+    },
+    {
+      "type": "select",
+      "id": "maptype",
+      "label": "t:settings.map_type",
+      "options": [
+        { "value": "roadmap", "label": "t:options.roadmap" },
+        { "value": "satellite", "label": "t:options.satellite" }
+      ],
+      "default": "roadmap"
+    },
+    { "type": "header", "content": "t:content.appearance" },
+    {
+      "type": "checkbox",
+      "id": "inherit_color_scheme",
+      "label": "t:settings.inherit_color_scheme",
+      "default": true
+    },
+    {
+      "type": "color_scheme",
+      "id": "color_scheme",
+      "label": "t:settings.color_scheme",
+      "default": "scheme-1",
+      "visible_if": "{{ block.settings.inherit_color_scheme == false }}"
+    },
+    {
+      "type": "select",
+      "id": "border",
+      "label": "t:settings.borders",
+      "options": [
+        { "value": "none", "label": "t:options.none" },
+        { "value": "solid", "label": "t:options.solid" }
+      ],
+      "default": "none"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "t:settings.border_color",
+      "visible_if": "{{ block.settings.border == 'solid' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_width",
+      "label": "t:settings.border_width",
+      "min": 0,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 1,
+      "visible_if": "{{ block.settings.border == 'solid' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_opacity",
+      "label": "t:settings.border_opacity",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.border == 'solid' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 6
+    },
+    { "type": "header", "content": "t:content.size" },
+    {
+      "type": "select",
+      "id": "width",
+      "label": "t:settings.width",
+      "options": [
+        { "value": "fit-content", "label": "t:options.fit" },
+        { "value": "fill", "label": "t:options.fill" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "fill"
+    },
+    {
+      "type": "range",
+      "id": "custom_width",
+      "label": "t:settings.custom_width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width == 'custom' }}"
+    },
+    {
+      "type": "select",
+      "id": "width_mobile",
+      "label": "t:settings.width_mobile",
+      "options": [
+        { "value": "fit-content", "label": "t:options.fit" },
+        { "value": "fill", "label": "t:options.fill" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "fill"
+    },
+    {
+      "type": "range",
+      "id": "custom_width_mobile",
+      "label": "t:settings.custom_width",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "default": 100,
+      "visible_if": "{{ block.settings.width_mobile == 'custom' }}"
+    },
+    { "type": "header", "content": "t:content.padding" },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        { "value": "desktop", "label": "t:options.desktop" },
+        { "value": "mobile", "label": "t:options.mobile" }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-start-mobile",
+      "label": "t:settings.left",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-inline-end-mobile",
+      "label": "t:settings.right",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ block.settings.device == 'mobile' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.maps",
+      "category": "t:categories.custom",
+      "blocks": {
+        "location_1": {
+          "type": "_maps-location",
+          "settings": {
+            "name": "New York",
+            "map_query": "6100 Wilshire Blvd, Los Angeles"
+          },
+          "blocks": {
+            "name": {
+              "type": "text",
+              "name": "t:names.heading",
+              "settings": {
+                "text": "<p>New York</p>",
+                "type_preset": "h5",
+                "text_color": "text",
+                "width": "100%",
+                "width_mobile": "100%"
+              }
+            },
+            "address": {
+              "type": "text",
+              "settings": {
+                "text": "<p>6100 Wilshire Blvd 2nd Floor CA 9004 +1 310 499 7700</p>",
+                "type_preset": "rte",
+                "text_color": "subtext",
+                "width": "100%",
+                "width_mobile": "100%"
+              }
+            },
+            "hours_heading": {
+              "type": "text",
+              "name": "t:names.heading",
+              "settings": {
+                "text": "<p>Opening Hours</p>",
+                "type_preset": "h5",
+                "text_color": "text",
+                "width": "100%",
+                "width_mobile": "100%",
+                "padding-block-start": 16,
+                "mobile-padding-scale": 75
+              }
+            },
+            "hours": {
+              "type": "text",
+              "settings": {
+                "text": "<p>Monday-Saturday 11am–7pm ET<br>Sunday 11am–6pm ET</p>",
+                "type_preset": "rte",
+                "text_color": "subtext",
+                "width": "100%",
+                "width_mobile": "100%"
+              }
+            }
+          },
+          "block_order": ["name", "address", "hours_heading", "hours"]
+        }
+      },
+      "block_order": ["location_1"]
+    }
+  ]
+}
+{% endschema %}

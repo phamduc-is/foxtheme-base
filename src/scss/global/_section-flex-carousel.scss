@@ -1,0 +1,44 @@
+@use "../mixins" as *;
+
+// ─── Flex carousel ────────────────────────────────────────────────────────────
+
+.flex-carousel .swiper-slide-custom {
+  flex-shrink: 0;
+  height: 100%;
+  position: relative;
+  transition-property: transform;
+}
+
+// Deliberately WITHOUT the `transform: translateZ(0)` that Swiper's own
+// stylesheet pairs with this property. flex-carousel resolves its motion cells
+// as `:scope > *`, so a slide root is an element the entrance animates, and a
+// stylesheet transform wins over the start state — 0-3-0 here against the
+// prestage rule's 0-2-0. Swiper sets this class on init and is torn down below
+// the breakpoint, so the entrance died on desktop and worked on mobile. The
+// promotion is no loss: the 3D context only matters to the effect modules
+// (cards, cube, creative, coverflow), none of which this theme bundles, while
+// Swiper moves the whole wrapper as one layer — so the hack bought a compositor
+// layer per slide and paid for it with the animation. See docs/motion.md, "An
+// animated element may not carry a static transform".
+.flex-carousel .swiper-backface-hidden .swiper-slide-custom {
+  backface-visibility: hidden;
+}
+
+.flex-carousel--columns .swiper-slide-custom {
+  width: 100%;
+}
+
+// The pre-init CLS rules in modules/swiper.scss lay the row out on
+// `--f-column-gap-max`, which is the FULL desktop gap at every viewport from md
+// up. Swiper then boots and applies its own per-breakpoint `spaceBetween`, and
+// on a tablet that value is 60% of the desktop gap — so the row re-flowed the
+// moment the instance came up. Redeclaring the var on the .swiper subtree (the
+// section sets --f-column-gap-tablet inline on <flex-carousel>, one level up)
+// makes the static layout agree with what Swiper is about to do. No cycle: the
+// two custom properties are different names, and the fallback keeps the rule
+// inert for any carousel that does not emit the tablet value.
+@include media-breakpoint-between(md, xl) {
+  .flex-carousel .swiper:not(.swiper-initialized) {
+    --f-column-gap-max: var(--f-column-gap-tablet, var(--f-column-gap));
+  }
+}

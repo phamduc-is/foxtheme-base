@@ -1,0 +1,36 @@
+{% doc %}
+  Renders a flex group wrapper (children + layout/spacing/border/size). Used by `blocks/group.liquid`, `blocks/_product-details.liquid`, and `blocks/_product-info-group.liquid`.
+
+  @param {string} children - The DOM content inside the group (e.g. captured `content_for 'blocks'`).
+  @param {object} settings - Group block settings.
+  @param {string} shopify_attributes - Theme editor attributes for the wrapping element.
+  @param {string} [class] - Extra classes on the outer wrapper.
+  @param {string} [styles] - Extra inline styles on the outer wrapper.
+
+  @example
+  {% render 'group-markup', children: children, settings: block.settings, shopify_attributes: block.shopify_attributes %}
+{% enddoc %}
+{%- capture group_block_content_class -%}
+  group-block-content layout-panel-flex gap-style layout-panel-flex--{{ settings.content_direction | default: 'column' }}{% if request.design_mode %} group-block-content--design-mode{% endif %}
+  {% if settings.content_direction == 'row' and settings.vertical_on_mobile %}layout-panel-flex--column-mobile{% endif %}
+{%- endcapture -%}
+{%- capture group_block_class -%}
+  group-block spacing-style border-style size-style{% if settings.inherit_color_scheme == false %} color-{{ settings.color_scheme }}{% endif %}{{ class }}
+  {% if settings.enable_sticky_desktop %} sticky-element sticky-element--adapt{% endif %}
+{%- endcapture -%}
+{%- capture inline_style -%}
+  --order-mobile: {% if settings.order_mobile != blank %}{{ settings.order_mobile }}{% else %}initial{% endif %};
+  {% if settings.enable_sticky_desktop %}--sticky-element-top: 3rem;{% endif %}
+{%- endcapture -%}
+<div
+  class="{{ group_block_class | strip_newlines }}"
+  style="{% render 'spacing-style', settings: settings %}{% render 'border-style', settings: settings %}{% render 'size-style', settings: settings %}{{ inline_style }}{{ styles }}"
+  {{ shopify_attributes }}
+>
+  <div
+    class="{{ group_block_content_class | strip_newlines }}"
+    style="{% render 'layout-panel-style', settings: settings, type: 'flex' %}{% render 'gap-style', settings: settings %}"
+  >
+    {{- children -}}
+  </div>
+</div>

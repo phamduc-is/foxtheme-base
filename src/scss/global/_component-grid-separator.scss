@@ -1,0 +1,82 @@
+// @capability Vertical separator drawn in the column gaps of a .layout-panel-grid row — solid or dashed, scheme-aware colour, optional fixed height; exactly one line per gap and never on the outer edges.
+// @when A grid/row of cards that needs a rule between columns (trust badges, stat rows, feature lists) instead of card borders; driven by blocks/grid.liquid's Column separator settings — do not hand-roll a border or a ::before on the child block, a card that clips its overflow would swallow it.
+// @contract .grid-block-content--separator (+ --separator-dashed, + --separator-desktop-only to hide it below md) on the grid container itself, which owns its ::before. Reads --grid-sep-color, --grid-sep-thickness, --grid-sep-height (100% = full grid height) and --grid-sep-dash, all emitted by snippets/grid-markup.liquid, plus the grid's own --f-grid-columns and --f-column-gap(-mobile). Under .swipe-mobile the track comes from --column-width-mobile instead.
+// @keywords column separator, column divider, vertical rule, grid divider, dashed separator, column line, between columns, divider between cards
+
+@use "../mixins" as *;
+
+// ─── Grid column separator ────────────────────────────────────────────────────
+// Painted by the CONTAINER, not by the children. A per-child ::before is the
+// obvious implementation and it is wrong: the line has to sit in the gap,
+// outside the child's own box, so any card that clips its overflow —
+// article-card, product-card, collection-card all do — silently swallows it.
+// The container is never the clipping box, so this survives every block type.
+// One tiled background does the whole row. The tile is one column track plus
+// one gap, so tile boundaries fall on gap boundaries; shifting the tiling
+// origin half a gap to the left centres a line in every gap. The lines for
+// k = 0 and k = columns land outside the box and are clipped, which leaves
+// exactly `columns - 1` visible lines and never one on an outer edge.
+// --f-grid-columns is the same variable .layout-panel-grid feeds to
+// grid-template-columns, so the line count can never disagree with the actual
+// column count — including at every breakpoint, and including a custom_columns
+// override.
+
+.grid-block-content--separator {
+  --grid-sep-gap: var(--f-column-gap-mobile, var(--f-column-gap, 0));
+  --grid-sep-h: var(--grid-sep-height-mobile, var(--grid-sep-height));
+  --grid-sep-dash: 0.5rem;
+
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(
+      90deg,
+      var(--grid-sep-color) 0 var(--grid-sep-thickness),
+      transparent var(--grid-sep-thickness)
+    );
+    background-repeat: repeat-x;
+    background-position: calc(var(--grid-sep-gap) / -2 - var(--grid-sep-thickness) / 2) center;
+    background-size: calc((100% + var(--grid-sep-gap)) / var(--f-grid-columns)) var(--grid-sep-h);
+    pointer-events: none;
+  }
+
+  @include media-breakpoint-up(md) {
+    --grid-sep-gap: var(--f-column-gap, 0);
+    --grid-sep-h: var(--grid-sep-height);
+  }
+}
+
+// A CSS `border-style: dashed` derives its dash length from the border
+// thickness, so a 1px rule gives ~3px dashes. Punch the pattern out instead.
+// The mask is safe here precisely because it applies to the ::before, which
+// carries nothing but the background — masking the container would also mask
+// every child block inside it.
+.grid-block-content--separator-dashed::before {
+  mask-image: repeating-linear-gradient(
+    to bottom,
+    #000 0 var(--grid-sep-dash),
+    transparent var(--grid-sep-dash) calc(var(--grid-sep-dash) * 2)
+  );
+}
+
+// Below md the row may instead be a single horizontal scroller: `.swipe-mobile
+// .swipe__inner` swaps the equal-fraction template for `grid-auto-flow: column`
+// tracks of --column-width-mobile, so the tile has to come from that width.
+// (--column-width-mobile is always a calc() of viewport lengths, never a bare
+// percentage, so it resolves correctly inside background-size.)
+@include media-breakpoint-down(md) {
+  .swipe-mobile > .grid-block-content--separator::before {
+    background-size: calc(var(--column-width-mobile) + var(--grid-sep-gap)) var(--grid-sep-h);
+  }
+}
+
+// "Show separator on mobile" off. Hiding the ::before (not the variables) keeps
+// the desktop tile maths untouched and needs no counterpart rule above md.
+@include media-breakpoint-down(md) {
+  .grid-block-content--separator-desktop-only::before {
+    display: none;
+  }
+}

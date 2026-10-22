@@ -1,0 +1,35 @@
+{% comment %}
+  Standalone Section Rendering API data endpoint for the `product-finder` block.
+
+  Fetched (never placed) via `sectionRenderer.getSectionHTML('section-rendering-product-finder', false, url)`
+  where `url` is the target collection URL carrying cumulative `filter.*` params. Because the request URL
+  is the collection URL, `collection` resolves to that collection and `?filter.*` is honored — so
+  `collection.filters` comes back narrowed in true collection context (Shopify recomputes each filter's
+  value counts against the active selection).
+
+  Dumps EVERY filter as a bare `<select data-filter-name data-filter-label>` of its `count > 0` values.
+  The finder JS reads the ones it maps to. Renders nothing useful when viewed directly (no collection) —
+  that is expected; it is an API-only endpoint.
+{% endcomment %}
+
+<div hidden>
+  {%- for filter in collection.filters -%}
+    <select data-filter-name="{{ filter.param_name }}" data-filter-label="{{ filter.label | escape }}">
+      {%- for value in filter.values -%}
+        {%- if value.count > 0 -%}
+          <option value="{{ value.value | escape }}" data-count="{{ value.count }}">{{ value.label }}</option>
+        {%- endif -%}
+      {%- endfor -%}
+    </select>
+  {%- endfor -%}
+</div>
+
+{% schema %}
+{
+  "name": "t:names.product_finder_rendering",
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": []
+}
+{% endschema %}

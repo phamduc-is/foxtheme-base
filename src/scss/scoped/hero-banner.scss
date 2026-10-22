@@ -1,0 +1,72 @@
+@use "../mixins" as *;
+
+// ─── Hero banner ──────────────────────────────────────────────────────────────
+
+.hero-banner {
+  // "Inside" keeps the content within the page-width column. Padding ALWAYS applies
+  // (the `.edge-gap` consumer on the content block reads `--edge-padding-*` set on the
+  // wrapper) — do NOT zero the inline padding here, that silently dropped the setting.
+  .hero-banner--content-inside .hero-banner__content {
+    grid-column: 2;
+  }
+
+  // Height is a min-height FLOOR (auto-grow): a `custom` side emits `--height(-mobile)`;
+  // an `auto` side emits nothing → `var(…, 0px)` = 0 floor → the media's own ratio drives
+  // the height. Mobile-first; desktop floor is set in the md+ block below.
+  .section__wrapper {
+    min-height: var(--height-mobile, 0);
+  }
+
+  .marquee {
+    order: var(--order);
+    margin-block-end: 3rem;
+
+    &.marquee--top {
+      margin-block: 3rem 0;
+    }
+  }
+}
+
+// ─── Hero banner media ────────────────────────────────────────────────────────
+// CUSTOM = cover (image absolutely covers the min-height box), AUTO = adapt (image ratio is
+// the floor, grows with content) — the cover↔adapt switch is per-device via the
+// `media--adapt` / `media-mobile--adapt` classes. Shared mixins: src/scss/mixins/_media.scss.
+
+.hero-banner__media {
+  @include full-bleed-media-cover;
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@include media-breakpoint-down(md) {
+  .media-mobile--adapt .hero-banner__media {
+    @include full-bleed-media-adapt(var(--ratio-mobile, var(--ratio)));
+  }
+
+  .hero-banner {
+    // Content is ALWAYS full-width on mobile — the desktop `width` setting (often
+    // fit-content) would otherwise shrink the inner and content-overlay-style would
+    // push it to one side. Desktop width is untouched (this is down(md) only).
+    .hero-banner__inner {
+      width: 100%;
+    }
+
+    .marquee {
+      margin-block-end: 2.4rem;
+
+      &.marquee--top {
+        margin-block-start: 2.4rem;
+      }
+    }
+  }
+}
+
+@include media-breakpoint-up(md) {
+  .hero-banner .section__wrapper {
+    min-height: var(--height, 0);
+  }
+
+  .media--adapt .hero-banner__media {
+    @include full-bleed-media-adapt;
+  }
+}

@@ -1,0 +1,932 @@
+{{ 'scoped-slideshow.css' | asset_url | stylesheet_tag }}
+{%- liquid
+  assign container = section.settings.container
+  assign content_position = section.settings.content_position
+  assign height = section.settings.height
+  assign height_mobile = section.settings.height_mobile
+
+  assign autoplay = section.settings.autoplay
+  assign autoplay_delay = section.settings.autoplay_delay
+  # The schema no longer offers a choice here: the select had exactly one option
+  # ("Default"), so the merchant could never change it, and no stylesheet targets
+  # any `slideshow__controls-*` modifier at all. Keep emitting the class the
+  # markup has always carried, from a literal.
+  assign control_type = 'default'
+-%}
+
+{%- comment -%}
+  Height `auto`: Swiper sizes every slide to the tallest, so per-slide ratios leave a gap
+  under the shorter ones. Pin the deck to the FIRST slide's media instead. It arrives by
+  marker because a THEME block exposes no `settings` on `section.blocks` — only its
+  rendered output — which is why the blocks are captured before the wrapper that reads
+  them.
+{%- endcomment -%}
+{%- capture slides_html -%}{% content_for 'blocks' %}{%- endcapture -%}
+{%- liquid
+  assign first_ratio = ''
+  assign first_ratio_mobile = ''
+
+  assign ratio_parts = slides_html | split: '<!-- @slide/ratio/'
+  if ratio_parts.size > 1
+    assign first_ratio = ratio_parts[1] | split: ' -->' | first
+  endif
+
+  assign ratio_mobile_parts = slides_html | split: '<!-- @slide/ratio-mobile/'
+  if ratio_mobile_parts.size > 1
+    assign first_ratio_mobile = ratio_mobile_parts[1] | split: ' -->' | first
+  endif
+-%}
+
+{%- capture wrapper_class -%}
+  slideshow relative section-grid section-grid--{{ container }}
+  {%- if height == 'auto' %} media--adapt{% endif -%}
+  {%- if height_mobile == 'auto' %} media-mobile--adapt{% endif -%}
+  {%- if container == 'full' %} slideshow--content-{{ content_position }}{% endif -%}
+{%- endcapture -%}
+
+{%- capture wrapper_style -%}
+  {%- comment -%} Height floor: both custom → one clamp (desktop var + mobile var); one side custom → its fixed var; auto sides emit nothing → 0 floor → media adapts to its image ratio. {%- endcomment -%}
+  {%- if height == 'custom' and height_mobile == 'custom' -%}
+    {%- render 'clamp-calculate-style', property_name: 'height', min_value: section.settings.height_custom_mobile, max_value: section.settings.height_custom, max_breakpoint: 1455 -%}
+  {%- elsif height == 'custom' -%}
+    --height: {{ section.settings.height_custom }}px;
+  {%- elsif height_mobile == 'custom' -%}
+    --height-mobile: {{ section.settings.height_custom_mobile }}px;
+  {%- endif -%}
+  {%- if height == 'auto' and first_ratio != blank -%}
+    --slideshow-ratio: {{ first_ratio }};
+  {%- endif -%}
+  {%- if height_mobile == 'auto' and first_ratio_mobile != blank -%}
+    --slideshow-ratio-mobile: {{ first_ratio_mobile }};
+  {%- endif -%}
+  {%- if container == 'fixed' -%}
+    {%- render 'border-style', settings: section.settings -%}
+  {%- endif -%}
+{%- endcapture -%}
+
+<div
+  class="inherit-color-scheme section section-slideshow spacing-style"
+  style="{% render 'spacing-style', settings: section.settings %}"
+>
+  <slideshow-component
+    class="{{ wrapper_class | strip | strip_newlines }}"
+    style="{{ wrapper_style | strip | strip_newlines }}"
+    data-section-id="{{ section.id }}"
+    data-autoplay="{{ autoplay }}"
+  >
+    <script type="application/json" ref="config">
+      {
+        "shopifyBlocks": true,
+        "loop": true,
+        "effect": "fade",
+        "fadeEffect": { "crossFade": true },
+        "autoplay":{% if autoplay %}{ "delay": {{ autoplay_delay | times: 1000 }} }{% else %}false{% endif %},
+        "counter": true,
+        "pagination": { "type": "bullets" }
+      }
+    </script>
+    <div
+      ref="container"
+      class="swiper w-full row-span-full border-style"
+    >
+      <div class="swiper-wrapper">
+        {{ slides_html }}
+      </div>
+    </div>
+    {%- if section.blocks.size > 1 -%}
+      <div class="slideshow__controls slideshow__controls-{{ control_type }}" ref="controls">
+        {% assign class = 'justify-' | append: section.settings.control_alignment %}
+        {% render 'carousel-controls', class: class, pagination_style: 'pill-autoplay' %}
+      </div>
+    {%- endif -%}
+  </slideshow-component>
+</div>
+
+{% schema %}
+{
+  "name": "t:names.slideshow",
+  "blocks": [
+    {
+      "type": "_slide"
+    }
+  ],
+  "disabled_on": {
+    "groups": ["header", "footer"]
+  },
+  "settings": [
+    {
+      "type": "header",
+      "content": "t:content.layout"
+    },
+    {
+      "type": "select",
+      "id": "container",
+      "label": "t:settings.container",
+      "options": [
+        {
+          "value": "full",
+          "label": "t:options.full"
+        },
+        {
+          "value": "fixed",
+          "label": "t:options.fixed"
+        }
+      ],
+      "default": "full"
+    },
+    {
+      "type": "select",
+      "id": "content_position",
+      "options": [
+        {
+          "value": "inside",
+          "label": "t:options.inside"
+        },
+        {
+          "value": "outside",
+          "label": "t:options.outside"
+        }
+      ],
+      "default": "inside",
+      "label": "t:settings.content_position",
+      "visible_if": "{{ section.settings.container == 'full' }}"
+    },
+    {
+      "type": "select",
+      "id": "height",
+      "label": "t:settings.height",
+      "options": [
+        { "value": "auto", "label": "t:options.auto" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "custom"
+    },
+    {
+      "type": "paragraph",
+      "content": "t:content.slideshow_height_auto",
+      "visible_if": "{{ section.settings.height == 'auto' }}"
+    },
+    {
+      "type": "range",
+      "id": "height_custom",
+      "label": "t:settings.height_custom",
+      "min": 200,
+      "max": 1000,
+      "step": 10,
+      "unit": "px",
+      "default": 500,
+      "visible_if": "{{ section.settings.height == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.mobile_settings"
+    },
+    {
+      "type": "select",
+      "id": "height_mobile",
+      "label": "t:settings.height",
+      "options": [
+        { "value": "auto", "label": "t:options.auto" },
+        { "value": "custom", "label": "t:options.custom" }
+      ],
+      "default": "custom"
+    },
+    {
+      "type": "paragraph",
+      "content": "t:content.slideshow_height_auto",
+      "visible_if": "{{ section.settings.height_mobile == 'auto' }}"
+    },
+    {
+      "type": "range",
+      "id": "height_custom_mobile",
+      "label": "t:settings.height_custom",
+      "min": 200,
+      "max": 600,
+      "step": 4,
+      "unit": "px",
+      "default": 400,
+      "visible_if": "{{ section.settings.height_mobile == 'custom' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.carousel_settings"
+    },
+    {
+      "type": "checkbox",
+      "id": "autoplay",
+      "label": "t:settings.autoplay",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "autoplay_delay",
+      "label": "t:settings.autoplay_delay",
+      "max": 10,
+      "min": 2,
+      "step": 1,
+      "unit": "s",
+      "default": 5,
+      "visible_if": "{{ section.settings.autoplay == true }}"
+    },
+    {
+      "type": "select",
+      "id": "control_alignment",
+      "label": "t:settings.control_alignment",
+      "options": [
+        {
+          "value": "start",
+          "label": "t:options.left"
+        },
+        {
+          "value": "center",
+          "label": "t:options.center"
+        },
+        {
+          "value": "end",
+          "label": "t:options.right"
+        }
+      ],
+      "default": "end"
+    },
+    {
+      "type": "header",
+      "content": "t:content.appearance",
+      "visible_if": "{{ section.settings.container == 'fixed' }}"
+    },
+    {
+      "type": "range",
+      "id": "border_radius",
+      "label": "t:settings.border_radius",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.container == 'fixed' }}"
+    },
+    {
+      "type": "header",
+      "content": "t:content.padding"
+    },
+    {
+      "type": "select",
+      "id": "device",
+      "label": "t:settings.devices",
+      "options": [
+        {
+          "value": "desktop",
+          "label": "t:options.desktop"
+        },
+        {
+          "value": "mobile",
+          "label": "t:options.mobile"
+        }
+      ],
+      "default": "desktop"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'desktop' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-start-mobile",
+      "label": "t:settings.top",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    },
+    {
+      "type": "range",
+      "id": "padding-block-end-mobile",
+      "label": "t:settings.bottom",
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "px",
+      "default": 0,
+      "visible_if": "{{ section.settings.device == 'mobile' }}"
+    }
+  ],
+  "presets": [
+    {
+      "name": "t:names.slideshow_minimal",
+      "category": "t:categories.banners",
+      "settings": {
+        "container": "full",
+        "height": "custom",
+        "height_custom": 500,
+        "height_mobile": "custom",
+        "height_custom_mobile": 472,
+        "content_position": "inside",
+        "border_radius": 0,
+        "autoplay": false,
+        "autoplay_delay": 5,
+        "control_alignment": "end",
+        "padding-block-start": 0,
+        "padding-block-end": 0
+      },
+      "blocks": {
+        "slide_1": {
+          "type": "_slide",
+          "settings": {
+            "toggle_overlay": false,
+            "overlay_color": "#00000033",
+            "position": "middle-left",
+            "position_mobile": "bottom",
+            "color_scheme": "scheme-1"
+          },
+          "blocks": {
+            "static-slide-content": {
+              "type": "_slide-content",
+              "static": true,
+              "settings": {
+                "horizontal_alignment_flex_direction_column": "flex-start",
+                "horizontal_alignment_flex_direction_column_mobile": "center",
+                "row_gap": 0,
+                "row_gap_mobile": 0,
+                "width": "custom",
+                "custom_width": 27,
+                "inherit_color_scheme": true,
+                "color_scheme": "",
+                "enable_transparent": true,
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {
+                "text_dRNNtt": {
+                  "type": "text",
+                  "name": "Subheading",
+                  "settings": {
+                    "text": "<p>New arrivals</p>",
+                    "type_preset": "text-subheading",
+                    "font": "var(--font-body--family)",
+                    "font_size": 15,
+                    "font_size_mobile": 15,
+                    "line_height": "normal",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 16,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 100,
+                    "animation_type": "none",
+                    "animation_delay": 100
+                  },
+                  "blocks": {}
+                },
+                "text_MNk6zL": {
+                  "type": "text",
+                  "name": "Heading",
+                  "settings": {
+                    "text": "<h2>Image slide</h2>",
+                    "type_preset": "custom",
+                    "font": "var(--font-heading--family)",
+                    "font_size": 68,
+                    "font_size_mobile": 38,
+                    "line_height": "tight",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 32,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 75,
+                    "animation_type": "fade-up",
+                    "animation_split": "words",
+                    "animation_delay": 200
+                  },
+                  "blocks": {}
+                },
+                "button_JUxRpK": {
+                  "type": "button",
+                  "settings": {
+                    "label": "Button label",
+                    "link": "shopify://collections/all",
+                    "style": "primary",
+                    "size": "medium",
+                    "icon": "caret-right",
+                    "animation_type": "none",
+                    "animation_delay": 300
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": ["text_dRNNtt", "text_MNk6zL", "button_JUxRpK"]
+            }
+          },
+          "block_order": []
+        },
+        "slide_2": {
+          "type": "_slide",
+          "settings": {
+            "toggle_overlay": false,
+            "overlay_color": "#00000033",
+            "position": "middle-left",
+            "position_mobile": "bottom",
+            "color_scheme": "scheme-1"
+          },
+          "blocks": {
+            "static-slide-content": {
+              "type": "_slide-content",
+              "static": true,
+              "settings": {
+                "horizontal_alignment_flex_direction_column": "flex-start",
+                "horizontal_alignment_flex_direction_column_mobile": "center",
+                "row_gap": 0,
+                "row_gap_mobile": 0,
+                "width": "custom",
+                "custom_width": 27,
+                "inherit_color_scheme": true,
+                "color_scheme": "",
+                "enable_transparent": true,
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {
+                "text_bTdWYT": {
+                  "type": "text",
+                  "name": "Subheading",
+                  "settings": {
+                    "text": "<p>New arrivals</p>",
+                    "type_preset": "text-subheading",
+                    "font": "var(--font-body--family)",
+                    "font_size": 15,
+                    "font_size_mobile": 15,
+                    "line_height": "normal",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 16,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 100,
+                    "animation_type": "none",
+                    "animation_delay": 100
+                  },
+                  "blocks": {}
+                },
+                "text_enXdaB": {
+                  "type": "text",
+                  "name": "Heading",
+                  "settings": {
+                    "text": "<h2>Image slide</h2>",
+                    "type_preset": "custom",
+                    "font": "var(--font-heading--family)",
+                    "font_size": 68,
+                    "font_size_mobile": 38,
+                    "line_height": "tight",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 32,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 75,
+                    "animation_type": "fade-up",
+                    "animation_split": "words",
+                    "animation_delay": 200
+                  },
+                  "blocks": {}
+                },
+                "button_xcrKRi": {
+                  "type": "button",
+                  "settings": {
+                    "label": "Button label",
+                    "link": "shopify://collections/all",
+                    "style": "primary",
+                    "size": "medium",
+                    "icon": "caret-right",
+                    "animation_type": "none",
+                    "animation_delay": 300
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": ["text_bTdWYT", "text_enXdaB", "button_xcrKRi"]
+            }
+          },
+          "block_order": []
+        },
+        "slide_3": {
+          "type": "_slide",
+          "settings": {
+            "toggle_overlay": false,
+            "overlay_color": "#00000033",
+            "position": "middle-left",
+            "position_mobile": "bottom",
+            "color_scheme": "scheme-1"
+          },
+          "blocks": {
+            "static-slide-content": {
+              "type": "_slide-content",
+              "static": true,
+              "settings": {
+                "horizontal_alignment_flex_direction_column": "flex-start",
+                "horizontal_alignment_flex_direction_column_mobile": "center",
+                "row_gap": 0,
+                "row_gap_mobile": 0,
+                "width": "custom",
+                "custom_width": 27,
+                "inherit_color_scheme": true,
+                "color_scheme": "",
+                "enable_transparent": true,
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {
+                "text_pDVzqe": {
+                  "type": "text",
+                  "name": "Subheading",
+                  "settings": {
+                    "text": "<p>New arrivals</p>",
+                    "type_preset": "text-subheading",
+                    "font": "var(--font-body--family)",
+                    "font_size": 15,
+                    "font_size_mobile": 15,
+                    "line_height": "normal",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 16,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 100,
+                    "animation_type": "none",
+                    "animation_delay": 100
+                  },
+                  "blocks": {}
+                },
+                "text_pzxKRm": {
+                  "type": "text",
+                  "name": "Heading",
+                  "settings": {
+                    "text": "<h2>Image slide</h2>",
+                    "type_preset": "custom",
+                    "font": "var(--font-heading--family)",
+                    "font_size": 68,
+                    "font_size_mobile": 38,
+                    "line_height": "tight",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 32,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 75,
+                    "animation_type": "fade-up",
+                    "animation_split": "words",
+                    "animation_delay": 200
+                  },
+                  "blocks": {}
+                },
+                "button_d3tAGF": {
+                  "type": "button",
+                  "settings": {
+                    "label": "Button label",
+                    "link": "shopify://collections/all",
+                    "style": "primary",
+                    "size": "medium",
+                    "icon": "caret-right",
+                    "animation_type": "none",
+                    "animation_delay": 300
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": ["text_pDVzqe", "text_pzxKRm", "button_d3tAGF"]
+            }
+          },
+          "block_order": []
+        }
+      },
+      "block_order": ["slide_1", "slide_2", "slide_3"]
+    },
+    {
+      "name": "t:names.slideshow_centered",
+      "category": "t:categories.banners",
+      "settings": {
+        "container": "fixed",
+        "height": "custom",
+        "height_custom": 500,
+        "height_mobile": "custom",
+        "height_custom_mobile": 472,
+        "content_position": "inside",
+        "border_radius": 20,
+        "autoplay": true,
+        "autoplay_delay": 5,
+        "control_alignment": "end",
+        "padding-block-start": 0,
+        "padding-block-end": 0
+      },
+      "blocks": {
+        "slide_1": {
+          "type": "_slide",
+          "settings": {
+            "toggle_overlay": false,
+            "overlay_color": "#00000033",
+            "position": "middle-center",
+            "position_mobile": "middle",
+            "color_scheme": "scheme-1"
+          },
+          "blocks": {
+            "static-slide-content": {
+              "type": "_slide-content",
+              "static": true,
+              "settings": {
+                "horizontal_alignment_flex_direction_column": "center",
+                "horizontal_alignment_flex_direction_column_mobile": "center",
+                "row_gap": 0,
+                "row_gap_mobile": 0,
+                "width": "custom",
+                "custom_width": 57,
+                "inherit_color_scheme": true,
+                "color_scheme": "",
+                "enable_transparent": true,
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {
+                "text_JNMj69": {
+                  "type": "text",
+                  "name": "Heading",
+                  "settings": {
+                    "text": "<h2>Image slide</h2>",
+                    "type_preset": "custom",
+                    "font": "var(--font-heading--family)",
+                    "font_size": 48,
+                    "font_size_mobile": 34,
+                    "line_height": "normal",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 32,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 75,
+                    "animation_type": "fade-up",
+                    "animation_split": "words",
+                    "animation_delay": 200
+                  },
+                  "blocks": {}
+                },
+                "button_KNbMrM": {
+                  "type": "button",
+                  "settings": {
+                    "label": "Button label",
+                    "link": "shopify://collections/all",
+                    "style": "primary",
+                    "size": "medium",
+                    "icon": "caret-right",
+                    "animation_type": "none",
+                    "animation_delay": 300
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": ["text_JNMj69", "button_KNbMrM"]
+            }
+          },
+          "block_order": []
+        },
+        "slide_2": {
+          "type": "_slide",
+          "settings": {
+            "toggle_overlay": false,
+            "overlay_color": "#00000033",
+            "position": "middle-center",
+            "position_mobile": "middle",
+            "color_scheme": "scheme-1"
+          },
+          "blocks": {
+            "static-slide-content": {
+              "type": "_slide-content",
+              "static": true,
+              "settings": {
+                "horizontal_alignment_flex_direction_column": "center",
+                "horizontal_alignment_flex_direction_column_mobile": "center",
+                "row_gap": 0,
+                "row_gap_mobile": 0,
+                "width": "custom",
+                "custom_width": 57,
+                "inherit_color_scheme": true,
+                "color_scheme": "",
+                "enable_transparent": true,
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {
+                "text_FkJiQL": {
+                  "type": "text",
+                  "name": "Heading",
+                  "settings": {
+                    "text": "<h2>Image slide</h2>",
+                    "type_preset": "custom",
+                    "font": "var(--font-heading--family)",
+                    "font_size": 48,
+                    "font_size_mobile": 34,
+                    "line_height": "normal",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 32,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 75,
+                    "animation_type": "fade-up",
+                    "animation_split": "words",
+                    "animation_delay": 200
+                  },
+                  "blocks": {}
+                },
+                "button_Af9iEL": {
+                  "type": "button",
+                  "settings": {
+                    "label": "Button label",
+                    "link": "shopify://collections/all",
+                    "style": "primary",
+                    "size": "medium",
+                    "icon": "caret-right",
+                    "animation_type": "none",
+                    "animation_delay": 300
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": ["text_FkJiQL", "button_Af9iEL"]
+            }
+          },
+          "block_order": []
+        },
+        "slide_3": {
+          "type": "_slide",
+          "settings": {
+            "toggle_overlay": false,
+            "overlay_color": "#00000033",
+            "position": "middle-center",
+            "position_mobile": "middle",
+            "color_scheme": "scheme-1"
+          },
+          "blocks": {
+            "static-slide-content": {
+              "type": "_slide-content",
+              "static": true,
+              "settings": {
+                "horizontal_alignment_flex_direction_column": "center",
+                "horizontal_alignment_flex_direction_column_mobile": "center",
+                "row_gap": 0,
+                "row_gap_mobile": 0,
+                "width": "custom",
+                "custom_width": 57,
+                "inherit_color_scheme": true,
+                "color_scheme": "",
+                "enable_transparent": true,
+                "border": "none",
+                "border_width": 1,
+                "border_opacity": 100,
+                "border_radius": 0,
+                "padding-block-start": 0,
+                "padding-block-end": 0,
+                "padding-inline-start": 0,
+                "padding-inline-end": 0,
+                "animation_type": "none",
+                "animation_delay": 250
+              },
+              "blocks": {
+                "text_PgNg6p": {
+                  "type": "text",
+                  "name": "Heading",
+                  "settings": {
+                    "text": "<h2>Image slide</h2>",
+                    "type_preset": "custom",
+                    "font": "var(--font-heading--family)",
+                    "font_size": 48,
+                    "font_size_mobile": 34,
+                    "line_height": "normal",
+                    "text_color": "text",
+                    "width": "fit-content",
+                    "text_alignment": "left",
+                    "width_mobile": "fit-content",
+                    "text_alignment_mobile": "left",
+                    "padding-block-start": 0,
+                    "padding-block-end": 32,
+                    "padding-inline-start": 0,
+                    "padding-inline-end": 0,
+                    "mobile-padding-scale": 75,
+                    "animation_type": "fade-up",
+                    "animation_split": "words",
+                    "animation_delay": 200
+                  },
+                  "blocks": {}
+                },
+                "button_7Hq8g8": {
+                  "type": "button",
+                  "settings": {
+                    "label": "Button label",
+                    "link": "shopify://collections/all",
+                    "style": "primary",
+                    "size": "medium",
+                    "icon": "caret-right",
+                    "animation_type": "none",
+                    "animation_delay": 300
+                  },
+                  "blocks": {}
+                }
+              },
+              "block_order": ["text_PgNg6p", "button_7Hq8g8"]
+            }
+          },
+          "block_order": []
+        }
+      },
+      "block_order": ["slide_1", "slide_2", "slide_3"]
+    }
+  ]
+}
+{% endschema %}

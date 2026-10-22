@@ -1,0 +1,27 @@
+{
+  "type": "header",
+  "name": "t:names.header",
+  "sections": {
+    "header": {
+      "type": "header",
+      "settings": {
+        "menu_mobile": "main-menu",
+        "header_layout": "logo-center",
+        "menu_trigger": "click",
+        "sticky_header": "always",
+        "enable_search_form": true,
+        "search_form_style": "transparent",
+        "enable_social_media_icons": true,
+        "enable_language_selector": true,
+        "enable_country_selector": true,
+        "color_scheme": "",
+        "show_separator_line": true,
+        "padding-block-start": 16,
+        "padding-block-end": 16
+      }
+    }
+  },
+  "order": [
+    "header"
+  ]
+}
