@@ -17,6 +17,11 @@
     --page-gutter: 5rem;
   }
 
+  // SHOP.CO: 100px gutter at 1440 → 1240px content column.
+  @include media-breakpoint-up(xxl) {
+    --page-gutter: 10rem;
+  }
+
   // Center content within max page width beyond 1536px
   @media (min-width: 1536px) {
     --page-padding: max(13.5rem, 50vw - var(--scrollbar-width, 15px) / 2 - var(--page-width) / 2);

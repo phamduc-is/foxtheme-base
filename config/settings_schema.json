@@ -1238,6 +1238,17 @@
       },
       {
         "type": "header",
+        "content": "t:content.rating_stars"
+      },
+      {
+        "type": "color",
+        "id": "rating_star_color",
+        "label": "t:settings.color",
+        "default": "#FFC633",
+        "alpha": false
+      },
+      {
+        "type": "header",
         "content": "t:content.labels"
       },
       {

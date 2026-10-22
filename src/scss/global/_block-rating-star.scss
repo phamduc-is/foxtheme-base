@@ -10,6 +10,7 @@
 
 .rating-wrapper {
   --star-fill-color-rgb: var(--color-foreground);
+  --star-fill-color: var(--color-rating-star);
 
   width: 100%;
   gap: 0.6rem;

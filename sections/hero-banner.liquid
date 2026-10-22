@@ -37,6 +37,10 @@
   {%- if container == 'fixed' -%}
     {%- render 'border-style', settings: section.settings -%}
   {%- endif -%}
+  {%- comment -%} Background override: repaints the scheme background behind transparent (cut-out) media. {%- endcomment -%}
+  {%- if section.settings.background_color != blank -%}
+    --color-background: {{ section.settings.background_color.rgb }};
+  {%- endif -%}
 {%- endcapture -%}
 
 <div
@@ -156,6 +160,12 @@
       "id": "color_scheme",
       "label": "t:settings.color_scheme",
       "default": "scheme-1"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "t:settings.background_color",
+      "alpha": false
     },
     {
       "type": "range",

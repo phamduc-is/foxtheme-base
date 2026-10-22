@@ -4,7 +4,7 @@
   @param {string} [unique_id] - Unique identifier for SVG IDs
   @param {string} [alignment_mobile] - The alignment on mobile
   @param {string} [alignment] - The alignment on desktop
-  @param {string} [rating_color] - The rating color
+  @param {string} [rating_color] - The rating color (blank → global --color-rating-star)
   @param {string} [stars_style] - The stars style
   @param {string} [show_number] - Whether to show the number of reviews
   @param {string} [type_preset] - The type preset
@@ -56,7 +56,9 @@
   %}
   <div
     class="rating-wrapper justify-{{ alignment_mobile }} md:justify-{{ alignment }}"
-    style="--star-fill-color: {{ rating_color.rgb }};"
+    {% if rating_color != blank %}
+      style="--star-fill-color: {{ rating_color.rgb }};"
+    {% endif %}
   >
     <div
       class="rating"
